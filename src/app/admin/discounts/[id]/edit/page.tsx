@@ -7,57 +7,81 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useData } from "@/lib/store";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useParams, notFound } from "next/navigation";
+import { useState, useEffect } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, PlusCircle, Trash2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
-import type { DiscountTier } from "@/lib/types";
+import type { Discount, DiscountTier } from "@/lib/types";
 import { Separator } from "@/components/ui/separator";
 
-
-export default function NewDiscountPage() {
+export default function EditDiscountPage() {
     const { toast } = useToast();
     const router = useRouter();
-    const { addDiscount } = useData();
-    
-    const [name, setName] = useState('');
-    const [dateRange, setDateRange] = useState<DateRange | undefined>();
-    const [tiers, setTiers] = useState<Omit<DiscountTier, 'id'>[]>([
-        { minTickets: 0, maxTickets: 0, percentage: 0 }
-    ]);
+    const params = useParams();
+    const { discounts, updateDiscount } = useData();
+
+    const id = params.id as string;
+    const [discount, setDiscount] = useState<Discount | null>(null);
+
+    useEffect(() => {
+        const d = discounts.find(d => d.id === id);
+        if (d) {
+            setDiscount(d);
+        } else {
+           // notFound(); // Keep this disabled to avoid 404 on update before redirect
+        }
+    }, [id, discounts]);
 
     const handleTierChange = (index: number, field: keyof Omit<DiscountTier, 'id'>, value: number) => {
-        const newTiers = [...tiers];
-        newTiers[index][field] = value;
-        setTiers(newTiers);
+        if (!discount) return;
+        const newTiers = [...discount.tiers];
+        newTiers[index] = { ...newTiers[index], [field]: value };
+        setDiscount({ ...discount, tiers: newTiers });
     };
 
     const addTier = () => {
-        setTiers([...tiers, { minTickets: 0, maxTickets: 0, percentage: 0 }]);
+        if (!discount) return;
+        const newTiers = [...discount.tiers, { id: `tier-${Date.now()}`, minTickets: 0, maxTickets: 0, percentage: 0 }];
+        setDiscount({ ...discount, tiers: newTiers });
     };
 
     const removeTier = (index: number) => {
-        if (tiers.length > 1) {
-            const newTiers = tiers.filter((_, i) => i !== index);
-            setTiers(newTiers);
+        if (!discount) return;
+        if (discount.tiers.length > 1) {
+            const newTiers = discount.tiers.filter((_, i) => i !== index);
+            setDiscount({ ...discount, tiers: newTiers });
         } else {
              toast({ title: "Error", description: "You must have at least one tier.", variant: "destructive" });
         }
     };
+    
+    const handleDateChange = (range: DateRange | undefined) => {
+        if (!discount || !range?.from || !range.to) return;
+        setDiscount({
+            ...discount,
+            startDate: range.from,
+            endDate: range.to,
+        });
+    }
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
 
-        if (!name || !dateRange?.from || !dateRange?.to) {
-            toast({ title: "Error", description: "Please fill out the discount name and validity period.", variant: "destructive" });
+        if (!discount) {
+            toast({ title: "Error", description: "Discount not found.", variant: "destructive" });
             return;
         }
 
-        for (const tier of tiers) {
+        if (!discount.name) {
+            toast({ title: "Error", description: "Please fill out the discount name.", variant: "destructive" });
+            return;
+        }
+
+        for (const tier of discount.tiers) {
             if (tier.minTickets <= 0 || tier.maxTickets <= 0 || tier.percentage <= 0) {
                 toast({ title: "Error", description: "Please fill out all tier fields with valid numbers.", variant: "destructive" });
                 return;
@@ -68,31 +92,31 @@ export default function NewDiscountPage() {
             }
         }
 
-        addDiscount({
-            name,
-            startDate: dateRange.from,
-            endDate: dateRange.to,
-            tiers: tiers.map(tier => ({...tier, id: `tier-${Math.random()}`}))
-        });
+        updateDiscount(discount);
 
         toast({
             title: "Success!",
-            description: "New discount has been added.",
+            description: "Discount has been updated.",
         });
         router.push("/admin/discounts");
     };
+
+    if (!discount) {
+        // You might want to show a loading skeleton here
+        return <p>Loading...</p>;
+    }
 
     return (
         <form onSubmit={handleSubmit}>
             <Card className="max-w-3xl mx-auto">
                 <CardHeader>
-                    <CardTitle>Add New Tiered Discount</CardTitle>
-                    <CardDescription>Define the rules and tiers for a new promotional discount.</CardDescription>
+                    <CardTitle>Edit Tiered Discount</CardTitle>
+                    <CardDescription>Update the rules and tiers for this promotional discount.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                      <div className="space-y-2">
                         <Label htmlFor="name">Discount Name</Label>
-                        <Input id="name" placeholder="e.g., Summer Group Offer" required value={name} onChange={e => setName(e.target.value)} />
+                        <Input id="name" placeholder="e.g., Summer Group Offer" required value={discount.name} onChange={e => setDiscount({...discount, name: e.target.value})} />
                     </div>
                     <div className="space-y-2">
                          <Label>Validity Period</Label>
@@ -101,33 +125,19 @@ export default function NewDiscountPage() {
                             <Button
                                 id="date"
                                 variant={"outline"}
-                                className={cn(
-                                "w-full justify-start text-left font-normal",
-                                !dateRange && "text-muted-foreground"
-                                )}
+                                className={cn("w-full justify-start text-left font-normal")}
                             >
                                 <CalendarIcon className="mr-2 h-4 w-4" />
-                                {dateRange?.from ? (
-                                dateRange.to ? (
-                                    <>
-                                    {format(dateRange.from, "LLL dd, y")} -{" "}
-                                    {format(dateRange.to, "LLL dd, y")}
-                                    </>
-                                ) : (
-                                    format(dateRange.from, "LLL dd, y")
-                                )
-                                ) : (
-                                <span>Pick a date range</span>
-                                )}
+                                {format(discount.startDate, "LLL dd, y")} - {format(discount.endDate, "LLL dd, y")}
                             </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
                             <Calendar
                                 initialFocus
                                 mode="range"
-                                defaultMonth={dateRange?.from}
-                                selected={dateRange}
-                                onSelect={setDateRange}
+                                defaultMonth={discount.startDate}
+                                selected={{ from: discount.startDate, to: discount.endDate }}
+                                onSelect={handleDateChange}
                                 numberOfMonths={2}
                             />
                             </PopoverContent>
@@ -145,8 +155,8 @@ export default function NewDiscountPage() {
                             </Button>
                         </div>
 
-                        {tiers.map((tier, index) => (
-                            <div key={index} className="p-4 border rounded-lg space-y-4 relative bg-muted/50">
+                        {discount.tiers.map((tier, index) => (
+                            <div key={tier.id} className="p-4 border rounded-lg space-y-4 relative bg-muted/50">
                                 <Label className="font-semibold">Tier {index + 1}</Label>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div className="space-y-2">
@@ -162,7 +172,7 @@ export default function NewDiscountPage() {
                                         <Input id={`percentage-${index}`} type="number" placeholder="e.g., 10" required value={tier.percentage || ''} onChange={e => handleTierChange(index, 'percentage', Number(e.target.value))} />
                                     </div>
                                 </div>
-                                <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => removeTier(index)} disabled={tiers.length <= 1}>
+                                <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => removeTier(index)} disabled={discount.tiers.length <= 1}>
                                     <Trash2 className="h-4 w-4"/>
                                     <span className="sr-only">Remove Tier</span>
                                 </Button>
@@ -171,8 +181,8 @@ export default function NewDiscountPage() {
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
-                     <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-                    <Button type="submit">Save Discount</Button>
+                     <Button type="button" variant="outline" onClick={() => router.push('/admin/discounts')}>Cancel</Button>
+                    <Button type="submit">Save Changes</Button>
                 </CardFooter>
             </Card>
         </form>

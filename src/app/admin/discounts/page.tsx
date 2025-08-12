@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, MoreHorizontal, Percent } from "lucide-react";
+import { PlusCircle, MoreHorizontal, Percent, ArrowRight } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { useData } from '@/lib/store';
@@ -49,8 +49,7 @@ export default function AdminDiscountsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
-                <TableHead>Discount</TableHead>
-                <TableHead>Ticket Range</TableHead>
+                <TableHead>Tiers</TableHead>
                 <TableHead>Validity Period</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>
@@ -63,10 +62,9 @@ export default function AdminDiscountsPage() {
                 <TableRow key={discount.id}>
                   <TableCell className="font-medium">{discount.name}</TableCell>
                   <TableCell>
-                      <Badge variant="destructive">{discount.percentage}% OFF</Badge>
+                      <Badge variant="outline">{discount.tiers.length} Tiers</Badge>
                   </TableCell>
-                  <TableCell>{discount.minTickets} - {discount.maxTickets} tickets</TableCell>
-                  <TableCell>{format(discount.startDate, "PPP")} - {format(discount.endDate, "PPP")}</TableCell>
+                  <TableCell>{format(discount.startDate, "PPP")} <ArrowRight className="inline h-4 w-4 mx-1" /> {format(discount.endDate, "PPP")}</TableCell>
                   <TableCell>{getStatus(discount.startDate, discount.endDate)}</TableCell>
                   <TableCell className="text-right">
                       <DropdownMenu>
@@ -78,8 +76,10 @@ export default function AdminDiscountsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem disabled>Edit</DropdownMenuItem>
-                           <DropdownMenuItem onClick={() => handleDelete(discount.id)}>Delete</DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/admin/discounts/${discount.id}/edit`}>Edit</Link>
+                          </DropdownMenuItem>
+                           <DropdownMenuItem onClick={() => handleDelete(discount.id)} className="text-destructive focus:text-destructive">Delete</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                   </TableCell>

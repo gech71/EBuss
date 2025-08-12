@@ -3,7 +3,7 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Bus, Route, Seat as SeatType, Discount } from '@/lib/types';
+import type { Bus, Route, Seat as SeatType, Discount, DiscountTier } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -78,20 +78,32 @@ export function SeatMap({ bus, route }: SeatMapProps) {
 
   const selectedSeats = seats.filter(s => s.status === 'selected');
   
-  const applicableDiscount = useMemo(() => {
+  const applicableDiscountInfo = useMemo(() => {
     const now = new Date();
-    const validDiscounts = discounts.filter(d => 
-        now >= d.startDate && 
-        now <= d.endDate &&
-        selectedSeats.length >= d.minTickets &&
-        selectedSeats.length <= d.maxTickets
-    );
-    // Return the discount with the highest percentage
-    return validDiscounts.sort((a, b) => b.percentage - a.percentage)[0] || null;
+    const selectedCount = selectedSeats.length;
+
+    let bestDiscount: Discount | null = null;
+    let bestTier: DiscountTier | null = null;
+
+    for (const discount of discounts) {
+      if (now >= discount.startDate && now <= discount.endDate) {
+        for (const tier of discount.tiers) {
+          if (selectedCount >= tier.minTickets && selectedCount <= tier.maxTickets) {
+            // If we found a tier, check if it's better than the one we already have
+            if (!bestTier || tier.percentage > bestTier.percentage) {
+              bestDiscount = discount;
+              bestTier = tier;
+            }
+          }
+        }
+      }
+    }
+    
+    return bestDiscount && bestTier ? { discount: bestDiscount, tier: bestTier } : null;
   }, [selectedSeats.length, discounts]);
 
   const originalPrice = selectedSeats.length * route.price;
-  const discountAmount = applicableDiscount ? originalPrice * (applicableDiscount.percentage / 100) : 0;
+  const discountAmount = applicableDiscountInfo ? originalPrice * (applicableDiscountInfo.tier.percentage / 100) : 0;
   const totalPrice = originalPrice - discountAmount;
 
 
@@ -145,11 +157,11 @@ export function SeatMap({ bus, route }: SeatMapProps) {
             )}
           </CardContent>
           <CardFooter className="flex flex-col items-stretch space-y-4">
-             {applicableDiscount && (
+             {applicableDiscountInfo && (
                 <div className="text-sm space-y-2 p-3 bg-green-100 dark:bg-green-900/50 rounded-md border border-green-300 dark:border-green-800">
                     <p className="font-bold text-green-700 dark:text-green-300 flex items-center gap-2">
                         <Tag className="h-5 w-5"/>
-                        {applicableDiscount.name} Applied!
+                        {applicableDiscountInfo.discount.name} Applied!
                     </p>
                     <Separator className="bg-green-300 dark:bg-green-800"/>
                     <div className="flex justify-between">
@@ -157,7 +169,7 @@ export function SeatMap({ bus, route }: SeatMapProps) {
                         <span>${originalPrice.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between font-semibold">
-                        <span className="text-green-600 dark:text-green-400">Discount ({applicableDiscount.percentage}%):</span>
+                        <span className="text-green-600 dark:text-green-400">Discount ({applicableDiscountInfo.tier.percentage}%):</span>
                         <span className="text-green-600 dark:text-green-400">-${discountAmount.toFixed(2)}</span>
                     </div>
                 </div>

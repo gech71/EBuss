@@ -31,6 +31,7 @@ interface DataStore {
     updateLocation: (oldName: string, newName: string) => void;
     deleteLocation: (name: string) => void;
     addDiscount: (discount: Omit<Discount, 'id'>) => void;
+    updateDiscount: (discount: Discount) => void;
     deleteDiscount: (id: string) => void;
 }
 
@@ -118,6 +119,10 @@ export function useDataProvider(): DataStore {
         setDiscounts(prev => [...prev, newDiscount]);
     };
 
+    const updateDiscount = (updatedDiscount: Discount) => {
+        setDiscounts(prev => prev.map(d => d.id === updatedDiscount.id ? updatedDiscount : d));
+    };
+
     const deleteDiscount = (id: string) => {
         setDiscounts(prev => prev.filter(d => d.id !== id));
     };
@@ -128,6 +133,6 @@ export function useDataProvider(): DataStore {
         addRoute, updateRoute, deleteRoute,
         addBus, updateBus, deleteBus,
         addLocation, updateLocation, deleteLocation,
-        addDiscount, deleteDiscount
+        addDiscount, updateDiscount, deleteDiscount
     };
 }
