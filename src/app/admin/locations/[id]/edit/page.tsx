@@ -18,19 +18,22 @@ export default function EditLocationPage() {
 
     const id = params.id ? decodeURIComponent(params.id as string) : '';
     const [locationName, setLocationName] = useState('');
+    const [initialLocationFound, setInitialLocationFound] = useState(false);
 
     useEffect(() => {
         if (id && locations.includes(id)) {
             setLocationName(id);
-        } else {
-             // Or handle as a not found case
+            setInitialLocationFound(true);
+        } else if (!initialLocationFound) {
+            // Only call notFound on initial load if location doesn't exist
+            // This prevents a 404 after a successful update
         }
-    }, [id, locations]);
+    }, [id, locations, initialLocationFound]);
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (locationName && locationName !== id) {
-             if (locations.some(loc => loc.toLowerCase() === locationName.toLowerCase())) {
+             if (locations.some(loc => loc.toLowerCase() === locationName.toLowerCase() && loc !== id)) {
                 toast({ title: "Error", description: "A location with this name already exists.", variant: "destructive" });
                 return;
             }
@@ -45,8 +48,15 @@ export default function EditLocationPage() {
         }
     };
 
-    if (!id || !locations.includes(id)) {
-        notFound();
+    // We check `initialLocationFound` which is set on the first successful load.
+    // If the component is still mounted and the URL param `id` is no longer in `locations`,
+    // it's because we just updated it, so we don't call notFound().
+    if (!id || (!initialLocationFound && !locations.includes(id))) {
+        // A check to see if the component is just loading
+        const isStillLoading = !locations.length;
+        if (!isStillLoading) {
+            notFound();
+        }
     }
 
 
