@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useData } from "@/lib/store";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
@@ -30,11 +29,13 @@ export default function NewRoutePage() {
     const [departureTime, setDepartureTime] = useState('12:00');
     const [arrivalDate, setArrivalDate] = useState<Date>();
     const [arrivalTime, setArrivalTime] = useState('16:00');
-    const [busId, setBusId] = useState<string>('');
+    const [selectedBusIds, setSelectedBusIds] = useState<string[]>([]);
     const [price, setPrice] = useState<number>(0);
 
     const [openOrigin, setOpenOrigin] = useState(false)
     const [openDestination, setOpenDestination] = useState(false)
+    const [openBuses, setOpenBuses] = useState(false);
+
 
     const combineDateTime = (date: Date, time: string): Date => {
         const [hours, minutes] = time.split(':').map(Number);
@@ -45,8 +46,8 @@ export default function NewRoutePage() {
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (!origin || !destination || !departureDate || !arrivalDate || !busId || price <= 0) {
-            toast({ title: "Error", description: "Please fill out all fields.", variant: "destructive" });
+        if (!origin || !destination || !departureDate || !arrivalDate || selectedBusIds.length === 0 || price <= 0) {
+            toast({ title: "Error", description: "Please fill out all fields, including selecting at least one bus.", variant: "destructive" });
             return;
         }
 
@@ -63,30 +64,42 @@ export default function NewRoutePage() {
             return;
         }
 
-        const newRoute: Omit<Route, 'id'> = {
-            origin,
-            destination,
-            departureTime: fullDepartureTime,
-            arrivalTime: fullArrivalTime,
-            busId,
-            price,
-        };
+        selectedBusIds.forEach(busId => {
+            const newRoute: Omit<Route, 'id'> = {
+                origin,
+                destination,
+                departureTime: fullDepartureTime,
+                arrivalTime: fullArrivalTime,
+                busId,
+                price,
+            };
+            addRoute(newRoute);
+        });
 
-        addRoute(newRoute);
 
         toast({
             title: "Success!",
-            description: "New route has been added.",
+            description: `${selectedBusIds.length} new route(s) have been added.`,
         });
         router.push("/admin/routes");
     };
+    
+    const toggleBusSelection = (busId: string) => {
+        setSelectedBusIds(prev => 
+        prev.includes(busId) 
+            ? prev.filter(id => id !== busId)
+            : [...prev, busId]
+        );
+    };
+
+    const selectedBuses = buses.filter(b => selectedBusIds.includes(b.id));
 
     return (
         <form onSubmit={handleSubmit}>
             <Card className="max-w-xl mx-auto">
                 <CardHeader>
                     <CardTitle>Add New Route</CardTitle>
-                    <CardDescription>Define the details for the new bus route.</CardDescription>
+                    <CardDescription>Define the details for the new bus route. You can select multiple buses to create the same route for each of them.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">
@@ -198,14 +211,48 @@ export default function NewRoutePage() {
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="busId">Bus</Label>
-                            <Select required onValueChange={setBusId} value={busId}>
-                                <SelectTrigger id="busId">
-                                    <SelectValue placeholder="Select a bus" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {buses.map(bus => <SelectItem key={bus.id} value={bus.id}>{bus.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
+                            <Popover open={openBuses} onOpenChange={setOpenBuses}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={openBuses}
+                                    className="w-full justify-between"
+                                    >
+                                    <span className="truncate">
+                                        {selectedBuses.length > 0 ? selectedBuses.map(b => b.name).join(', ') : "Select buses..."}
+                                    </span>
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                    <Command>
+                                        <CommandInput placeholder="Search bus types..." />
+                                        <CommandList>
+                                            <CommandEmpty>No bus types found.</CommandEmpty>
+                                            <CommandGroup>
+                                                {buses.map((bus) => (
+                                                <CommandItem
+                                                    key={bus.id}
+                                                    value={bus.name}
+                                                    onSelect={() => {
+                                                        toggleBusSelection(bus.id);
+                                                    }}
+                                                >
+                                                    <Check
+                                                    className={cn(
+                                                        "mr-2 h-4 w-4",
+                                                        selectedBusIds.includes(bus.id) ? "opacity-100" : "opacity-0"
+                                                    )}
+                                                    />
+                                                    {bus.name}
+                                                </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="price">Price</Label>
