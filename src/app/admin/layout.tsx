@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
-import { LayoutDashboard, Route as RouteIcon, Bus, QrCode, MapPin } from "lucide-react";
+import { LayoutDashboard, Route as RouteIcon, Bus, QrCode, MapPin, Percent } from "lucide-react";
 
 export default function AdminLayout({
   children,
@@ -46,6 +46,14 @@ export default function AdminLayout({
                     <Link href="/admin/buses">
                       <Bus />
                       Buses
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                 <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Discounts">
+                    <Link href="/admin/discounts">
+                      <Percent />
+                      Discounts
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

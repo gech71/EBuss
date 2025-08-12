@@ -35,3 +35,13 @@ export interface Booking {
   passengerName: string;
   passengerEmail: string;
 }
+
+export interface Discount {
+  id:string;
+  name: string;
+  minTickets: number;
+  maxTickets: number;
+  percentage: number;
+  startDate: Date;
+  endDate: Date;
+}

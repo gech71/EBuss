@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import type { Route, Bus } from './types';
+import type { Route, Bus, Discount } from './types';
 import { allRoutes as initialRoutes, allBuses as initialBuses, generateSeats } from './data';
 
 // Derive initial locations from routes
@@ -20,6 +20,7 @@ interface DataStore {
     routes: Route[];
     buses: Bus[];
     locations: string[];
+    discounts: Discount[];
     addRoute: (route: Omit<Route, 'id' | 'arrivalTime'> & { arrivalTime?: Date }) => void;
     updateRoute: (route: Route) => void;
     deleteRoute: (id: string) => void;
@@ -29,6 +30,8 @@ interface DataStore {
     addLocation: (location: string) => void;
     updateLocation: (oldName: string, newName: string) => void;
     deleteLocation: (name: string) => void;
+    addDiscount: (discount: Omit<Discount, 'id'>) => void;
+    deleteDiscount: (id: string) => void;
 }
 
 export const DataContext = createContext<DataStore | undefined>(undefined);
@@ -46,6 +49,7 @@ export function useDataProvider(): DataStore {
     const [routes, setRoutes] = useState<Route[]>(initialRoutes);
     const [buses, setBuses] = useState<Bus[]>(initialBuses);
     const [locations, setLocations] = useState<string[]>(getInitialLocations(initialRoutes));
+    const [discounts, setDiscounts] = useState<Discount[]>([]);
 
     const addRoute = (route: Omit<Route, 'id' | 'arrivalTime'> & { arrivalTime?: Date }) => {
         const newRoute: Route = { 
@@ -106,11 +110,24 @@ export function useDataProvider(): DataStore {
         setLocations(prev => prev.filter(loc => loc !== name));
     };
 
+    const addDiscount = (discount: Omit<Discount, 'id'>) => {
+        const newDiscount: Discount = {
+            ...discount,
+            id: `discount-${Date.now()}`
+        };
+        setDiscounts(prev => [...prev, newDiscount]);
+    };
+
+    const deleteDiscount = (id: string) => {
+        setDiscounts(prev => prev.filter(d => d.id !== id));
+    };
+
 
     return {
-        routes, buses, locations,
+        routes, buses, locations, discounts,
         addRoute, updateRoute, deleteRoute,
         addBus, updateBus, deleteBus,
-        addLocation, updateLocation, deleteLocation
+        addLocation, updateLocation, deleteLocation,
+        addDiscount, deleteDiscount
     };
 }

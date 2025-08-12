@@ -1,13 +1,16 @@
+
 "use client";
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Bus, Route, Seat as SeatType } from '@/lib/types';
+import type { Bus, Route, Seat as SeatType, Discount } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Armchair, CarFront, CircleHelp } from 'lucide-react';
+import { Armchair, CarFront, Percent, Tag } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useData } from '@/lib/store';
+import { Separator } from '../ui/separator';
 
 interface SeatProps {
   seat: SeatType;
@@ -47,6 +50,7 @@ interface SeatMapProps {
 
 export function SeatMap({ bus, route }: SeatMapProps) {
   const [seats, setSeats] = useState<SeatType[]>(bus.layout.seats);
+  const { discounts } = useData();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -59,10 +63,10 @@ export function SeatMap({ bus, route }: SeatMapProps) {
         return currentSeats.map(s => s.id === id ? { ...s, status: 'available' } : s);
       }
 
-      if (selectedSeatsCount >= 5) {
+      if (selectedSeatsCount >= 10) { // Limit selection to a reasonable number
         toast({
             title: 'Selection Limit',
-            description: 'You can select a maximum of 5 seats per booking.',
+            description: 'You can select a maximum of 10 seats per booking.',
             variant: 'destructive',
         });
         return currentSeats;
@@ -73,7 +77,23 @@ export function SeatMap({ bus, route }: SeatMapProps) {
   };
 
   const selectedSeats = seats.filter(s => s.status === 'selected');
-  const totalPrice = selectedSeats.length * route.price;
+  
+  const applicableDiscount = useMemo(() => {
+    const now = new Date();
+    const validDiscounts = discounts.filter(d => 
+        now >= d.startDate && 
+        now <= d.endDate &&
+        selectedSeats.length >= d.minTickets &&
+        selectedSeats.length <= d.maxTickets
+    );
+    // Return the discount with the highest percentage
+    return validDiscounts.sort((a, b) => b.percentage - a.percentage)[0] || null;
+  }, [selectedSeats.length, discounts]);
+
+  const originalPrice = selectedSeats.length * route.price;
+  const discountAmount = applicableDiscount ? originalPrice * (applicableDiscount.percentage / 100) : 0;
+  const totalPrice = originalPrice - discountAmount;
+
 
   const handleConfirmBooking = () => {
     if (selectedSeats.length === 0) {
@@ -125,7 +145,25 @@ export function SeatMap({ bus, route }: SeatMapProps) {
             )}
           </CardContent>
           <CardFooter className="flex flex-col items-stretch space-y-4">
-            <div className="flex justify-between items-center text-xl font-bold">
+             {applicableDiscount && (
+                <div className="text-sm space-y-2 p-3 bg-green-100 dark:bg-green-900/50 rounded-md border border-green-300 dark:border-green-800">
+                    <p className="font-bold text-green-700 dark:text-green-300 flex items-center gap-2">
+                        <Tag className="h-5 w-5"/>
+                        {applicableDiscount.name} Applied!
+                    </p>
+                    <Separator className="bg-green-300 dark:bg-green-800"/>
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Original Price:</span>
+                        <span>${originalPrice.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between font-semibold">
+                        <span className="text-green-600 dark:text-green-400">Discount ({applicableDiscount.percentage}%):</span>
+                        <span className="text-green-600 dark:text-green-400">-${discountAmount.toFixed(2)}</span>
+                    </div>
+                </div>
+             )}
+
+            <div className="flex justify-between items-center text-xl font-bold pt-2">
                 <span>Total Price:</span>
                 <span className="text-primary">${totalPrice.toFixed(2)}</span>
             </div>
