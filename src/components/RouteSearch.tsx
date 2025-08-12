@@ -1,17 +1,18 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { allRoutes } from '@/lib/data';
 import type { Route } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar as CalendarIcon, Search, Bus } from 'lucide-react';
+import { Calendar as CalendarIcon, Search, Bus, Check, ChevronsUpDown } from 'lucide-react';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { format } from 'date-fns';
 import { RouteCard } from './RouteCard';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
-import { Input } from './ui/input';
+import { cn } from '@/lib/utils';
 
 export function RouteSearch() {
   const [origin, setOrigin] = useState('');
@@ -19,11 +20,18 @@ export function RouteSearch() {
   const [date, setDate] = useState<Date | undefined>();
   const [searchResults, setSearchResults] = useState<Route[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
+  
+  const [openOrigin, setOpenOrigin] = useState(false)
+  const [openDestination, setOpenDestination] = useState(false)
+
+  const uniqueOrigins = useMemo(() => [...new Set(allRoutes.map(route => route.origin))], []);
+  const uniqueDestinations = useMemo(() => [...new Set(allRoutes.map(route => route.destination))], []);
+
 
   const handleSearch = () => {
     const results = allRoutes.filter(route => {
-      const isOriginMatch = !origin || route.origin.toLowerCase().includes(origin.toLowerCase());
-      const isDestinationMatch = !destination || route.destination.toLowerCase().includes(destination.toLowerCase());
+      const isOriginMatch = !origin || route.origin.toLowerCase() === origin.toLowerCase();
+      const isDestinationMatch = !destination || route.destination.toLowerCase() === destination.toLowerCase();
       const isDateMatch = !date || format(route.departureTime, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
       return isOriginMatch && isDestinationMatch && isDateMatch;
     });
@@ -41,19 +49,91 @@ export function RouteSearch() {
                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 items-end">
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-muted-foreground">Origin</label>
-                        <Input 
-                            placeholder="Enter origin city"
-                            value={origin}
-                            onChange={(e) => setOrigin(e.target.value)}
-                        />
+                        <Popover open={openOrigin} onOpenChange={setOpenOrigin}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={openOrigin}
+                                className="w-full justify-between"
+                                >
+                                {origin
+                                    ? uniqueOrigins.find((o) => o.toLowerCase() === origin.toLowerCase())
+                                    : "Select origin..."}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[200px] p-0">
+                                <Command>
+                                <CommandInput placeholder="Search origin..." />
+                                <CommandEmpty>No origin found.</CommandEmpty>
+                                <CommandGroup>
+                                    {uniqueOrigins.map((o) => (
+                                    <CommandItem
+                                        key={o}
+                                        value={o}
+                                        onSelect={(currentValue) => {
+                                        setOrigin(currentValue === origin ? "" : currentValue)
+                                        setOpenOrigin(false)
+                                        }}
+                                    >
+                                        <Check
+                                        className={cn(
+                                            "mr-2 h-4 w-4",
+                                            origin === o ? "opacity-100" : "opacity-0"
+                                        )}
+                                        />
+                                        {o}
+                                    </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
                     </div>
                      <div className="space-y-2">
                         <label className="text-sm font-medium text-muted-foreground">Destination</label>
-                        <Input 
-                            placeholder="Enter destination city"
-                            value={destination}
-                            onChange={(e) => setDestination(e.target.value)}
-                        />
+                        <Popover open={openDestination} onOpenChange={setOpenDestination}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={openDestination}
+                                className="w-full justify-between"
+                                >
+                                {destination
+                                    ? uniqueDestinations.find((d) => d.toLowerCase() === destination.toLowerCase())
+                                    : "Select destination..."}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[200px] p-0">
+                                <Command>
+                                <CommandInput placeholder="Search destination..." />
+                                <CommandEmpty>No destination found.</CommandEmpty>
+                                <CommandGroup>
+                                    {uniqueDestinations.map((d) => (
+                                    <CommandItem
+                                        key={d}
+                                        value={d}
+                                        onSelect={(currentValue) => {
+                                        setDestination(currentValue === destination ? "" : currentValue)
+                                        setOpenDestination(false)
+                                        }}
+                                    >
+                                        <Check
+                                        className={cn(
+                                            "mr-2 h-4 w-4",
+                                            destination === d ? "opacity-100" : "opacity-0"
+                                        )}
+                                        />
+                                        {d}
+                                    </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
                     </div>
                      <div className="space-y-2">
                          <label className="text-sm font-medium text-muted-foreground">Date</label>
