@@ -10,7 +10,8 @@ import { useData } from "@/lib/store";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { CalendarIcon, Check, ChevronsUpDown } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -31,6 +32,9 @@ export default function NewRoutePage() {
     const [arrivalTime, setArrivalTime] = useState('16:00');
     const [busId, setBusId] = useState<string>('');
     const [price, setPrice] = useState<number>(0);
+
+    const [openOrigin, setOpenOrigin] = useState(false)
+    const [openDestination, setOpenDestination] = useState(false)
 
     const combineDateTime = (date: Date, time: string): Date => {
         const [hours, minutes] = time.split(':').map(Number);
@@ -89,25 +93,71 @@ export default function NewRoutePage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="origin">Origin</Label>
-                                <Select required onValueChange={setOrigin} value={origin}>
-                                    <SelectTrigger id="origin">
-                                        <SelectValue placeholder="Select origin" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {locations.map(loc => <SelectItem key={loc} value={loc}>{loc}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
+                                 <Popover open={openOrigin} onOpenChange={setOpenOrigin}>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" role="combobox" aria-expanded={openOrigin} className="w-full justify-between">
+                                            {origin ? locations.find((l) => l === origin) : "Select origin..."}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Search location..." />
+                                            <CommandList>
+                                                <CommandEmpty>No location found.</CommandEmpty>
+                                                <CommandGroup>
+                                                    {locations.map((location) => (
+                                                        <CommandItem
+                                                            key={location}
+                                                            value={location}
+                                                            onSelect={(currentValue) => {
+                                                                setOrigin(currentValue === origin ? "" : currentValue)
+                                                                setOpenOrigin(false)
+                                                            }}
+                                                        >
+                                                            <Check className={cn("mr-2 h-4 w-4", origin === location ? "opacity-100" : "opacity-0")} />
+                                                            {location}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="destination">Destination</Label>
-                                <Select required onValueChange={setDestination} value={destination}>
-                                    <SelectTrigger id="destination">
-                                        <SelectValue placeholder="Select destination" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {locations.map(loc => <SelectItem key={loc} value={loc}>{loc}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
+                                <Popover open={openDestination} onOpenChange={setOpenDestination}>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" role="combobox" aria-expanded={openDestination} className="w-full justify-between">
+                                            {destination ? locations.find((l) => l === destination) : "Select destination..."}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Search location..." />
+                                            <CommandList>
+                                                <CommandEmpty>No location found.</CommandEmpty>
+                                                <CommandGroup>
+                                                    {locations.map((location) => (
+                                                        <CommandItem
+                                                            key={location}
+                                                            value={location}
+                                                            onSelect={(currentValue) => {
+                                                                setDestination(currentValue === destination ? "" : currentValue)
+                                                                setOpenDestination(false)
+                                                            }}
+                                                        >
+                                                            <Check className={cn("mr-2 h-4 w-4", destination === location ? "opacity-100" : "opacity-0")} />
+                                                            {location}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
