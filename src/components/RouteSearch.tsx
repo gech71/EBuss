@@ -6,24 +6,27 @@ import type { Route } from '@/lib/types';
 import { useData } from '@/lib/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar as CalendarIcon, Search, Bus, Check, ChevronsUpDown } from 'lucide-react';
+import { Calendar as CalendarIcon, Search, Bus, Check, ChevronsUpDown, X } from 'lucide-react';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { format } from 'date-fns';
 import { RouteCard } from './RouteCard';
 import { cn } from '@/lib/utils';
+import { Badge } from './ui/badge';
 
 export function RouteSearch() {
-  const { routes } = useData();
+  const { routes, buses } = useData();
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [date, setDate] = useState<Date | undefined>();
+  const [selectedBusIds, setSelectedBusIds] = useState<string[]>([]);
   const [searchResults, setSearchResults] = useState<Route[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   
   const [openOrigin, setOpenOrigin] = useState(false)
   const [openDestination, setOpenDestination] = useState(false)
+  const [openBuses, setOpenBuses] = useState(false)
 
   const uniqueOrigins = useMemo(() => [...new Set(routes.map(route => route.origin))], [routes]);
   const uniqueDestinations = useMemo(() => [...new Set(routes.map(route => route.destination))], [routes]);
@@ -34,11 +37,23 @@ export function RouteSearch() {
       const isOriginMatch = !origin || route.origin.toLowerCase() === origin.toLowerCase();
       const isDestinationMatch = !destination || route.destination.toLowerCase() === destination.toLowerCase();
       const isDateMatch = !date || format(new Date(route.departureTime), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
-      return isOriginMatch && isDestinationMatch && isDateMatch;
+      const isBusMatch = selectedBusIds.length === 0 || selectedBusIds.includes(route.busId);
+      return isOriginMatch && isDestinationMatch && isDateMatch && isBusMatch;
     });
     setSearchResults(results);
     setHasSearched(true);
   };
+
+  const toggleBusSelection = (busId: string) => {
+    setSelectedBusIds(prev => 
+      prev.includes(busId) 
+        ? prev.filter(id => id !== busId)
+        : [...prev, busId]
+    );
+  };
+
+  const selectedBuses = buses.filter(b => selectedBusIds.includes(b.id));
+
 
   return (
     <section>
@@ -47,7 +62,7 @@ export function RouteSearch() {
                 <CardTitle className="font-headline text-2xl text-primary">Search for Routes</CardTitle>
             </CardHeader>
             <CardContent>
-                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 items-end">
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-muted-foreground">Origin</label>
                         <Popover open={openOrigin} onOpenChange={setOpenOrigin}>
@@ -67,6 +82,7 @@ export function RouteSearch() {
                             <PopoverContent className="w-[200px] p-0">
                                 <Command>
                                 <CommandInput placeholder="Search origin..." />
+                                <CommandList>
                                 <CommandEmpty>No origin found.</CommandEmpty>
                                 <CommandGroup>
                                     {uniqueOrigins.map((o) => (
@@ -88,6 +104,7 @@ export function RouteSearch() {
                                     </CommandItem>
                                     ))}
                                 </CommandGroup>
+                                </CommandList>
                                 </Command>
                             </PopoverContent>
                         </Popover>
@@ -111,6 +128,7 @@ export function RouteSearch() {
                             <PopoverContent className="w-[200px] p-0">
                                 <Command>
                                 <CommandInput placeholder="Search destination..." />
+                                <CommandList>
                                 <CommandEmpty>No destination found.</CommandEmpty>
                                 <CommandGroup>
                                     {uniqueDestinations.map((d) => (
@@ -132,6 +150,7 @@ export function RouteSearch() {
                                     </CommandItem>
                                     ))}
                                 </CommandGroup>
+                                </CommandList>
                                 </Command>
                             </PopoverContent>
                         </Popover>
@@ -158,7 +177,52 @@ export function RouteSearch() {
                             </PopoverContent>
                         </Popover>
                     </div>
-                    <Button onClick={handleSearch} className="md:col-span-3 lg:col-span-1">
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-muted-foreground">Bus Type</label>
+                         <Popover open={openBuses} onOpenChange={setOpenBuses}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={openBuses}
+                                className="w-full justify-between"
+                                >
+                                <span className="truncate">
+                                    {selectedBuses.length > 0 ? selectedBuses.map(b => b.name).join(', ') : "Select bus types..."}
+                                </span>
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[200px] p-0">
+                                <Command>
+                                <CommandInput placeholder="Search bus types..." />
+                                <CommandList>
+                                <CommandEmpty>No bus types found.</CommandEmpty>
+                                <CommandGroup>
+                                    {buses.map((bus) => (
+                                    <CommandItem
+                                        key={bus.id}
+                                        value={bus.name}
+                                        onSelect={() => {
+                                            toggleBusSelection(bus.id);
+                                        }}
+                                    >
+                                        <Check
+                                        className={cn(
+                                            "mr-2 h-4 w-4",
+                                            selectedBusIds.includes(bus.id) ? "opacity-100" : "opacity-0"
+                                        )}
+                                        />
+                                        {bus.name}
+                                    </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                                </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                    <Button onClick={handleSearch} className="md:col-span-full lg:col-span-4">
                         <Search className="mr-2 h-4 w-4" /> Search
                     </Button>
                  </div>
