@@ -1,3 +1,4 @@
+
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarContent } from "@/components/ui/sidebar";
@@ -10,9 +11,9 @@ export default function AdminLayout({
 }) {
   return (
     <SidebarProvider>
-      <div className="min-h-screen">
+      <div className="min-h-screen flex flex-col">
         <Header />
-        <div className="flex">
+        <div className="flex flex-1">
           <Sidebar>
             <SidebarContent>
               <SidebarMenu>
