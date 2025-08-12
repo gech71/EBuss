@@ -12,7 +12,7 @@ export default function Home() {
             Find Your Next Journey
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-            Effortless bus booking at your fingertips. Explore our routes and book your ticket today.
+            Explore our routes and book your ticket today.
           </p>
         </section>
 
