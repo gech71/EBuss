@@ -35,7 +35,6 @@ export default function AdminLocationsPage() {
   };
 
   return (
-    <>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
@@ -106,6 +105,5 @@ export default function AdminLocationsPage() {
           </Table>
         </CardContent>
       </Card>
-    </>
   );
 }
