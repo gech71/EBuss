@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Header } from "@/components/Header";
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarContent } from "@/components/ui/sidebar";
 import { LayoutDashboard, Route as RouteIcon, Bus, QrCode, MapPin, Building } from "lucide-react";
@@ -16,33 +17,43 @@ export default function AdminLayout({
             <SidebarContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton href="/admin" tooltip="Dashboard">
-                    <LayoutDashboard />
-                    Dashboard
+                  <SidebarMenuButton asChild tooltip="Dashboard">
+                    <Link href="/admin">
+                      <LayoutDashboard />
+                      Dashboard
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton href="/admin/routes" tooltip="Routes">
-                    <RouteIcon />
-                    Routes
+                  <SidebarMenuButton asChild tooltip="Routes">
+                     <Link href="/admin/routes">
+                      <RouteIcon />
+                      Routes
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                  <SidebarMenuItem>
-                  <SidebarMenuButton href="/admin/locations" tooltip="Locations">
-                    <MapPin />
-                    Locations
+                  <SidebarMenuButton asChild tooltip="Locations">
+                    <Link href="/admin/locations">
+                      <MapPin />
+                      Locations
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton href="/admin/buses" tooltip="Buses">
-                    <Bus />
-                    Buses
+                  <SidebarMenuButton asChild tooltip="Buses">
+                    <Link href="/admin/buses">
+                      <Bus />
+                      Buses
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton href="/admin/scan" tooltip="Scan Ticket">
-                    <QrCode />
-                    Scan Ticket
+                  <SidebarMenuButton asChild tooltip="Scan Ticket">
+                    <Link href="/admin/scan">
+                      <QrCode />
+                      Scan Ticket
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
