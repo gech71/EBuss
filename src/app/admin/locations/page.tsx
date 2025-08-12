@@ -64,8 +64,7 @@ export default function AdminLocationsPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuItem asChild>
-                             {/* This would link to /admin/locations/[id]/edit in a real app */}
-                            <Link href="/admin/locations/new">Edit</Link>
+                            <Link href={`/admin/locations/${encodeURIComponent(location)}/edit`}>Edit</Link>
                           </DropdownMenuItem>
                           <AlertDialogTrigger asChild>
                             <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
