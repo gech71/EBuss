@@ -76,7 +76,7 @@ export default function AdminLocationsPage() {
                             <Link href={`/admin/locations/${encodeURIComponent(location)}/edit`}>Edit</Link>
                           </DropdownMenuItem>
                           <AlertDialogTrigger asChild>
-                            <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                            <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(e) => e.preventDefault()}>
                               Delete
                             </DropdownMenuItem>
                           </AlertDialogTrigger>
