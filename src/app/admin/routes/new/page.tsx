@@ -26,13 +26,22 @@ export default function NewRoutePage() {
     const [origin, setOrigin] = useState<string>('');
     const [destination, setDestination] = useState<string>('');
     const [departureDate, setDepartureDate] = useState<Date>();
+    const [departureTime, setDepartureTime] = useState('12:00');
+    const [arrivalDate, setArrivalDate] = useState<Date>();
+    const [arrivalTime, setArrivalTime] = useState('16:00');
     const [busId, setBusId] = useState<string>('');
     const [price, setPrice] = useState<number>(0);
 
+    const combineDateTime = (date: Date, time: string): Date => {
+        const [hours, minutes] = time.split(':').map(Number);
+        const newDate = new Date(date);
+        newDate.setHours(hours, minutes, 0, 0);
+        return newDate;
+    };
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (!origin || !destination || !departureDate || !busId || price <= 0) {
+        if (!origin || !destination || !departureDate || !arrivalDate || !busId || price <= 0) {
             toast({ title: "Error", description: "Please fill out all fields.", variant: "destructive" });
             return;
         }
@@ -42,16 +51,24 @@ export default function NewRoutePage() {
             return;
         }
 
-        const newRoute: Omit<Route, 'id' | 'arrivalTime'> = {
+        const fullDepartureTime = combineDateTime(departureDate, departureTime);
+        const fullArrivalTime = combineDateTime(arrivalDate, arrivalTime);
+
+        if (fullArrivalTime <= fullDepartureTime) {
+            toast({ title: "Error", description: "Arrival time must be after departure time.", variant: "destructive" });
+            return;
+        }
+
+        const newRoute: Omit<Route, 'id'> = {
             origin,
             destination,
-            departureTime: departureDate,
+            departureTime: fullDepartureTime,
+            arrivalTime: fullArrivalTime,
             busId,
             price,
         };
 
-        // For simplicity, arrivalTime is not set here. A real app would calculate it.
-        addRoute({ ...newRoute, arrivalTime: new Date(departureDate.getTime() + 4 * 60 * 60 * 1000) });
+        addRoute(newRoute);
 
         toast({
             title: "Success!",
@@ -93,30 +110,41 @@ export default function NewRoutePage() {
                                 </Select>
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="departureTime">Departure Date & Time</Label>
-                             <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                    variant={"outline"}
-                                    className={cn(
-                                        "w-full justify-start text-left font-normal",
-                                        !departureDate && "text-muted-foreground"
-                                    )}
-                                    >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {departureDate ? format(departureDate, "PPP") : <span>Pick a date</span>}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
-                                    <Calendar
-                                    mode="single"
-                                    selected={departureDate}
-                                    onSelect={setDepartureDate}
-                                    initialFocus
-                                    />
-                                </PopoverContent>
-                            </Popover>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="departureTime">Departure</Label>
+                                <div className="flex gap-2">
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !departureDate && "text-muted-foreground")}>
+                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                {departureDate ? format(departureDate, "PPP") : <span>Pick a date</span>}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0">
+                                            <Calendar mode="single" selected={departureDate} onSelect={setDepartureDate} initialFocus />
+                                        </PopoverContent>
+                                    </Popover>
+                                    <Input type="time" value={departureTime} onChange={e => setDepartureTime(e.target.value)} />
+                                </div>
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="arrivalTime">Arrival</Label>
+                                <div className="flex gap-2">
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !arrivalDate && "text-muted-foreground")}>
+                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                {arrivalDate ? format(arrivalDate, "PPP") : <span>Pick a date</span>}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0">
+                                            <Calendar mode="single" selected={arrivalDate} onSelect={setArrivalDate} initialFocus />
+                                        </PopoverContent>
+                                    </Popover>
+                                     <Input type="time" value={arrivalTime} onChange={e => setArrivalTime(e.target.value)} />
+                                </div>
+                            </div>
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="busId">Bus</Label>

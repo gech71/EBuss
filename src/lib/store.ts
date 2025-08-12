@@ -21,7 +21,7 @@ interface DataStore {
     buses: Bus[];
     locations: string[];
     discounts: Discount[];
-    addRoute: (route: Omit<Route, 'id' | 'arrivalTime'> & { arrivalTime?: Date }) => void;
+    addRoute: (route: Omit<Route, 'id'>) => void;
     updateRoute: (route: Route) => void;
     deleteRoute: (id: string) => void;
     addBus: (bus: Omit<Bus, 'id' | 'layout'> & { layout?: Bus['layout'] }) => void;
@@ -52,12 +52,10 @@ export function useDataProvider(): DataStore {
     const [locations, setLocations] = useState<string[]>(getInitialLocations(initialRoutes));
     const [discounts, setDiscounts] = useState<Discount[]>([]);
 
-    const addRoute = (route: Omit<Route, 'id' | 'arrivalTime'> & { arrivalTime?: Date }) => {
+    const addRoute = (route: Omit<Route, 'id'>) => {
         const newRoute: Route = { 
             ...route, 
             id: `route-${Date.now()}`,
-            // If arrivalTime is not provided, set it to 4 hours after departure
-            arrivalTime: route.arrivalTime || new Date(route.departureTime.getTime() + 4 * 60 * 60 * 1000)
         };
         setRoutes(prev => [...prev, newRoute]);
     };
