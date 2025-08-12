@@ -21,7 +21,7 @@ export default function AdminLayout({
                   <SidebarMenuButton asChild tooltip="Dashboard">
                     <Link href="/admin">
                       <LayoutDashboard />
-                      Dashboard
+                      <span>Dashboard</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -29,7 +29,7 @@ export default function AdminLayout({
                   <SidebarMenuButton asChild tooltip="Routes">
                      <Link href="/admin/routes">
                       <RouteIcon />
-                      Routes
+                      <span>Routes</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -37,7 +37,7 @@ export default function AdminLayout({
                   <SidebarMenuButton asChild tooltip="Locations">
                     <Link href="/admin/locations">
                       <MapPin />
-                      Locations
+                      <span>Locations</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -45,7 +45,7 @@ export default function AdminLayout({
                   <SidebarMenuButton asChild tooltip="Buses">
                     <Link href="/admin/buses">
                       <Bus />
-                      Buses
+                      <span>Buses</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -53,7 +53,7 @@ export default function AdminLayout({
                   <SidebarMenuButton asChild tooltip="Discounts">
                     <Link href="/admin/discounts">
                       <Percent />
-                      Discounts
+                      <span>Discounts</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -61,7 +61,7 @@ export default function AdminLayout({
                   <SidebarMenuButton asChild tooltip="Scan Ticket">
                     <Link href="/admin/scan">
                       <QrCode />
-                      Scan Ticket
+                      <span>Scan Ticket</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

@@ -494,7 +494,7 @@ const SidebarMenu = React.forwardRef<
   <ul
     ref={ref}
     data-sidebar="menu"
-    className={cn("flex w-full min-w-0 flex-col gap-1", className)}
+    className={cn("flex w-full min-w-0 flex-col gap-1 p-2", className)}
     {...props}
   />
 ))
@@ -553,6 +553,7 @@ const SidebarMenuButton = React.forwardRef<
       size = "default",
       tooltip,
       className,
+      children,
       ...props
     },
     ref
@@ -562,25 +563,24 @@ const SidebarMenuButton = React.forwardRef<
     
     const buttonContent = (
       <Comp
-        ref={ref as any}
+        ref={ref}
         data-sidebar="menu-button"
         data-size={size}
         data-active={isActive}
         className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
         {...props}
-      />
+      >
+        {children}
+      </Comp>
     );
-
 
     if (!tooltip) {
       return buttonContent;
     }
     
-    if (asChild && props.children && React.isValidElement(props.children) && props.children.type === Link) {
-        // This is a special case where we need to wrap the button in a Link component.
-        // It's not ideal, but it's the only way to get the active state to work correctly.
+    if (asChild && children && React.isValidElement(children) && children.type === Link) {
         return (
-            <Link {...props.children.props} legacyBehavior passHref>
+            <Link {...children.props} legacyBehavior passHref>
                 {buttonContent}
             </Link>
         )
@@ -776,5 +776,3 @@ export {
   SidebarTrigger,
   useSidebar,
 }
-
-    
