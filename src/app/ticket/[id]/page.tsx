@@ -1,3 +1,6 @@
+
+"use client";
+
 import { Header } from "@/components/Header";
 import { TicketDisplay } from "@/components/booking/TicketDisplay";
 import { notFound } from "next/navigation";

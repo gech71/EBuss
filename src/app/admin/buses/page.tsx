@@ -1,12 +1,28 @@
+
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { allBuses } from "@/lib/data";
+import { useData } from "@/lib/store";
 import { PlusCircle, MoreHorizontal } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import Link from 'next/link';
+import { useToast } from "@/hooks/use-toast";
 
 export default function AdminBusesPage() {
+  const { buses, deleteBus } = useData();
+  const { toast } = useToast();
+
+  const handleDelete = (busId: string) => {
+    // In a real app, check for dependencies (e.g., active routes) before deleting.
+    deleteBus(busId);
+    toast({
+        title: "Success",
+        description: "Bus has been deleted."
+    })
+  }
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -32,7 +48,7 @@ export default function AdminBusesPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {allBuses.map((bus) => (
+            {buses.map((bus) => (
               <TableRow key={bus.id}>
                 <TableCell className="font-medium">{bus.name}</TableCell>
                 <TableCell>{bus.capacity}</TableCell>
@@ -46,8 +62,8 @@ export default function AdminBusesPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem>Edit</DropdownMenuItem>
-                      <DropdownMenuItem>Delete</DropdownMenuItem>
+                      <DropdownMenuItem disabled>Edit</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleDelete(bus.id)}>Delete</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>

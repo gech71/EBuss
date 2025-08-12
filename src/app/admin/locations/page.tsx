@@ -1,23 +1,33 @@
+
 "use client";
 
-import { useState } from "react";
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { allRoutes } from "@/lib/data";
 import { PlusCircle, MoreHorizontal } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useData } from '@/lib/store';
 
 export default function AdminLocationsPage() {
   const { toast } = useToast();
-  const [locations, setLocations] = useState([...new Set([...allRoutes.map(r => r.origin), ...allRoutes.map(r => r.destination)])]);
+  const { locations, deleteLocation, routes } = useData();
 
   const handleDelete = (locationToDelete: string) => {
-    // In a real app, you'd make an API call here.
-    setLocations(locations.filter(loc => loc !== locationToDelete));
+    // Optional: Check if location is in use before deleting
+    const isInUse = routes.some(r => r.origin === locationToDelete || r.destination === locationToDelete);
+    if(isInUse) {
+        toast({
+            title: "Location In Use",
+            description: `"${locationToDelete}" is currently used in a route and cannot be deleted.`,
+            variant: "destructive"
+        });
+        return;
+    }
+    
+    deleteLocation(locationToDelete);
     toast({
       title: "Location Deleted",
       description: `"${locationToDelete}" has been removed.`,
@@ -78,7 +88,7 @@ export default function AdminLocationsPage() {
                           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                           <AlertDialogDescription>
                             This action cannot be undone. This will permanently delete the
-                            location and may affect existing routes.
+                            location.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

@@ -1,6 +1,6 @@
 import type { Bus, Route, Seat } from './types';
 
-const generateSeats = (rows: number, cols: number, aisleCol: number): Seat[] => {
+export const generateSeats = (rows: number, cols: number, aisleCol: number): Seat[] => {
   const seats: Seat[] = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {

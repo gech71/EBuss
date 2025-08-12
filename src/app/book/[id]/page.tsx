@@ -1,17 +1,24 @@
+
+"use client";
+
 import { Header } from '@/components/Header';
 import { SeatMap } from '@/components/booking/SeatMap';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { allBuses, allRoutes } from '@/lib/data';
+import { useData } from '@/lib/store';
 import { notFound } from 'next/navigation';
-import { ArrowRight, Clock, MapPin, Bus } from 'lucide-react';
+import { ArrowRight, Clock, Bus } from 'lucide-react';
 
 export default function BookPage({ params }: { params: { id: string } }) {
-  const route = allRoutes.find((r) => r.id === params.id);
+  const { routes, buses } = useData();
+  const route = routes.find((r) => r.id === params.id);
+  
   if (!route) {
     notFound();
   }
-  const bus = allBuses.find((b) => b.id === route.busId);
+  
+  const bus = buses.find((b) => b.id === route.busId);
   if (!bus) {
+    // Handle case where bus might not be found, maybe show an error or default
     notFound();
   }
 
@@ -43,7 +50,7 @@ export default function BookPage({ params }: { params: { id: string } }) {
                   <span>{route.destination}</span>
                 </div>
                 <div className="text-sm text-muted-foreground space-y-2">
-                    <p className="flex items-center"><Clock className="mr-2 h-4 w-4" />{route.departureTime.toLocaleString()}</p>
+                    <p className="flex items-center"><Clock className="mr-2 h-4 w-4" />{new Date(route.departureTime).toLocaleString()}</p>
                     <p className="flex items-center"><Bus className="mr-2 h-4 w-4" />{bus.name}</p>
                 </div>
                  <div className="border-t pt-4">

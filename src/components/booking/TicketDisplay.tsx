@@ -1,8 +1,10 @@
+
+"use client";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { allRoutes } from "@/lib/data";
+import { useData } from "@/lib/store";
 import { ArrowRight, Bus, Clock, MapPin, User, Ticket as TicketIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { Button } from "../ui/button";
 import Image from "next/image";
 
 interface TicketDisplayProps {
@@ -11,7 +13,8 @@ interface TicketDisplayProps {
 }
 
 export function TicketDisplay({ ticketId, routeId }: TicketDisplayProps) {
-  const route = allRoutes.find((r) => r.id === routeId);
+  const { routes } = useData();
+  const route = routes.find((r) => r.id === routeId);
 
   if (!route) {
     return (
@@ -70,7 +73,7 @@ export function TicketDisplay({ ticketId, routeId }: TicketDisplayProps) {
             </div>
              <div className="space-y-1">
                 <p className="text-muted-foreground">Departure</p>
-                <p className="font-semibold flex items-center gap-2"><Clock className="h-4 w-4"/>{route.departureTime.toLocaleString()}</p>
+                <p className="font-semibold flex items-center gap-2"><Clock className="h-4 w-4"/>{new Date(route.departureTime).toLocaleString()}</p>
             </div>
              <div className="space-y-1">
                 <p className="text-muted-foreground">Bus</p>

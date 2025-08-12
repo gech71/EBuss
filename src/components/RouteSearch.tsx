@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useState, useMemo } from 'react';
-import { allRoutes } from '@/lib/data';
 import type { Route } from '@/lib/types';
+import { useData } from '@/lib/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar as CalendarIcon, Search, Bus, Check, ChevronsUpDown } from 'lucide-react';
@@ -11,10 +12,10 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { format } from 'date-fns';
 import { RouteCard } from './RouteCard';
-import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { cn } from '@/lib/utils';
 
 export function RouteSearch() {
+  const { routes } = useData();
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [date, setDate] = useState<Date | undefined>();
@@ -24,15 +25,15 @@ export function RouteSearch() {
   const [openOrigin, setOpenOrigin] = useState(false)
   const [openDestination, setOpenDestination] = useState(false)
 
-  const uniqueOrigins = useMemo(() => [...new Set(allRoutes.map(route => route.origin))], []);
-  const uniqueDestinations = useMemo(() => [...new Set(allRoutes.map(route => route.destination))], []);
+  const uniqueOrigins = useMemo(() => [...new Set(routes.map(route => route.origin))], [routes]);
+  const uniqueDestinations = useMemo(() => [...new Set(routes.map(route => route.destination))], [routes]);
 
 
   const handleSearch = () => {
-    const results = allRoutes.filter(route => {
+    const results = routes.filter(route => {
       const isOriginMatch = !origin || route.origin.toLowerCase() === origin.toLowerCase();
       const isDestinationMatch = !destination || route.destination.toLowerCase() === destination.toLowerCase();
-      const isDateMatch = !date || format(route.departureTime, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
+      const isDateMatch = !date || format(new Date(route.departureTime), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
       return isOriginMatch && isDestinationMatch && isDateMatch;
     });
     setSearchResults(results);

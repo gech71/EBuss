@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import { recommendTicketPrice, RecommendTicketPriceOutput } from '@/ai/flows/recommend-ticket-price';
@@ -6,10 +7,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Wand2, Loader2, DollarSign, Lightbulb } from 'lucide-react';
-import { allRoutes } from '@/lib/data';
+import { useData } from '@/lib/store';
 import { useToast } from '@/hooks/use-toast';
 
 export function PriceRecommender() {
+  const { routes } = useData();
   const [selectedRouteId, setSelectedRouteId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [recommendation, setRecommendation] = useState<RecommendTicketPriceOutput | null>(null);
@@ -29,10 +31,14 @@ export function PriceRecommender() {
     setRecommendation(null);
 
     try {
+      const route = routes.find(r => r.id === selectedRouteId);
+      if (!route) {
+          throw new Error("Route not found");
+      }
       // Mock data for the AI flow
       const historicalBookingData = JSON.stringify({
         last_30_days_occupancy: Math.random() * (0.9 - 0.6) + 0.6, // 60-90%
-        avg_price: allRoutes.find(r => r.id === selectedRouteId)!.price * (Math.random() * (1.1 - 0.9) + 0.9),
+        avg_price: route.price * (Math.random() * (1.1 - 0.9) + 0.9),
       });
       const marketTrends = JSON.stringify({
         competitor_prices: { 'Competitor A': 55, 'Competitor B': 58 },
@@ -77,7 +83,7 @@ export function PriceRecommender() {
               <SelectValue placeholder="Select a route..." />
             </SelectTrigger>
             <SelectContent>
-              {allRoutes.map(route => (
+              {routes.map(route => (
                 <SelectItem key={route.id} value={route.id}>
                   {route.origin} to {route.destination}
                 </SelectItem>

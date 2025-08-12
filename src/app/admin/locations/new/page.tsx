@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -5,18 +6,30 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useData } from "@/lib/store";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function NewLocationPage() {
     const { toast } = useToast();
     const router = useRouter();
+    const { addLocation, locations } = useData();
+    const [name, setName] = useState('');
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        // In a real app, you would handle form submission to your backend here.
+        if (!name) {
+            toast({ title: "Error", description: "Location name cannot be empty.", variant: "destructive" });
+            return;
+        }
+        if (locations.some(loc => loc.toLowerCase() === name.toLowerCase())) {
+             toast({ title: "Error", description: "This location already exists.", variant: "destructive" });
+             return;
+        }
+        addLocation(name);
         toast({
             title: "Success!",
-            description: "New location has been added.",
+            description: `Location "${name}" has been added.`,
         });
         router.push("/admin/locations");
     };
@@ -32,7 +45,13 @@ export default function NewLocationPage() {
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="name">Location Name</Label>
-                            <Input id="name" placeholder="e.g., New York, NY" required />
+                            <Input 
+                                id="name" 
+                                placeholder="e.g., New York, NY" 
+                                required
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                            />
                         </div>
                     </div>
                 </CardContent>

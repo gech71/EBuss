@@ -1,16 +1,20 @@
+
+"use client";
+
 import type { Route } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowRight, Clock, MapPin, Ticket } from 'lucide-react';
-import { allBuses } from '@/lib/data';
+import { ArrowRight, Clock, Ticket } from 'lucide-react';
+import { useData } from '@/lib/store';
 
 interface RouteCardProps {
   route: Route;
 }
 
 export function RouteCard({ route }: RouteCardProps) {
-  const bus = allBuses.find(b => b.id === route.busId);
+  const { buses } = useData();
+  const bus = buses.find(b => b.id === route.busId);
 
   return (
     <Card className="flex flex-col hover:shadow-lg transition-shadow duration-300">
@@ -28,7 +32,7 @@ export function RouteCard({ route }: RouteCardProps) {
       <CardContent className="flex-grow space-y-2 p-4 pt-0">
         <div className="flex items-center text-sm text-muted-foreground">
           <Clock className="w-4 h-4 mr-2 text-primary/70" />
-          <span>{route.departureTime.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })} at {route.departureTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+          <span>{new Date(route.departureTime).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })} at {new Date(route.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
         </div>
         <div className="flex items-center text-sm text-muted-foreground">
           <Ticket className="w-4 h-4 mr-2 text-primary/70" />

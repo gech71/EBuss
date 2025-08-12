@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -5,32 +6,49 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter, useParams } from "next/navigation";
+import { useData } from "@/lib/store";
+import { useRouter, useParams, notFound } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function EditLocationPage() {
     const { toast } = useToast();
     const router = useRouter();
     const params = useParams();
+    const { locations, updateLocation } = useData();
+
     const id = params.id ? decodeURIComponent(params.id as string) : '';
-    const [locationName, setLocationName] = useState(id);
+    const [locationName, setLocationName] = useState('');
 
-    // In a real app, you would fetch the location data from your backend using the id.
-    // For now, we'll just use the id from the URL.
     useEffect(() => {
-        setLocationName(id);
-    }, [id]);
-
+        if (id && locations.includes(id)) {
+            setLocationName(id);
+        } else {
+             // Or handle as a not found case
+        }
+    }, [id, locations]);
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        // In a real app, you would handle form submission to update the data on your backend.
-        toast({
-            title: "Success!",
-            description: `Location "${locationName}" has been updated.`,
-        });
-        router.push("/admin/locations");
+        if (locationName && locationName !== id) {
+             if (locations.some(loc => loc.toLowerCase() === locationName.toLowerCase())) {
+                toast({ title: "Error", description: "A location with this name already exists.", variant: "destructive" });
+                return;
+            }
+            updateLocation(id, locationName);
+            toast({
+                title: "Success!",
+                description: `Location has been updated to "${locationName}".`,
+            });
+            router.push("/admin/locations");
+        } else {
+            router.push("/admin/locations");
+        }
     };
+
+    if (!id || !locations.includes(id)) {
+        notFound();
+    }
+
 
     return (
         <form onSubmit={handleSubmit}>

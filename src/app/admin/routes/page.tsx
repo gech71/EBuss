@@ -1,13 +1,29 @@
+
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { allRoutes } from "@/lib/data";
+import { useData } from "@/lib/store";
 import { PlusCircle, MoreHorizontal } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import Link from 'next/link';
-import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+
 
 export default function AdminRoutesPage() {
+  const { routes, deleteRoute } = useData();
+  const { toast } = useToast();
+
+  const handleDelete = (routeId: string) => {
+    // In a real app, you might check if there are active bookings first.
+    deleteRoute(routeId);
+    toast({
+        title: "Success",
+        description: "Route has been deleted."
+    });
+  }
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -35,11 +51,11 @@ export default function AdminRoutesPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {allRoutes.map((route) => (
+            {routes.map((route) => (
               <TableRow key={route.id}>
                 <TableCell className="font-medium">{route.origin}</TableCell>
                 <TableCell>{route.destination}</TableCell>
-                <TableCell>{route.departureTime.toLocaleString()}</TableCell>
+                <TableCell>{new Date(route.departureTime).toLocaleString()}</TableCell>
                 <TableCell className="text-right">${route.price.toFixed(2)}</TableCell>
                 <TableCell>
                    <DropdownMenu>
@@ -51,8 +67,8 @@ export default function AdminRoutesPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem>Edit</DropdownMenuItem>
-                      <DropdownMenuItem>Delete</DropdownMenuItem>
+                      <DropdownMenuItem disabled>Edit</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleDelete(route.id)}>Delete</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
