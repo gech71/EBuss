@@ -10,6 +10,8 @@ import { useData } from "@/lib/store";
 import { generateSeats } from "@/lib/data";
 import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
 
 export default function NewBusPage() {
     const { toast } = useToast();
@@ -19,18 +21,24 @@ export default function NewBusPage() {
     const [rows, setRows] = useState(12);
     const [cols, setCols] = useState(5);
     const [aisleCol, setAisleCol] = useState(2);
+    const [lastRowFull, setLastRowFull] = useState(false);
     
     const capacity = useMemo(() => {
-        if (cols > 0) {
-            return rows * (cols - 1);
+        if (cols <= 0 || rows <= 0) return 0;
+        
+        const baseCapacity = rows * (cols - 1);
+        
+        // If the last row is a full bench and there is a valid aisle, add one seat
+        if (lastRowFull && aisleCol >= 0 && aisleCol < cols) {
+            return baseCapacity + 1;
         }
-        return 0;
-    }, [rows, cols]);
+        
+        return baseCapacity;
+    }, [rows, cols, aisleCol, lastRowFull]);
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         
-        // Basic validation
         if (!name || rows <= 0 || cols <= 0 || aisleCol < 0 || aisleCol >= cols) {
             toast({
                 title: "Invalid Input",
@@ -46,7 +54,7 @@ export default function NewBusPage() {
             layout: {
                 rows,
                 cols,
-                seats: generateSeats(rows, cols, aisleCol),
+                seats: generateSeats(rows, cols, aisleCol, lastRowFull),
             }
         };
 
@@ -67,28 +75,41 @@ export default function NewBusPage() {
                     <CardDescription>Define the properties and seat layout for the new bus.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="space-y-4">
-                        <div className="space-y-2">
+                    <div className="space-y-6">
+                         <div className="space-y-2">
                             <Label htmlFor="name">Bus Name</Label>
                             <Input id="name" placeholder="e.g., Standard Cruiser" required value={name} onChange={e => setName(e.target.value)} />
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="rows">Rows</Label>
-                                <Input id="rows" type="number" placeholder="e.g., 12" required value={rows} onChange={e => setRows(Number(e.target.value))} />
+                        
+                        <Separator />
+
+                        <div>
+                            <h3 className="text-lg font-medium mb-2">Seat Layout</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="rows">Rows</Label>
+                                    <Input id="rows" type="number" placeholder="e.g., 12" required value={rows} onChange={e => setRows(Number(e.target.value))} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="cols">Columns</Label>
+                                    <Input id="cols" type="number" placeholder="e.g., 5" required value={cols} onChange={e => setCols(Number(e.target.value))} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="aisleCol">Aisle Column (0-indexed)</Label>
+                                    <Input id="aisleCol" type="number" placeholder="e.g., 2" required value={aisleCol} onChange={e => setAisleCol(Number(e.target.value))} />
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="cols">Columns</Label>
-                                <Input id="cols" type="number" placeholder="e.g., 5" required value={cols} onChange={e => setCols(Number(e.target.value))} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="aisleCol">Aisle Column (0-indexed)</Label>
-                                <Input id="aisleCol" type="number" placeholder="e.g., 2" required value={aisleCol} onChange={e => setAisleCol(Number(e.target.value))} />
+                            <div className="flex items-center space-x-2 mt-4">
+                                <Checkbox id="last-row-full" checked={lastRowFull} onCheckedChange={(checked) => setLastRowFull(Boolean(checked))} />
+                                <Label htmlFor="last-row-full">Last row is a full bench (no aisle)</Label>
                             </div>
                         </div>
+
+                        <Separator />
+
                          <div className="space-y-2">
                             <Label>Calculated Capacity</Label>
-                            <Input value={capacity} disabled className="font-bold" />
+                            <Input value={capacity} disabled className="font-bold bg-muted/50" />
                         </div>
                     </div>
                 </CardContent>

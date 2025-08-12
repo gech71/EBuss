@@ -1,12 +1,16 @@
+
 import type { Bus, Route, Seat } from './types';
 
-export const generateSeats = (rows: number, cols: number, aisleCol: number): Seat[] => {
+export const generateSeats = (rows: number, cols: number, aisleCol: number, lastRowFull: boolean = false): Seat[] => {
   const seats: Seat[] = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const rowLabel = String.fromCharCode(65 + r);
       const seatId = `${c + 1}${rowLabel}`;
-      if (c === aisleCol) {
+      
+      const isLastRow = r === rows - 1;
+
+      if (c === aisleCol && !(lastRowFull && isLastRow)) {
         seats.push({ id: seatId, status: 'available', type: 'aisle' });
       } else {
         seats.push({
