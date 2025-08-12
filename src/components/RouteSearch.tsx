@@ -5,13 +5,13 @@ import { allRoutes } from '@/lib/data';
 import type { Route } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar as CalendarIcon, Search, Bus } from 'lucide-react';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { format } from 'date-fns';
 import { RouteCard } from './RouteCard';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { Input } from './ui/input';
 
 export function RouteSearch() {
   const [origin, setOrigin] = useState('');
@@ -20,13 +20,10 @@ export function RouteSearch() {
   const [searchResults, setSearchResults] = useState<Route[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
 
-  const uniqueOrigins = [...new Set(allRoutes.map(route => route.origin))];
-  const uniqueDestinations = [...new Set(allRoutes.map(route => route.destination))];
-
   const handleSearch = () => {
     const results = allRoutes.filter(route => {
-      const isOriginMatch = !origin || route.origin === origin;
-      const isDestinationMatch = !destination || route.destination === destination;
+      const isOriginMatch = !origin || route.origin.toLowerCase().includes(origin.toLowerCase());
+      const isDestinationMatch = !destination || route.destination.toLowerCase().includes(destination.toLowerCase());
       const isDateMatch = !date || format(route.departureTime, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
       return isOriginMatch && isDestinationMatch && isDateMatch;
     });
@@ -44,25 +41,19 @@ export function RouteSearch() {
                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 items-end">
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-muted-foreground">Origin</label>
-                        <Select onValueChange={setOrigin} value={origin}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select origin" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {uniqueOrigins.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
+                        <Input 
+                            placeholder="Enter origin city"
+                            value={origin}
+                            onChange={(e) => setOrigin(e.target.value)}
+                        />
                     </div>
                      <div className="space-y-2">
                         <label className="text-sm font-medium text-muted-foreground">Destination</label>
-                        <Select onValueChange={setDestination} value={destination}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select destination" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {uniqueDestinations.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
+                        <Input 
+                            placeholder="Enter destination city"
+                            value={destination}
+                            onChange={(e) => setDestination(e.target.value)}
+                        />
                     </div>
                      <div className="space-y-2">
                          <label className="text-sm font-medium text-muted-foreground">Date</label>
