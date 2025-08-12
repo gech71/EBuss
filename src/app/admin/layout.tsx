@@ -1,8 +1,8 @@
 
 import Link from "next/link";
 import { Header } from "@/components/Header";
-import { SidebarProvider, Sidebar, SidebarTrigger, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarContent } from "@/components/ui/sidebar";
-import { LayoutDashboard, Route as RouteIcon, Bus, QrCode, MapPin, Building } from "lucide-react";
+import { SidebarProvider, Sidebar, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
+import { LayoutDashboard, Route as RouteIcon, Bus, QrCode, MapPin } from "lucide-react";
 
 export default function AdminLayout({
   children,
@@ -60,11 +60,7 @@ export default function AdminLayout({
               </SidebarMenu>
             </SidebarContent>
           </Sidebar>
-          <main className="flex-1 p-4 md:p-8 bg-background">
-             <div className="flex items-center mb-4">
-                <SidebarTrigger className="md:hidden" />
-                <h1 className="font-headline text-3xl font-bold text-primary ml-2">Admin Panel</h1>
-            </div>
+          <main className="flex-1 p-4 md:p-6 bg-background">
             {children}
           </main>
         </div>
