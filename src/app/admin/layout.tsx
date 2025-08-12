@@ -1,6 +1,6 @@
 import { Header } from "@/components/Header";
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarContent } from "@/components/ui/sidebar";
-import { LayoutDashboard, Route as RouteIcon, Bus, QrCode } from "lucide-react";
+import { LayoutDashboard, Route as RouteIcon, Bus, QrCode, MapPin, Building } from "lucide-react";
 
 export default function AdminLayout({
   children,
@@ -25,6 +25,12 @@ export default function AdminLayout({
                   <SidebarMenuButton href="/admin/routes" tooltip="Routes">
                     <RouteIcon />
                     Routes
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                 <SidebarMenuItem>
+                  <SidebarMenuButton href="/admin/locations" tooltip="Locations">
+                    <MapPin />
+                    Locations
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>

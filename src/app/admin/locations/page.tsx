@@ -5,19 +5,20 @@ import { allRoutes } from "@/lib/data";
 import { PlusCircle, MoreHorizontal } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import Link from 'next/link';
-import { Badge } from "@/components/ui/badge";
 
-export default function AdminRoutesPage() {
+export default function AdminLocationsPage() {
+  const uniqueLocations = [...new Set([...allRoutes.map(r => r.origin), ...allRoutes.map(r => r.destination)])];
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>Bus Routes</CardTitle>
-          <CardDescription>Manage your bus routes and pricing.</CardDescription>
+          <CardTitle>Locations</CardTitle>
+          <CardDescription>Manage the cities and places for your routes.</CardDescription>
         </div>
         <Button asChild>
-          <Link href="/admin/routes/new">
-            <PlusCircle className="mr-2 h-4 w-4" /> Add Route
+          <Link href="/admin/locations/new">
+            <PlusCircle className="mr-2 h-4 w-4" /> Add Location
           </Link>
         </Button>
       </CardHeader>
@@ -25,23 +26,17 @@ export default function AdminRoutesPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Origin</TableHead>
-              <TableHead>Destination</TableHead>
-              <TableHead>Departure</TableHead>
-              <TableHead className="text-right">Price</TableHead>
+              <TableHead>Location Name</TableHead>
               <TableHead>
                 <span className="sr-only">Actions</span>
               </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {allRoutes.map((route) => (
-              <TableRow key={route.id}>
-                <TableCell className="font-medium">{route.origin}</TableCell>
-                <TableCell>{route.destination}</TableCell>
-                <TableCell>{route.departureTime.toLocaleString()}</TableCell>
-                <TableCell className="text-right">${route.price.toFixed(2)}</TableCell>
-                <TableCell>
+            {uniqueLocations.map((location) => (
+              <TableRow key={location}>
+                <TableCell className="font-medium">{location}</TableCell>
+                <TableCell className="text-right">
                    <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button aria-haspopup="true" size="icon" variant="ghost">

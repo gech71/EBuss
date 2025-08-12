@@ -15,7 +15,7 @@ export default function AdminBusesPage() {
           <CardDescription>Manage your fleet's bus layouts and details.</CardDescription>
         </div>
         <Button asChild>
-          <Link href="#">
+          <Link href="/admin/buses/new">
             <PlusCircle className="mr-2 h-4 w-4" /> Add Bus
           </Link>
         </Button>
@@ -46,7 +46,7 @@ export default function AdminBusesPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem>Edit Layout</DropdownMenuItem>
+                      <DropdownMenuItem>Edit</DropdownMenuItem>
                       <DropdownMenuItem>Delete</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
