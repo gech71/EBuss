@@ -11,6 +11,7 @@ export default function AdminLayout({
 }) {
   return (
     <SidebarProvider>
+      <div className="flex flex-col min-h-screen">
         <Header />
         <div className="flex flex-1">
           <Sidebar>
@@ -63,6 +64,7 @@ export default function AdminLayout({
             {children}
           </main>
         </div>
+      </div>
     </SidebarProvider>
   );
 }
