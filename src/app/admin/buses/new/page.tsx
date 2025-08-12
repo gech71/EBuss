@@ -20,26 +20,30 @@ export default function NewBusPage() {
     const [name, setName] = useState('');
     const [rows, setRows] = useState(12);
     const [cols, setCols] = useState(5);
-    const [aisleCol, setAisleCol] = useState(2);
+    const [aisleCols, setAisleCols] = useState('2');
     const [lastRowFull, setLastRowFull] = useState(false);
     
+    const parsedAisleCols = useMemo(() => {
+        return aisleCols.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+    }, [aisleCols]);
+
     const capacity = useMemo(() => {
         if (cols <= 0 || rows <= 0) return 0;
         
-        const baseCapacity = rows * (cols - 1);
+        const baseCapacity = rows * (cols - parsedAisleCols.length);
         
-        // If the last row is a full bench and there is a valid aisle, add one seat
-        if (lastRowFull && aisleCol >= 0 && aisleCol < cols) {
-            return baseCapacity + 1;
+        // If the last row is a full bench, add back a seat for each aisle.
+        if (lastRowFull) {
+            return baseCapacity + parsedAisleCols.length;
         }
         
         return baseCapacity;
-    }, [rows, cols, aisleCol, lastRowFull]);
+    }, [rows, cols, parsedAisleCols, lastRowFull]);
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         
-        if (!name || rows <= 0 || cols <= 0 || aisleCol < 0 || aisleCol >= cols) {
+        if (!name || rows <= 0 || cols <= 0 || aisleCols.trim() === '' || parsedAisleCols.some(ac => ac < 0 || ac >= cols)) {
             toast({
                 title: "Invalid Input",
                 description: "Please provide valid details for the bus layout.",
@@ -54,7 +58,7 @@ export default function NewBusPage() {
             layout: {
                 rows,
                 cols,
-                seats: generateSeats(rows, cols, aisleCol, lastRowFull),
+                seats: generateSeats(rows, cols, parsedAisleCols, lastRowFull),
             }
         };
 
@@ -85,7 +89,7 @@ export default function NewBusPage() {
 
                         <div>
                             <h3 className="text-lg font-medium mb-2">Seat Layout</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="rows">Rows</Label>
                                     <Input id="rows" type="number" placeholder="e.g., 12" required value={rows} onChange={e => setRows(Number(e.target.value))} />
@@ -94,10 +98,10 @@ export default function NewBusPage() {
                                     <Label htmlFor="cols">Columns</Label>
                                     <Input id="cols" type="number" placeholder="e.g., 5" required value={cols} onChange={e => setCols(Number(e.target.value))} />
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="aisleCol">Aisle Column (0-indexed)</Label>
-                                    <Input id="aisleCol" type="number" placeholder="e.g., 2" required value={aisleCol} onChange={e => setAisleCol(Number(e.target.value))} />
-                                </div>
+                            </div>
+                             <div className="space-y-2 mt-4">
+                                <Label htmlFor="aisleCols">Aisle Columns (0-indexed, comma-separated)</Label>
+                                <Input id="aisleCols" type="text" placeholder="e.g., 2" required value={aisleCols} onChange={e => setAisleCols(e.target.value)} />
                             </div>
                             <div className="flex items-center space-x-2 mt-4">
                                 <Checkbox id="last-row-full" checked={lastRowFull} onCheckedChange={(checked) => setLastRowFull(Boolean(checked))} />

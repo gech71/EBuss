@@ -1,7 +1,7 @@
 
 import type { Bus, Route, Seat } from './types';
 
-export const generateSeats = (rows: number, cols: number, aisleCol: number, lastRowFull: boolean = false): Seat[] => {
+export const generateSeats = (rows: number, cols: number, aisleCols: number[], lastRowFull: boolean = false): Seat[] => {
   const seats: Seat[] = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -10,7 +10,7 @@ export const generateSeats = (rows: number, cols: number, aisleCol: number, last
       
       const isLastRow = r === rows - 1;
 
-      if (c === aisleCol && !(lastRowFull && isLastRow)) {
+      if (aisleCols.includes(c) && !(lastRowFull && isLastRow)) {
         seats.push({ id: seatId, status: 'available', type: 'aisle' });
       } else {
         seats.push({
@@ -33,7 +33,7 @@ export const allBuses: Bus[] = [
     layout: {
       rows: 12,
       cols: 5,
-      seats: generateSeats(12, 5, 2),
+      seats: generateSeats(12, 5, [2]),
     },
   },
   {
@@ -43,7 +43,7 @@ export const allBuses: Bus[] = [
     layout: {
       rows: 9,
       cols: 5,
-      seats: generateSeats(9, 5, 2),
+      seats: generateSeats(9, 5, [2]),
     },
   },
 ];

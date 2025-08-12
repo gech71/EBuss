@@ -76,7 +76,7 @@ export function useDataProvider(): DataStore {
             layout: bus.layout || {
                 rows: Math.ceil(bus.capacity / 4),
                 cols: 5,
-                seats: generateSeats(Math.ceil(bus.capacity / 4), 5, 2),
+                seats: generateSeats(Math.ceil(bus.capacity / 4), 5, [2]),
             }
         };
         setBuses(prev => [...prev, newBus]);
