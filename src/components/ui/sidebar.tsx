@@ -236,7 +236,7 @@ const Sidebar = React.forwardRef<
         />
         <div
           className={cn(
-            "duration-200 fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[left,right,width] ease-linear md:flex",
+            "duration-200 fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[left,right,width] ease-linear md:flex pt-16",
             side === "left"
               ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
               : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
@@ -574,8 +574,20 @@ const SidebarMenuButton = React.forwardRef<
       </Comp>
     );
 
-    if (!tooltip) {
-      return buttonContent;
+    if (!tooltip || (state === 'expanded' && !isMobile) ) {
+        if (asChild && children && React.isValidElement(children)) {
+            const childProps = {
+                ...children.props,
+                ref: ref, // Forward the ref to the actual child
+                className: cn(sidebarMenuButtonVariants({ variant, size }), className, children.props.className),
+                'data-sidebar': "menu-button",
+                'data-size': size,
+                'data-active': isActive,
+            };
+            // Return the cloned element with merged props
+            return React.cloneElement(children, childProps);
+        }
+        return buttonContent;
     }
     
     if (asChild && children && React.isValidElement(children) && children.type === Link) {
