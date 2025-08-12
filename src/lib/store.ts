@@ -41,6 +41,7 @@ export const useData = () => {
     return context;
 };
 
+// This can't be in a server component, so we define it here.
 export function useDataProvider(): DataStore {
     const [routes, setRoutes] = useState<Route[]>(initialRoutes);
     const [buses, setBuses] = useState<Bus[]>(initialBuses);
