@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -538,9 +539,7 @@ type SidebarMenuButtonProps = React.ComponentProps<"button"> & {
   asChild?: boolean
   isActive?: boolean
   tooltip?: string | React.ComponentProps<typeof TooltipContent>
-} & VariantProps<typeof sidebarMenuButtonVariants> & {
-  href?: string
-}
+} & VariantProps<typeof sidebarMenuButtonVariants>
 
 const SidebarMenuButton = React.forwardRef<
   HTMLButtonElement,
@@ -554,12 +553,11 @@ const SidebarMenuButton = React.forwardRef<
       size = "default",
       tooltip,
       className,
-      href,
       ...props
     },
     ref
   ) => {
-    const Comp = asChild ? Slot : href ? 'a' : 'button';
+    const Comp = asChild ? Slot : 'button';
     const { isMobile, state } = useSidebar()
     
     const buttonContent = (
@@ -578,11 +576,11 @@ const SidebarMenuButton = React.forwardRef<
       return buttonContent;
     }
     
-    if(href) {
+    if (asChild && props.children && React.isValidElement(props.children) && props.children.type === Link) {
         // This is a special case where we need to wrap the button in a Link component.
         // It's not ideal, but it's the only way to get the active state to work correctly.
         return (
-            <Link href={href} legacyBehavior passHref>
+            <Link {...props.children.props} legacyBehavior passHref>
                 {buttonContent}
             </Link>
         )
@@ -778,3 +776,5 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+
+    
