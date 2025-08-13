@@ -13,7 +13,7 @@ interface SeatProps {
 }
 
 function Seat({ seat, onSelect }: SeatProps) {
-  const isSelectable = seat.status === 'available' && seat.type === 'seat';
+  const isSelectable = seat.status === 'available' || seat.status === 'selected';
   const isSelected = seat.status === 'selected';
 
   const seatClasses = cn(
@@ -50,13 +50,15 @@ export function SeatMap({ bus, seats, setSeats }: SeatMapProps) {
 
   const handleSelectSeat = (id: string) => {
     setSeats(currentSeats => {
-      const selectedSeatsCount = currentSeats.filter(s => s.status === 'selected').length;
       const seat = currentSeats.find(s => s.id === id);
-
+      
+      // If the clicked seat is already selected, deselect it.
       if (seat?.status === 'selected') {
         return currentSeats.map(s => s.id === id ? { ...s, status: 'available' } : s);
       }
 
+      // If it's not selected, proceed with selection logic.
+      const selectedSeatsCount = currentSeats.filter(s => s.status === 'selected').length;
       if (selectedSeatsCount >= 10) { // Limit selection
         toast({
             title: 'Selection Limit',
