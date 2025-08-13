@@ -19,7 +19,7 @@ function Seat({ seat, onSelect }: SeatProps) {
   const seatClasses = cn(
     'flex items-center justify-center w-10 h-10 rounded-md font-semibold text-xs transition-all duration-200',
     seat.type === 'seat' && 'border-2',
-    seat.status === 'available' && 'bg-secondary/50 border-primary/20 text-primary/80 hover:bg-accent/30 hover:border-accent cursor-pointer',
+    seat.status === 'available' && 'bg-green-100 border-green-400 text-green-800 hover:bg-green-200 hover:border-green-600 cursor-pointer dark:bg-green-900/50 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900',
     seat.status === 'occupied' && 'bg-muted border-muted-foreground/30 text-muted-foreground cursor-not-allowed opacity-70',
     seat.status === 'selected' && 'bg-accent border-accent-foreground text-accent-foreground cursor-pointer shadow-lg scale-110',
     seat.type === 'aisle' && 'bg-transparent',
@@ -84,7 +84,7 @@ export function SeatMap({ bus, seats, setSeats }: SeatMapProps) {
       </div>
       
       <div className="flex justify-center space-x-4 mt-4 text-sm">
-          <div className="flex items-center"><Armchair className="w-4 h-4 mr-2 text-secondary-foreground opacity-50"/>Available</div>
+          <div className="flex items-center"><Armchair className="w-4 h-4 mr-2 text-green-600 dark:text-green-400"/>Available</div>
           <div className="flex items-center"><Armchair className="w-4 h-4 mr-2 text-accent"/>Selected</div>
           <div className="flex items-center"><Armchair className="w-4 h-4 mr-2 text-muted-foreground"/>Occupied</div>
       </div>
