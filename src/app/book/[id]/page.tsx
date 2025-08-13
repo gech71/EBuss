@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
-import { notFound, useRouter } from 'next/navigation';
+import { notFound, useRouter, useParams } from 'next/navigation';
 import type { Seat as SeatType, Discount, DiscountTier, Route, Bus } from '@/lib/types';
 import { useData } from '@/lib/store';
 import { useToast } from '@/hooks/use-toast';
@@ -15,12 +15,14 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Separator } from '@/components/ui/separator';
 import { ArrowRight, Clock, Bus as BusIcon, ChevronsUpDown, Tag } from 'lucide-react';
 
-export default function BookPage({ params }: { params: { id: string } }) {
+export default function BookPage() {
+  const params = useParams();
   const { routes, buses, discounts, addBooking } = useData();
   const { toast } = useToast();
   const router = useRouter();
   
-  const route = routes.find((r) => r.id === params.id);
+  const routeId = params.id as string;
+  const route = routes.find((r) => r.id === routeId);
   const bus = route ? buses.find((b) => b.id === route.busId) : undefined;
 
   const [seats, setSeats] = useState<SeatType[]>(bus?.layout.seats || []);
