@@ -69,7 +69,9 @@ export default function AdminRoutesPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem disabled>Edit</DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                           <Link href={`/admin/routes/${route.id}/edit`}>Edit</Link>
+                        </DropdownMenuItem>
                         <AlertDialogTrigger asChild>
                           <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(e) => e.preventDefault()}>
                             Delete
