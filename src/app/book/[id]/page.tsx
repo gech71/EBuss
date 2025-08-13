@@ -12,8 +12,10 @@ import { SeatMap } from '@/components/booking/SeatMap';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { ArrowRight, Clock, Bus as BusIcon, ChevronsUpDown, Tag } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 
 export default function BookPage() {
   const params = useParams();
@@ -25,12 +27,22 @@ export default function BookPage() {
   const route = routes.find((r) => r.id === routeId);
   const bus = route ? buses.find((b) => b.id === route.busId) : undefined;
 
-  const [seats, setSeats] = useState<SeatType[]>(bus?.layout.seats || []);
+  const [seats, setSeats] = useState<SeatType[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+
+  const alternativeRoutes = useMemo(() => {
+    if (!route) return [];
+    return routes.filter(
+      r =>
+        r.origin === route.origin &&
+        r.destination === route.destination &&
+        r.departureTime.getTime() === route.departureTime.getTime()
+    );
+  }, [route, routes]);
 
   useEffect(() => {
     if (bus) {
-      // Auto-select the first available seat on initial load
+      // Auto-select the first available seat on load or when bus changes
       const firstAvailable = bus.layout.seats.find(s => s.type === 'seat' && s.status === 'available');
       if (firstAvailable) {
         setSeats(bus.layout.seats.map(s => s.id === firstAvailable.id ? { ...s, status: 'selected' } : s));
@@ -43,6 +55,12 @@ export default function BookPage() {
   if (!route || !bus) {
     notFound();
   }
+  
+  const handleBusChange = (newRouteId: string) => {
+    if (newRouteId !== route.id) {
+        router.push(`/book/${newRouteId}`);
+    }
+  };
 
   const selectedSeats = seats.filter(s => s.status === 'selected');
   
@@ -111,16 +129,35 @@ export default function BookPage() {
             <CardContent>
               <div className="space-y-6">
                 {/* Trip Summary */}
-                <div className="p-4 rounded-lg border bg-background">
+                <div className="p-4 rounded-lg border bg-background space-y-4">
                   <div className="flex items-center font-semibold text-xl">
                     <span>{route.origin}</span>
                     <ArrowRight className="mx-4 h-5 w-5 text-primary" />
                     <span>{route.destination}</span>
                   </div>
-                  <div className="mt-2 text-sm text-muted-foreground space-y-1">
+                  <div className="text-sm text-muted-foreground space-y-1">
                       <p className="flex items-center"><Clock className="mr-2 h-4 w-4" />Departs: {new Date(route.departureTime).toLocaleString()}</p>
-                      <p className="flex items-center"><BusIcon className="mr-2 h-4 w-4" />Bus: {bus.name}</p>
                   </div>
+                  {alternativeRoutes.length > 1 && (
+                      <div className="space-y-2">
+                          <Label htmlFor="bus-type">Bus Type</Label>
+                          <Select onValueChange={handleBusChange} defaultValue={route.id}>
+                            <SelectTrigger id="bus-type">
+                                <SelectValue placeholder="Select a bus type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {alternativeRoutes.map(altRoute => {
+                                    const altBus = buses.find(b => b.id === altRoute.busId);
+                                    return (
+                                        <SelectItem key={altRoute.id} value={altRoute.id}>
+                                            {altBus?.name || 'Unknown Bus'} - ${altRoute.price.toFixed(2)}
+                                        </SelectItem>
+                                    )
+                                })}
+                            </SelectContent>
+                          </Select>
+                      </div>
+                  )}
                 </div>
 
                 {/* Seat Selection & Pricing */}
