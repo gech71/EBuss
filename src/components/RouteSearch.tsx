@@ -13,6 +13,11 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { format } from 'date-fns';
 import { RouteCard } from './RouteCard';
 import { cn } from '@/lib/utils';
+import { GroupedRouteCard } from './GroupedRouteCard';
+
+interface GroupedRoutes {
+  [key: string]: Route[];
+}
 
 export function RouteSearch() {
   const { routes } = useData();
@@ -46,6 +51,17 @@ export function RouteSearch() {
     setHasSearched(false);
     setSearchResults([]);
   };
+
+  const groupedSearchResults = useMemo(() => {
+    return searchResults.reduce((acc: GroupedRoutes, route) => {
+      const key = `${route.origin}-${route.destination}-${route.departureTime.toISOString()}`;
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(route);
+      return acc;
+    }, {});
+  }, [searchResults]);
 
 
   return (
@@ -192,11 +208,14 @@ export function RouteSearch() {
             </Button>
           </div>
 
-          {searchResults.length > 0 ? (
+          {Object.keys(groupedSearchResults).length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {searchResults.map((route) => (
-                <RouteCard key={route.id} route={route} />
-              ))}
+              {Object.values(groupedSearchResults).map((routeGroup, index) => {
+                if (routeGroup.length > 1) {
+                  return <GroupedRouteCard key={index} routes={routeGroup} />;
+                }
+                return <RouteCard key={routeGroup[0].id} route={routeGroup[0]} />;
+              })}
             </div>
           ) : (
             <Card className="col-span-full">
