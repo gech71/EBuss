@@ -22,6 +22,7 @@ interface DataStore {
     locations: string[];
     discounts: Discount[];
     bookings: Booking[];
+    getBusById: (busId: string) => Bus | undefined;
     addRoute: (route: Omit<Route, 'id'>) => void;
     updateRoute: (route: Route) => void;
     deleteRoute: (id: string) => void;
@@ -34,7 +35,7 @@ interface DataStore {
     addDiscount: (discount: Omit<Discount, 'id'>) => void;
     updateDiscount: (discount: Discount) => void;
     deleteDiscount: (id: string) => void;
-    addBooking: (booking: Booking) => void;
+    addBooking: (booking: Booking) => boolean;
 }
 
 export const DataContext = createContext<DataStore | undefined>(undefined);
@@ -54,6 +55,10 @@ export function useDataProvider(): DataStore {
     const [locations, setLocations] = useState<string[]>(getInitialLocations(initialRoutes));
     const [discounts, setDiscounts] = useState<Discount[]>([]);
     const [bookings, setBookings] = useState<Booking[]>([]);
+
+    const getBusById = (busId: string) => {
+        return buses.find(b => b.id === busId);
+    };
 
     const addRoute = (route: Omit<Route, 'id'>) => {
         const newRoute: Route = { 
@@ -128,27 +133,58 @@ export function useDataProvider(): DataStore {
         setDiscounts(prev => prev.filter(d => d.id !== id));
     };
 
-    const addBooking = (booking: Booking) => {
-        setBookings(prev => [...prev, booking]);
-        // Also update seat status to occupied
-        setBuses(prevBuses => prevBuses.map(bus => {
+    const addBooking = (booking: Booking): boolean => {
+        let success = true;
+        setBuses(prevBuses => {
             const relevantRoute = routes.find(r => r.id === booking.routeId);
-            if (bus.id === relevantRoute?.busId) {
-                const newSeats = bus.layout.seats.map(seat => {
-                    if (booking.seats.find(s => s.id === seat.id)) {
-                        return { ...seat, status: 'occupied' };
-                    }
-                    return seat;
-                });
-                return { ...bus, layout: { ...bus.layout, seats: newSeats } };
+            const busToUpdate = prevBuses.find(bus => bus.id === relevantRoute?.busId);
+
+            if (!busToUpdate) {
+                success = false;
+                return prevBuses;
             }
-            return bus;
-        }));
+
+            // Check if all selected seats are still available
+            for (const selectedSeat of booking.seats) {
+                const seatInStore = busToUpdate.layout.seats.find(s => s.id === selectedSeat.id);
+                if (!seatInStore || seatInStore.status !== 'available') {
+                    success = false;
+                    break;
+                }
+            }
+
+            if (!success) {
+                return prevBuses; // Don't update state if booking fails
+            }
+
+            // If all seats are available, proceed to book them
+            const newBuses = prevBuses.map(bus => {
+                if (bus.id === relevantRoute?.busId) {
+                    const newSeats = bus.layout.seats.map(seat => {
+                        if (booking.seats.find(s => s.id === seat.id)) {
+                            return { ...seat, status: 'occupied' };
+                        }
+                        return seat;
+                    });
+                    return { ...bus, layout: { ...bus.layout, seats: newSeats } };
+                }
+                return bus;
+            });
+
+            return newBuses;
+        });
+        
+        if (success) {
+            setBookings(prev => [...prev, booking]);
+        }
+        
+        return success;
     };
 
 
     return {
         routes, buses, locations, discounts, bookings,
+        getBusById,
         addRoute, updateRoute, deleteRoute,
         addBus, updateBus, deleteBus,
         addLocation, updateLocation, deleteLocation,
@@ -156,3 +192,5 @@ export function useDataProvider(): DataStore {
         addBooking,
     };
 }
+
+    

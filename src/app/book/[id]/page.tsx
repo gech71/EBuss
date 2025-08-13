@@ -19,16 +19,24 @@ import { Label } from '@/components/ui/label';
 
 export default function BookPage() {
   const params = useParams();
-  const { routes, buses, discounts, addBooking } = useData();
+  const { routes, buses, discounts, addBooking, getBusById } = useData();
   const { toast } = useToast();
   const router = useRouter();
   
   const routeId = params.id as string;
   const route = routes.find((r) => r.id === routeId);
-  const bus = route ? buses.find((b) => b.id === route.busId) : undefined;
-
+  const [bus, setBus] = useState<Bus | undefined>(route ? getBusById(route.busId) : undefined);
+  
   const [seats, setSeats] = useState<SeatType[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    const currentRoute = routes.find((r) => r.id === routeId);
+    if(currentRoute) {
+        const currentBus = getBusById(currentRoute.busId);
+        setBus(currentBus);
+    }
+  }, [routeId, routes, getBusById]);
 
   const alternativeRoutes = useMemo(() => {
     if (!route) return [];
@@ -42,18 +50,29 @@ export default function BookPage() {
 
   useEffect(() => {
     if (bus) {
-      // Auto-select the first available seat on load or when bus changes
-      const firstAvailable = bus.layout.seats.find(s => s.type === 'seat' && s.status === 'available');
-      if (firstAvailable) {
-        setSeats(bus.layout.seats.map(s => s.id === firstAvailable.id ? { ...s, status: 'selected' } : s));
+      const selectedCount = seats.filter(s => s.status === 'selected').length;
+      if (selectedCount === 0) {
+        // Auto-select the first available seat on load or when bus changes
+        const firstAvailable = bus.layout.seats.find(s => s.type === 'seat' && s.status === 'available');
+        if (firstAvailable) {
+          setSeats(bus.layout.seats.map(s => s.id === firstAvailable.id ? { ...s, status: 'selected' } : s));
+        } else {
+          setSeats(bus.layout.seats);
+        }
       } else {
+        // If seats are already selected, just update the available seats from the new bus
         setSeats(bus.layout.seats);
       }
     }
   }, [bus]);
   
   if (!route || !bus) {
-    notFound();
+    // Return a loading state or a not found component
+    const isLoading = !routes.length || !buses.length;
+    if (!isLoading) {
+        notFound();
+    }
+    return <p>Loading...</p>;
   }
   
   const handleBusChange = (newRouteId: string) => {
@@ -104,7 +123,7 @@ export default function BookPage() {
     
     const ticketId = `ticket-${route.id}-${Date.now()}`;
     
-    addBooking({
+    const bookingSuccessful = addBooking({
         id: ticketId,
         routeId: route.id,
         seats: selectedSeats,
@@ -114,7 +133,21 @@ export default function BookPage() {
         passengerEmail: 'john.doe@example.com',
     });
 
-    router.push(`/ticket/${ticketId}`);
+    if(bookingSuccessful){
+        router.push(`/ticket/${ticketId}`);
+    } else {
+        toast({
+            title: 'Booking Failed',
+            description: 'One or more of your selected seats are no longer available. Please select new seats.',
+            variant: 'destructive',
+        });
+        // Refresh seat map from the store
+        const updatedBus = getBusById(bus.id);
+        if (updatedBus) {
+          setBus(updatedBus);
+          setSeats(updatedBus.layout.seats);
+        }
+    }
   };
 
   return (
@@ -225,3 +258,5 @@ export default function BookPage() {
     </div>
   );
 }
+
+    
