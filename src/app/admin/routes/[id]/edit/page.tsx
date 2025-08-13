@@ -250,7 +250,7 @@ export default function EditRoutePage() {
                                                     key={bus.id}
                                                     value={bus.name}
                                                     onSelect={() => {
-                                                        setSelectedBusId(bus.id);
+                                                        setSelectedBusId(bus.id === selectedBusId ? "" : bus.id);
                                                         setOpenBuses(false);
                                                     }}
                                                 >
