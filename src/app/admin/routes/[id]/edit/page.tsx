@@ -22,10 +22,9 @@ export default function EditRoutePage() {
     const { toast } = useToast();
     const router = useRouter();
     const params = useParams();
-    const { locations, buses, routes, updateRoute } = useData();
+    const { locations, buses, routes, updateRoute, addRoute } = useData();
 
     const id = params.id as string;
-    const [route, setRoute] = useState<Route | null>(null);
     
     const [origin, setOrigin] = useState<string>('');
     const [destination, setDestination] = useState<string>('');
@@ -33,7 +32,7 @@ export default function EditRoutePage() {
     const [departureTime, setDepartureTime] = useState('12:00');
     const [arrivalDate, setArrivalDate] = useState<Date>();
     const [arrivalTime, setArrivalTime] = useState('16:00');
-    const [selectedBusId, setSelectedBusId] = useState<string>('');
+    const [selectedBusIds, setSelectedBusIds] = useState<string[]>([]);
     const [price, setPrice] = useState<number>(0);
 
     const [openOrigin, setOpenOrigin] = useState(false)
@@ -43,14 +42,13 @@ export default function EditRoutePage() {
     useEffect(() => {
         const routeToEdit = routes.find(r => r.id === id);
         if (routeToEdit) {
-            setRoute(routeToEdit);
             setOrigin(routeToEdit.origin);
             setDestination(routeToEdit.destination);
             setDepartureDate(new Date(routeToEdit.departureTime));
             setDepartureTime(format(new Date(routeToEdit.departureTime), "HH:mm"));
             setArrivalDate(new Date(routeToEdit.arrivalTime));
             setArrivalTime(format(new Date(routeToEdit.arrivalTime), "HH:mm"));
-            setSelectedBusId(routeToEdit.busId);
+            setSelectedBusIds([routeToEdit.busId]);
             setPrice(routeToEdit.price);
         } else {
             // notFound();
@@ -67,8 +65,8 @@ export default function EditRoutePage() {
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (!route || !origin || !destination || !departureDate || !arrivalDate || !selectedBusId || price <= 0) {
-            toast({ title: "Error", description: "Please fill out all fields.", variant: "destructive" });
+        if (!origin || !destination || !departureDate || !arrivalDate || selectedBusIds.length === 0 || price <= 0) {
+            toast({ title: "Error", description: "Please fill out all fields and select at least one bus.", variant: "destructive" });
             return;
         }
 
@@ -84,27 +82,54 @@ export default function EditRoutePage() {
             toast({ title: "Error", description: "Arrival time must be after departure time.", variant: "destructive" });
             return;
         }
-
+        
+        const [firstBusId, ...additionalBusIds] = selectedBusIds;
+        
+        // Update the original route with the first selected bus
         const updatedRoute: Route = {
-            ...route,
+            id: id,
             origin,
             destination,
             departureTime: fullDepartureTime,
             arrivalTime: fullArrivalTime,
-            busId: selectedBusId,
+            busId: firstBusId,
             price,
         };
         updateRoute(updatedRoute);
 
+        // Create new routes for any additional buses selected
+        additionalBusIds.forEach(busId => {
+            const newRoute: Omit<Route, 'id'> = {
+                origin,
+                destination,
+                departureTime: fullDepartureTime,
+                arrivalTime: fullArrivalTime,
+                busId,
+                price,
+            };
+            addRoute(newRoute);
+        });
+
 
         toast({
             title: "Success!",
-            description: "Route has been updated.",
+            description: `Updated 1 route and created ${additionalBusIds.length} new route(s).`,
         });
         router.push("/admin/routes");
     };
+    
+    const toggleBusSelection = (busId: string) => {
+        setSelectedBusIds(prev => 
+            prev.includes(busId) 
+            ? prev.filter(id => id !== busId)
+            : [...prev, busId]
+        );
+    };
 
-    if (!route) {
+    const selectedBuses = buses.filter(b => selectedBusIds.includes(b.id));
+
+
+    if (!id) {
         return <p>Loading route...</p>
     }
 
@@ -113,7 +138,7 @@ export default function EditRoutePage() {
             <Card className="max-w-xl mx-auto">
                 <CardHeader>
                     <CardTitle>Edit Route</CardTitle>
-                    <CardDescription>Update the details for this bus route.</CardDescription>
+                    <CardDescription>Update the details for this bus route. Selecting multiple buses will update this route and create new ones.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">
@@ -234,7 +259,7 @@ export default function EditRoutePage() {
                                     className="w-full justify-between"
                                     >
                                     <span className="truncate">
-                                        {selectedBusId ? buses.find(b => b.id === selectedBusId)?.name : "Select a bus..."}
+                                        {selectedBuses.length > 0 ? selectedBuses.map(b => b.name).join(', ') : "Select buses..."}
                                     </span>
                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                     </Button>
@@ -250,14 +275,13 @@ export default function EditRoutePage() {
                                                     key={bus.id}
                                                     value={bus.name}
                                                     onSelect={() => {
-                                                        setSelectedBusId(bus.id === selectedBusId ? "" : bus.id);
-                                                        setOpenBuses(false);
+                                                        toggleBusSelection(bus.id);
                                                     }}
                                                 >
                                                     <Check
                                                     className={cn(
                                                         "mr-2 h-4 w-4",
-                                                        selectedBusId === bus.id ? "opacity-100" : "opacity-0"
+                                                        selectedBusIds.includes(bus.id) ? "opacity-100" : "opacity-0"
                                                     )}
                                                     />
                                                     {bus.name}
