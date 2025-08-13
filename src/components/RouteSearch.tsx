@@ -24,6 +24,8 @@ export function RouteSearch() {
   
   const [openOrigin, setOpenOrigin] = useState(false)
   const [openDestination, setOpenDestination] = useState(false)
+  const [openDate, setOpenDate] = useState(false);
+
 
   const uniqueOrigins = useMemo(() => [...new Set(routes.map(route => route.origin))], [routes]);
   const uniqueDestinations = useMemo(() => [...new Set(routes.map(route => route.destination))], [routes]);
@@ -149,7 +151,7 @@ export function RouteSearch() {
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-muted-foreground">Date</label>
-                            <Popover>
+                            <Popover open={openDate} onOpenChange={setOpenDate}>
                                 <PopoverTrigger asChild>
                                     <Button
                                     variant={"outline"}
@@ -163,7 +165,10 @@ export function RouteSearch() {
                                     <Calendar
                                     mode="single"
                                     selected={date}
-                                    onSelect={setDate}
+                                    onSelect={(selectedDate) => {
+                                        setDate(selectedDate);
+                                        setOpenDate(false);
+                                    }}
                                     initialFocus
                                     />
                                 </PopoverContent>
