@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import type { Route, Bus, Discount } from './types';
+import type { Route, Bus, Discount, Booking } from './types';
 import { allRoutes as initialRoutes, allBuses as initialBuses, generateSeats } from './data';
 
 // Derive initial locations from routes
@@ -21,6 +21,7 @@ interface DataStore {
     buses: Bus[];
     locations: string[];
     discounts: Discount[];
+    bookings: Booking[];
     addRoute: (route: Omit<Route, 'id'>) => void;
     updateRoute: (route: Route) => void;
     deleteRoute: (id: string) => void;
@@ -33,6 +34,7 @@ interface DataStore {
     addDiscount: (discount: Omit<Discount, 'id'>) => void;
     updateDiscount: (discount: Discount) => void;
     deleteDiscount: (id: string) => void;
+    addBooking: (booking: Booking) => void;
 }
 
 export const DataContext = createContext<DataStore | undefined>(undefined);
@@ -51,6 +53,7 @@ export function useDataProvider(): DataStore {
     const [buses, setBuses] = useState<Bus[]>(initialBuses);
     const [locations, setLocations] = useState<string[]>(getInitialLocations(initialRoutes));
     const [discounts, setDiscounts] = useState<Discount[]>([]);
+    const [bookings, setBookings] = useState<Booking[]>([]);
 
     const addRoute = (route: Omit<Route, 'id'>) => {
         const newRoute: Route = { 
@@ -125,12 +128,31 @@ export function useDataProvider(): DataStore {
         setDiscounts(prev => prev.filter(d => d.id !== id));
     };
 
+    const addBooking = (booking: Booking) => {
+        setBookings(prev => [...prev, booking]);
+        // Also update seat status to occupied
+        setBuses(prevBuses => prevBuses.map(bus => {
+            const relevantRoute = routes.find(r => r.id === booking.routeId);
+            if (bus.id === relevantRoute?.busId) {
+                const newSeats = bus.layout.seats.map(seat => {
+                    if (booking.seats.find(s => s.id === seat.id)) {
+                        return { ...seat, status: 'occupied' };
+                    }
+                    return seat;
+                });
+                return { ...bus, layout: { ...bus.layout, seats: newSeats } };
+            }
+            return bus;
+        }));
+    };
+
 
     return {
-        routes, buses, locations, discounts,
+        routes, buses, locations, discounts, bookings,
         addRoute, updateRoute, deleteRoute,
         addBus, updateBus, deleteBus,
         addLocation, updateLocation, deleteLocation,
-        addDiscount, updateDiscount, deleteDiscount
+        addDiscount, updateDiscount, deleteDiscount,
+        addBooking,
     };
 }

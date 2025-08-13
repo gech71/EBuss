@@ -16,7 +16,7 @@ import { Separator } from '@/components/ui/separator';
 import { ArrowRight, Clock, Bus as BusIcon, ChevronsUpDown, Tag } from 'lucide-react';
 
 export default function BookPage({ params }: { params: { id: string } }) {
-  const { routes, buses, discounts } = useData();
+  const { routes, buses, discounts, addBooking } = useData();
   const { toast } = useToast();
   const router = useRouter();
   
@@ -81,7 +81,19 @@ export default function BookPage({ params }: { params: { id: string } }) {
       });
       return;
     }
+    
     const ticketId = `ticket-${route.id}-${Date.now()}`;
+    
+    addBooking({
+        id: ticketId,
+        routeId: route.id,
+        seats: selectedSeats,
+        totalPrice: totalPrice,
+        bookingTime: new Date(),
+        passengerName: 'John Doe',
+        passengerEmail: 'john.doe@example.com',
+    });
+
     router.push(`/ticket/${ticketId}`);
   };
 

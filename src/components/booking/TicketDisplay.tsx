@@ -9,28 +9,30 @@ import Image from "next/image";
 
 interface TicketDisplayProps {
   ticketId: string;
-  routeId: string;
 }
 
-export function TicketDisplay({ ticketId, routeId }: TicketDisplayProps) {
-  const { routes } = useData();
-  const route = routes.find((r) => r.id === routeId);
+export function TicketDisplay({ ticketId }: TicketDisplayProps) {
+  const { routes, bookings, buses } = useData();
+  const booking = bookings.find((b) => b.id === ticketId);
+  const route = booking ? routes.find((r) => r.id === booking.routeId) : undefined;
+  const bus = route ? buses.find(b => b.id === route.busId) : undefined;
 
-  if (!route) {
+  if (!booking || !route || !bus) {
     return (
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Ticket Not Found</CardTitle>
         </CardHeader>
         <CardContent>
-          <p>The requested ticket could not be found.</p>
+          <p>The requested ticket could not be found. It may have expired or the booking was not completed.</p>
         </CardContent>
       </Card>
     );
   }
 
-  const qrCodeData = encodeURIComponent(JSON.stringify({ ticketId, routeId, passenger: "John Doe" }));
+  const qrCodeData = encodeURIComponent(JSON.stringify({ ticketId, routeId: booking.routeId, passenger: booking.passengerName }));
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${qrCodeData}&bgcolor=F0F8FF`;
+  const seatIds = booking.seats.map(s => s.id).join(', ');
 
   return (
     <Card className="w-full max-w-md bg-card shadow-2xl rounded-lg overflow-hidden">
@@ -65,11 +67,11 @@ export function TicketDisplay({ ticketId, routeId }: TicketDisplayProps) {
         <div className="grid grid-cols-2 gap-4 text-sm">
             <div className="space-y-1">
                 <p className="text-muted-foreground">Passenger</p>
-                <p className="font-semibold flex items-center gap-2"><User className="h-4 w-4"/>John Doe</p>
+                <p className="font-semibold flex items-center gap-2"><User className="h-4 w-4"/>{booking.passengerName}</p>
             </div>
              <div className="space-y-1">
-                <p className="text-muted-foreground">Seat</p>
-                <p className="font-semibold flex items-center gap-2"><TicketIcon className="h-4 w-4"/>4A</p>
+                <p className="text-muted-foreground">Seat(s)</p>
+                <p className="font-semibold flex items-center gap-2"><TicketIcon className="h-4 w-4"/>{seatIds}</p>
             </div>
              <div className="space-y-1">
                 <p className="text-muted-foreground">Departure</p>
@@ -77,7 +79,7 @@ export function TicketDisplay({ ticketId, routeId }: TicketDisplayProps) {
             </div>
              <div className="space-y-1">
                 <p className="text-muted-foreground">Bus</p>
-                <p className="font-semibold flex items-center gap-2"><Bus className="h-4 w-4"/>Standard Cruiser</p>
+                <p className="font-semibold flex items-center gap-2"><Bus className="h-4 w-4"/>{bus.name}</p>
             </div>
         </div>
       </CardContent>
