@@ -6,27 +6,24 @@ import type { Route } from '@/lib/types';
 import { useData } from '@/lib/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar as CalendarIcon, Search, Bus, Check, ChevronsUpDown, X } from 'lucide-react';
+import { Calendar as CalendarIcon, Search, Bus, Check, ChevronsUpDown, ArrowLeft } from 'lucide-react';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { format } from 'date-fns';
 import { RouteCard } from './RouteCard';
 import { cn } from '@/lib/utils';
-import { Badge } from './ui/badge';
 
 export function RouteSearch() {
-  const { routes, buses } = useData();
+  const { routes } = useData();
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [date, setDate] = useState<Date | undefined>();
-  const [selectedBusIds, setSelectedBusIds] = useState<string[]>([]);
   const [searchResults, setSearchResults] = useState<Route[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   
   const [openOrigin, setOpenOrigin] = useState(false)
   const [openDestination, setOpenDestination] = useState(false)
-  const [openBuses, setOpenBuses] = useState(false)
 
   const uniqueOrigins = useMemo(() => [...new Set(routes.map(route => route.origin))], [routes]);
   const uniqueDestinations = useMemo(() => [...new Set(routes.map(route => route.destination))], [routes]);
@@ -37,201 +34,159 @@ export function RouteSearch() {
       const isOriginMatch = !origin || route.origin.toLowerCase() === origin.toLowerCase();
       const isDestinationMatch = !destination || route.destination.toLowerCase() === destination.toLowerCase();
       const isDateMatch = !date || format(new Date(route.departureTime), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
-      const isBusMatch = selectedBusIds.length === 0 || selectedBusIds.includes(route.busId);
-      return isOriginMatch && isDestinationMatch && isDateMatch && isBusMatch;
+      return isOriginMatch && isDestinationMatch && isDateMatch;
     });
     setSearchResults(results);
     setHasSearched(true);
   };
 
-  const toggleBusSelection = (busId: string) => {
-    setSelectedBusIds(prev => 
-      prev.includes(busId) 
-        ? prev.filter(id => id !== busId)
-        : [...prev, busId]
-    );
+  const handleModifySearch = () => {
+    setHasSearched(false);
+    setSearchResults([]);
   };
-
-  const selectedBuses = buses.filter(b => selectedBusIds.includes(b.id));
 
 
   return (
     <section>
-        <Card className="mb-8 shadow-lg">
-            <CardHeader>
-                <CardTitle className="font-headline text-2xl text-primary">Search for Routes</CardTitle>
-            </CardHeader>
-            <CardContent>
-                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-muted-foreground">Origin</label>
-                        <Popover open={openOrigin} onOpenChange={setOpenOrigin}>
-                            <PopoverTrigger asChild>
-                                <Button
-                                variant="outline"
-                                role="combobox"
-                                aria-expanded={openOrigin}
-                                className="w-full justify-between"
-                                >
-                                {origin
-                                    ? uniqueOrigins.find((o) => o.toLowerCase() === origin.toLowerCase())
-                                    : "Select origin..."}
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[200px] p-0">
-                                <Command>
-                                <CommandInput placeholder="Search origin..." />
-                                <CommandList>
-                                <CommandEmpty>No origin found.</CommandEmpty>
-                                <CommandGroup>
-                                    {uniqueOrigins.map((o) => (
-                                    <CommandItem
-                                        key={o}
-                                        value={o}
-                                        onSelect={(currentValue) => {
-                                        setOrigin(currentValue === origin ? "" : currentValue)
-                                        setOpenOrigin(false)
-                                        }}
+        {!hasSearched && (
+            <Card className="mb-8 shadow-lg">
+                <CardHeader>
+                    <CardTitle className="font-headline text-2xl text-primary">Search for Routes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-muted-foreground">Origin</label>
+                            <Popover open={openOrigin} onOpenChange={setOpenOrigin}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={openOrigin}
+                                    className="w-full justify-between"
                                     >
-                                        <Check
-                                        className={cn(
-                                            "mr-2 h-4 w-4",
-                                            origin === o ? "opacity-100" : "opacity-0"
-                                        )}
-                                        />
-                                        {o}
-                                    </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                                </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-muted-foreground">Destination</label>
-                        <Popover open={openDestination} onOpenChange={setOpenDestination}>
-                            <PopoverTrigger asChild>
-                                <Button
-                                variant="outline"
-                                role="combobox"
-                                aria-expanded={openDestination}
-                                className="w-full justify-between"
-                                >
-                                {destination
-                                    ? uniqueDestinations.find((d) => d.toLowerCase() === destination.toLowerCase())
-                                    : "Select destination..."}
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[200px] p-0">
-                                <Command>
-                                <CommandInput placeholder="Search destination..." />
-                                <CommandList>
-                                <CommandEmpty>No destination found.</CommandEmpty>
-                                <CommandGroup>
-                                    {uniqueDestinations.map((d) => (
-                                    <CommandItem
-                                        key={d}
-                                        value={d}
-                                        onSelect={(currentValue) => {
-                                        setDestination(currentValue === destination ? "" : currentValue)
-                                        setOpenDestination(false)
-                                        }}
+                                    {origin
+                                        ? uniqueOrigins.find((o) => o.toLowerCase() === origin.toLowerCase())
+                                        : "Select origin..."}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[200px] p-0">
+                                    <Command>
+                                    <CommandInput placeholder="Search origin..." />
+                                    <CommandList>
+                                    <CommandEmpty>No origin found.</CommandEmpty>
+                                    <CommandGroup>
+                                        {uniqueOrigins.map((o) => (
+                                        <CommandItem
+                                            key={o}
+                                            value={o}
+                                            onSelect={(currentValue) => {
+                                            setOrigin(currentValue === origin ? "" : currentValue)
+                                            setOpenOrigin(false)
+                                            }}
+                                        >
+                                            <Check
+                                            className={cn(
+                                                "mr-2 h-4 w-4",
+                                                origin === o ? "opacity-100" : "opacity-0"
+                                            )}
+                                            />
+                                            {o}
+                                        </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                    </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-muted-foreground">Destination</label>
+                            <Popover open={openDestination} onOpenChange={setOpenDestination}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={openDestination}
+                                    className="w-full justify-between"
                                     >
-                                        <Check
-                                        className={cn(
-                                            "mr-2 h-4 w-4",
-                                            destination === d ? "opacity-100" : "opacity-0"
-                                        )}
-                                        />
-                                        {d}
-                                    </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                                </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-                     <div className="space-y-2">
-                         <label className="text-sm font-medium text-muted-foreground">Date</label>
-                         <Popover>
-                            <PopoverTrigger asChild>
-                                <Button
-                                variant={"outline"}
-                                className="w-full justify-start text-left font-normal"
-                                >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {date ? format(date, "PPP") : <span>Pick a date</span>}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0">
-                                <Calendar
-                                mode="single"
-                                selected={date}
-                                onSelect={setDate}
-                                initialFocus
-                                />
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-muted-foreground">Bus Type</label>
-                         <Popover open={openBuses} onOpenChange={setOpenBuses}>
-                            <PopoverTrigger asChild>
-                                <Button
-                                variant="outline"
-                                role="combobox"
-                                aria-expanded={openBuses}
-                                className="w-full justify-between"
-                                >
-                                <span className="truncate">
-                                    {selectedBuses.length > 0 ? selectedBuses.map(b => b.name).join(', ') : "Select bus types..."}
-                                </span>
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[200px] p-0">
-                                <Command>
-                                <CommandInput placeholder="Search bus types..." />
-                                <CommandList>
-                                <CommandEmpty>No bus types found.</CommandEmpty>
-                                <CommandGroup>
-                                    {buses.map((bus) => (
-                                    <CommandItem
-                                        key={bus.id}
-                                        value={bus.name}
-                                        onSelect={() => {
-                                            toggleBusSelection(bus.id);
-                                        }}
+                                    {destination
+                                        ? uniqueDestinations.find((d) => d.toLowerCase() === destination.toLowerCase())
+                                        : "Select destination..."}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[200px] p-0">
+                                    <Command>
+                                    <CommandInput placeholder="Search destination..." />
+                                    <CommandList>
+                                    <CommandEmpty>No destination found.</CommandEmpty>
+                                    <CommandGroup>
+                                        {uniqueDestinations.map((d) => (
+                                        <CommandItem
+                                            key={d}
+                                            value={d}
+                                            onSelect={(currentValue) => {
+                                            setDestination(currentValue === destination ? "" : currentValue)
+                                            setOpenDestination(false)
+                                            }}
+                                        >
+                                            <Check
+                                            className={cn(
+                                                "mr-2 h-4 w-4",
+                                                destination === d ? "opacity-100" : "opacity-0"
+                                            )}
+                                            />
+                                            {d}
+                                        </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                    </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-muted-foreground">Date</label>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                    variant={"outline"}
+                                    className="w-full justify-start text-left font-normal"
                                     >
-                                        <Check
-                                        className={cn(
-                                            "mr-2 h-4 w-4",
-                                            selectedBusIds.includes(bus.id) ? "opacity-100" : "opacity-0"
-                                        )}
-                                        />
-                                        {bus.name}
-                                    </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                                </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {date ? format(date, "PPP") : <span>Pick a date</span>}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0">
+                                    <Calendar
+                                    mode="single"
+                                    selected={date}
+                                    onSelect={setDate}
+                                    initialFocus
+                                    />
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                        <Button onClick={handleSearch} className="md:col-span-full lg:col-span-3">
+                            <Search className="mr-2 h-4 w-4" /> Search
+                        </Button>
                     </div>
-                    <Button onClick={handleSearch} className="md:col-span-full lg:col-span-4">
-                        <Search className="mr-2 h-4 w-4" /> Search
-                    </Button>
-                 </div>
-            </CardContent>
-        </Card>
+                </CardContent>
+            </Card>
+        )}
       
       {hasSearched && (
         <div>
-          <h2 className="font-headline text-3xl font-semibold text-primary mb-6">Search Results</h2>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="font-headline text-3xl font-semibold text-primary">Search Results</h2>
+            <Button variant="outline" onClick={handleModifySearch}>
+              <ArrowLeft className="mr-2 h-4 w-4"/>
+              Modify Search
+            </Button>
+          </div>
+
           {searchResults.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {searchResults.map((route) => (
