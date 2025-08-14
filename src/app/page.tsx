@@ -1,3 +1,5 @@
+
+import { Analytics } from "@/components/Analytics";
 import { Header } from "@/components/Header";
 import { RouteSearch } from "@/components/RouteSearch";
 
@@ -15,6 +17,8 @@ export default function Home() {
             Explore our routes and book your ticket today.
           </p>
         </section>
+
+        <Analytics />
 
         <RouteSearch />
         
