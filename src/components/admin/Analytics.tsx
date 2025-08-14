@@ -2,12 +2,18 @@
 "use client";
 
 import { useData } from "@/lib/store";
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { DollarSign, TrendingUp, Zap, Ticket } from "lucide-react";
+import { DollarSign, TrendingUp, Zap, Ticket, Calendar as CalendarIcon } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "../ui/badge";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import type { DateRange } from "react-day-picker";
 
 interface RouteStat {
     routeId: string;
@@ -20,6 +26,7 @@ interface RouteStat {
 
 export function Analytics() {
     const { routes, bookings, getBusById } = useData();
+    const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
     const todayStats = useMemo(() => {
         const today = new Date();
@@ -56,7 +63,17 @@ export function Analytics() {
     const routeStats = useMemo(() => {
         const stats: Record<string, RouteStat> = {};
 
-        bookings.forEach(booking => {
+        const filteredBookings = bookings.filter(booking => {
+            if (!dateRange?.from) return true; // No start date, include all
+            const bookingDate = new Date(booking.bookingTime);
+            const from = new Date(dateRange.from);
+            from.setHours(0,0,0,0);
+            const to = dateRange.to ? new Date(dateRange.to) : new Date(dateRange.from);
+            to.setHours(23,59,59,999);
+            return bookingDate >= from && bookingDate <= to;
+        });
+
+        filteredBookings.forEach(booking => {
             const route = routes.find(r => r.id === booking.routeId);
             if (!route) return;
 
@@ -77,7 +94,7 @@ export function Analytics() {
 
         return Object.values(stats).sort((a, b) => b.revenue - a.revenue);
 
-    }, [bookings, routes]);
+    }, [bookings, routes, dateRange]);
 
     const totalRevenue = useMemo(() => {
         return routeStats.reduce((acc, stat) => acc + stat.revenue, 0);
@@ -111,11 +128,56 @@ export function Analytics() {
 
              <Card>
                 <CardHeader>
-                     <div className="flex items-center gap-2">
-                         <Zap className="text-primary"/>
-                         <CardTitle className="font-headline text-2xl text-primary">Popular Routes</CardTitle>
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <Zap className="text-primary"/>
+                                <CardTitle className="font-headline text-2xl text-primary">Popular Routes</CardTitle>
+                            </div>
+                            <CardDescription>Performance breakdown of your most successful routes based on revenue.</CardDescription>
+                        </div>
+                         <Popover>
+                            <PopoverTrigger asChild>
+                            <Button
+                                id="date"
+                                variant={"outline"}
+                                className={cn(
+                                "w-full md:w-[300px] justify-start text-left font-normal",
+                                !dateRange && "text-muted-foreground"
+                                )}
+                            >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {dateRange?.from ? (
+                                dateRange.to ? (
+                                    <>
+                                    {format(dateRange.from, "LLL dd, y")} -{" "}
+                                    {format(dateRange.to, "LLL dd, y")}
+                                    </>
+                                ) : (
+                                    format(dateRange.from, "LLL dd, y")
+                                )
+                                ) : (
+                                <span>Pick a date range</span>
+                                )}
+                            </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="end">
+                                <Calendar
+                                    initialFocus
+                                    mode="range"
+                                    defaultMonth={dateRange?.from}
+                                    selected={dateRange}
+                                    onSelect={setDateRange}
+                                    numberOfMonths={2}
+                                />
+                                 <div className="p-2 border-t">
+                                    <Button variant="ghost" size="sm" className="w-full justify-center" onClick={() => setDateRange(undefined)}>
+                                        Clear
+                                    </Button>
+                                </div>
+                            </PopoverContent>
+                        </Popover>
                     </div>
-                    <CardDescription>Performance breakdown of your most successful routes based on revenue.</CardDescription>
                 </CardHeader>
                 <CardContent>
                 {routeStats.length > 0 ? (
@@ -151,8 +213,8 @@ export function Analytics() {
                     <div className="col-span-full">
                         <div className="p-10 flex flex-col items-center justify-center text-center">
                             <Ticket className="w-16 h-16 text-muted-foreground mb-4" />
-                            <h3 className="font-headline text-xl font-semibold mb-2">No Bookings Yet</h3>
-                            <p className="text-muted-foreground text-sm">Popular routes will be shown here once customers start buying tickets.</p>
+                            <h3 className="font-headline text-xl font-semibold mb-2">No Bookings Found</h3>
+                            <p className="text-muted-foreground text-sm">No bookings were found for the selected date range.</p>
                         </div>
                     </div>
                 )}
