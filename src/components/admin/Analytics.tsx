@@ -5,7 +5,7 @@ import { useData } from "@/lib/store";
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { DollarSign, TrendingUp, Zap } from "lucide-react";
+import { DollarSign, TrendingUp, Zap, Ticket } from "lucide-react";
 import { RouteCard } from "../RouteCard";
 
 export function Analytics() {
@@ -83,19 +83,27 @@ export function Analytics() {
                 </CardContent>
             </Card>
 
-            {suggestedRoutes.length > 0 && (
-                 <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                         <Zap className="text-primary"/>
-                         <h2 className="font-headline text-2xl font-semibold text-primary">Popular Routes</h2>
-                    </div>
+             <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                     <Zap className="text-primary"/>
+                     <h2 className="font-headline text-2xl font-semibold text-primary">Popular Routes</h2>
+                </div>
+                {suggestedRoutes.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                        {suggestedRoutes.map(route => (
                            <RouteCard key={route.id} route={route} />
                        ))}
                     </div>
-                </div>
-            )}
+                ) : (
+                    <Card className="col-span-full">
+                        <CardContent className="p-10 flex flex-col items-center justify-center text-center">
+                            <Ticket className="w-16 h-16 text-muted-foreground mb-4" />
+                            <h3 className="font-headline text-xl font-semibold mb-2">No Bookings Yet</h3>
+                            <p className="text-muted-foreground text-sm">Popular routes will be shown here once customers start buying tickets.</p>
+                        </CardContent>
+                    </Card>
+                )}
+            </div>
         </div>
     )
 }
