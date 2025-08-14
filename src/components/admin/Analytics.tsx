@@ -124,17 +124,22 @@ export function Analytics() {
                 <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="p-4 border rounded-lg">
+                            <h4 className="text-sm font-semibold text-muted-foreground flex items-center mb-2"><DollarSign className="w-4 h-4 mr-2"/>Actual Revenue</h4>
+                            <p className="text-3xl font-bold text-primary">${todayStats.actualRevenue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                            <p className="text-xs text-muted-foreground">Revenue from tickets sold for today.</p>
+                        </div>
+                         <div className="p-4 border rounded-lg">
                             <h4 className="text-sm font-semibold text-muted-foreground flex items-center mb-2"><DollarSign className="w-4 h-4 mr-2"/>Potential Revenue</h4>
                             <p className="text-3xl font-bold">${todayStats.potentialRevenue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                             <p className="text-xs text-muted-foreground">If all seats for today's routes were sold.</p>
                         </div>
-                        <div className="p-4 border rounded-lg col-span-1 md:col-span-2">
+                        <div className="p-4 border rounded-lg">
                              <h4 className="text-sm font-semibold text-muted-foreground flex items-center mb-2"><TrendingUp className="w-4 h-4 mr-2"/>Effectiveness</h4>
                              <div className="flex items-center gap-4">
                                 <Progress value={todayStats.effectiveness} className="w-full h-3" />
                                 <span className="text-2xl font-bold">{todayStats.effectiveness.toFixed(1)}%</span>
                              </div>
-                             <p className="text-xs text-muted-foreground mt-2">Based on today's actual vs. potential revenue.</p>
+                             <p className="text-xs text-muted-foreground mt-2">Today's actual vs. potential revenue.</p>
                         </div>
                     </div>
                 </CardContent>
