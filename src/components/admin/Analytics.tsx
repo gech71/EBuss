@@ -112,6 +112,8 @@ export function Analytics() {
         );
     }, [routeStats]);
 
+    const totalEffectiveness = totalPotentialRevenue > 0 ? (totalRevenue / totalPotentialRevenue) * 100 : 0;
+
     return (
         <div className="space-y-8">
             <Card>
@@ -225,7 +227,11 @@ export function Analytics() {
                                 <TableCell colSpan={2} className="font-bold">Totals</TableCell>
                                 <TableCell className="text-right font-bold">${totalRevenue.toFixed(2)}</TableCell>
                                 <TableCell className="text-right font-bold text-muted-foreground">${totalPotentialRevenue.toFixed(2)}</TableCell>
-                                <TableCell className="text-right font-bold">100%</TableCell>
+                                <TableCell className="text-right font-bold">
+                                     <Badge className="bg-blue-600 hover:bg-blue-700 text-base">
+                                        {totalEffectiveness.toFixed(1)}%
+                                    </Badge>
+                                </TableCell>
                             </TableRow>
                         </TableFooter>
                     </Table>
