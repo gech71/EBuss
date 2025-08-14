@@ -1,5 +1,5 @@
 
-import type { Bus, Route, Seat } from './types';
+import type { Bus, Route, Seat, BusOwner } from './types';
 
 export const generateSeats = (rows: number, cols: number, aisleCols: number[], lastRowFull: boolean = false): Seat[] => {
   const seats: Seat[] = [];
@@ -24,6 +24,11 @@ export const generateSeats = (rows: number, cols: number, aisleCols: number[], l
   return seats;
 };
 
+export const allOwners: BusOwner[] = [
+  { id: 'owner-01', name: 'FleetFirst Inc.' },
+  { id: 'owner-02', name: 'RoadRunner Co.' },
+];
+
 
 export const allBuses: Bus[] = [
   {
@@ -35,6 +40,7 @@ export const allBuses: Bus[] = [
       cols: 5,
       seats: generateSeats(12, 5, [2]),
     },
+    ownerId: 'owner-01',
   },
   {
     id: 'bus-002',
@@ -45,7 +51,19 @@ export const allBuses: Bus[] = [
       cols: 5,
       seats: generateSeats(9, 5, [2]),
     },
+    ownerId: 'owner-02',
   },
+  {
+    id: 'bus-003',
+    name: 'City Hopper',
+    capacity: 52,
+    layout: {
+      rows: 13,
+      cols: 5,
+      seats: generateSeats(13, 5, [2]),
+    },
+    ownerId: 'owner-01',
+  }
 ];
 
 export const allRoutes: Route[] = [
@@ -84,5 +102,14 @@ export const allRoutes: Route[] = [
     arrivalTime: new Date(Date.now() + 9 * 60 * 60 * 1000),
     price: 25.00,
     busId: 'bus-002',
+  },
+  {
+    id: 'route-05',
+    origin: 'New York, NY',
+    destination: 'Boston, MA',
+    departureTime: new Date(Date.now() + 2 * 60 * 60 * 1000), // Same time as route-01, but different bus
+    arrivalTime: new Date(Date.now() + 6 * 60 * 60 * 1000),
+    price: 55.00,
+    busId: 'bus-003',
   },
 ];

@@ -1,9 +1,18 @@
 
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import type { Route, Bus, Discount, Booking, Seat } from './types';
-import { allRoutes as initialRoutes, allBuses as initialBuses, generateSeats } from './data';
+import React, { createContext, useContext, useState, ReactNode, useMemo } from 'react';
+import type { Route, Bus, Discount, Booking, Seat, BusOwner } from './types';
+import { allRoutes as initialGlobalRoutes, allBuses as initialGlobalBuses, allOwners, generateSeats } from './data';
+
+// --- SIMULATED AUTH ---
+// In a real app, this would come from an auth context (e.g., Firebase Auth)
+const SUPER_ADMIN_ID = 'super-admin';
+const SUPER_ADMIN_USER: BusOwner = { id: SUPER_ADMIN_ID, name: 'System Provider' };
+const LOGGED_IN_USER_ID = allOwners[0].id; // Simulate logging in as the first bus owner
+// To test as super admin, change the above to: const LOGGED_IN_USER_ID = SUPER_ADMIN_ID;
+// --- END SIMULATED AUTH ---
+
 
 // Derive initial locations from routes
 const getInitialLocations = (routes: Route[]): string[] => {
@@ -31,9 +40,9 @@ const getInitialBookings = (routes: Route[], buses: Bus[]): { bookings: Booking[
         return null;
     };
 
-    const route1 = routes[0];
-    const route2 = routes[1];
-    const route3 = routes[0]; // another booking for the first route to make it popular
+    const route1 = routes.find(r => r.id === 'route-01');
+    const route2 = routes.find(r => r.id === 'route-02');
+    const route3 = routes.find(r => r.id === 'route-01'); // another booking for the first route
 
     if (route1) {
         const seat1A = bookSeat(route1.busId, '1A');
@@ -43,7 +52,7 @@ const getInitialBookings = (routes: Route[], buses: Bus[]): { bookings: Booking[
                 routeId: route1.id,
                 seats: [seat1A],
                 totalPrice: route1.price,
-                bookingTime: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
+                bookingTime: new Date(Date.now() - 24 * 60 * 60 * 1000),
                 passengerName: 'Alice Johnson',
                 passengerEmail: 'alice@example.com',
             });
@@ -59,7 +68,7 @@ const getInitialBookings = (routes: Route[], buses: Bus[]): { bookings: Booking[
                 routeId: route2.id,
                 seats: [seat2B, seat2C],
                 totalPrice: route2.price * 2,
-                bookingTime: new Date(Date.now() - 12 * 60 * 60 * 1000), // 12 hours ago
+                bookingTime: new Date(Date.now() - 12 * 60 * 60 * 1000),
                 passengerName: 'Bob Williams',
                 passengerEmail: 'bob@example.com',
             });
@@ -74,7 +83,7 @@ const getInitialBookings = (routes: Route[], buses: Bus[]): { bookings: Booking[
                 routeId: route3.id,
                 seats: [seat3D],
                 totalPrice: route3.price,
-                bookingTime: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+                bookingTime: new Date(Date.now() - 2 * 60 * 60 * 1000),
                 passengerName: 'Charlie Brown',
                 passengerEmail: 'charlie@example.com',
             });
@@ -95,7 +104,7 @@ interface DataStore {
     addRoute: (route: Omit<Route, 'id'>) => void;
     updateRoute: (route: Route) => void;
     deleteRoute: (id: string) => void;
-    addBus: (bus: Omit<Bus, 'id' | 'layout'> & { layout?: Bus['layout'] }) => void;
+    addBus: (bus: Omit<Bus, 'id' | 'layout' | 'ownerId'> & { layout?: Bus['layout'] }) => void;
     updateBus: (bus: Bus) => void;
     deleteBus: (id: string) => void;
     addLocation: (location: string) => void;
@@ -119,15 +128,42 @@ export const useData = () => {
 
 // This can't be in a server component, so we define it here.
 export function useDataProvider(): DataStore {
-    const [routes, setRoutes] = useState<Route[]>(initialRoutes);
-    const { bookings: initialBookings, updatedBuses: initialBusesWithBookings } = getInitialBookings(initialRoutes, initialBuses);
-    const [buses, setBuses] = useState<Bus[]>(initialBusesWithBookings);
-    const [locations, setLocations] = useState<string[]>(getInitialLocations(initialRoutes));
+    // --- Global State ---
+    const [globalRoutes, setGlobalRoutes] = useState<Route[]>(initialGlobalRoutes);
+    const { bookings: initialBookings, updatedBuses: initialBusesWithBookings } = getInitialBookings(initialGlobalRoutes, initialGlobalBuses);
+    const [globalBuses, setGlobalBuses] = useState<Bus[]>(initialBusesWithBookings);
+    const [globalBookings, setGlobalBookings] = useState<Booking[]>(initialBookings);
+    
+    // --- Scoped State (based on logged-in user) ---
+    const isSuperAdmin = LOGGED_IN_USER_ID === SUPER_ADMIN_ID;
+    
+    const buses = useMemo(() => {
+        if (isSuperAdmin) return globalBuses;
+        return globalBuses.filter(bus => bus.ownerId === LOGGED_IN_USER_ID);
+    }, [globalBuses, isSuperAdmin]);
+
+    const busIdsForCurrentUser = useMemo(() => new Set(buses.map(b => b.id)), [buses]);
+
+    const routes = useMemo(() => {
+        // Customer view sees all routes, admin view is scoped
+        // For now, let's assume this store is only for admin.
+        // A more robust solution might have separate providers.
+        return globalRoutes.filter(route => busIdsForCurrentUser.has(route.busId));
+    }, [globalRoutes, busIdsForCurrentUser]);
+
+    const routeIdsForCurrentUser = useMemo(() => new Set(routes.map(r => r.id)), [routes]);
+
+    const bookings = useMemo(() => {
+        return globalBookings.filter(booking => routeIdsForCurrentUser.has(booking.routeId));
+    }, [globalBookings, routeIdsForCurrentUser]);
+    
+    // Non-scoped data
+    const [locations, setLocations] = useState<string[]>(getInitialLocations(initialGlobalRoutes));
     const [discounts, setDiscounts] = useState<Discount[]>([]);
-    const [bookings, setBookings] = useState<Booking[]>(initialBookings);
+
 
     const getBusById = (busId: string) => {
-        return buses.find(b => b.id === busId);
+        return globalBuses.find(b => b.id === busId);
     };
 
     const addRoute = (route: Omit<Route, 'id'>) => {
@@ -135,36 +171,42 @@ export function useDataProvider(): DataStore {
             ...route, 
             id: `route-${Date.now()}`,
         };
-        setRoutes(prev => [...prev, newRoute]);
+        setGlobalRoutes(prev => [...prev, newRoute]);
     };
 
     const updateRoute = (updatedRoute: Route) => {
-        setRoutes(prev => prev.map(r => r.id === updatedRoute.id ? updatedRoute : r));
+        setGlobalRoutes(prev => prev.map(r => r.id === updatedRoute.id ? updatedRoute : r));
     };
 
     const deleteRoute = (id: string) => {
-        setRoutes(prev => prev.filter(r => r.id !== id));
+        setGlobalRoutes(prev => prev.filter(r => r.id !== id));
     };
 
-    const addBus = (bus: Omit<Bus, 'id' | 'layout'> & { layout?: Bus['layout'] }) => {
+    const addBus = (bus: Omit<Bus, 'id' | 'layout' | 'ownerId'> & { layout?: Bus['layout'] }) => {
         const newBus: Bus = { 
             ...bus, 
             id: `bus-${Date.now()}`,
+            ownerId: LOGGED_IN_USER_ID, // Assign to current user
             layout: bus.layout || {
                 rows: Math.ceil(bus.capacity / 4),
                 cols: 5,
                 seats: generateSeats(Math.ceil(bus.capacity / 4), 5, [2]),
             }
         };
-        setBuses(prev => [...prev, newBus]);
+        setGlobalBuses(prev => [...prev, newBus]);
     };
     
     const updateBus = (updatedBus: Bus) => {
-        setBuses(prev => prev.map(b => b.id === updatedBus.id ? updatedBus : b));
+        // Security check: ensure user owns the bus they are updating
+        if (!isSuperAdmin && updatedBus.ownerId !== LOGGED_IN_USER_ID) return;
+        setGlobalBuses(prev => prev.map(b => b.id === updatedBus.id ? updatedBus : b));
     };
     
     const deleteBus = (id: string) => {
-        setBuses(prev => prev.filter(b => b.id !== id));
+        // Security check: ensure user owns the bus they are deleting
+        const busToDelete = globalBuses.find(b => b.id === id);
+        if (!isSuperAdmin && busToDelete?.ownerId !== LOGGED_IN_USER_ID) return;
+        setGlobalBuses(prev => prev.filter(b => b.id !== id));
     };
 
     const addLocation = (location: string) => {
@@ -175,7 +217,7 @@ export function useDataProvider(): DataStore {
     
     const updateLocation = (oldName: string, newName: string) => {
         setLocations(prev => prev.map(loc => loc === oldName ? newName : loc));
-        setRoutes(prev => prev.map(route => {
+        setGlobalRoutes(prev => prev.map(route => {
             let newRoute = {...route};
             if(route.origin === oldName) newRoute.origin = newName;
             if(route.destination === oldName) newRoute.destination = newName;
@@ -205,8 +247,8 @@ export function useDataProvider(): DataStore {
 
     const addBooking = (booking: Booking): boolean => {
         let success = true;
-        setBuses(prevBuses => {
-            const relevantRoute = routes.find(r => r.id === booking.routeId);
+        setGlobalBuses(prevBuses => {
+            const relevantRoute = globalRoutes.find(r => r.id === booking.routeId);
             const busToUpdate = prevBuses.find(bus => bus.id === relevantRoute?.busId);
 
             if (!busToUpdate) {
@@ -214,7 +256,6 @@ export function useDataProvider(): DataStore {
                 return prevBuses;
             }
 
-            // Check if all selected seats are still available
             for (const selectedSeat of booking.seats) {
                 const seatInStore = busToUpdate.layout.seats.find(s => s.id === selectedSeat.id);
                 if (!seatInStore || seatInStore.status !== 'available') {
@@ -224,10 +265,9 @@ export function useDataProvider(): DataStore {
             }
 
             if (!success) {
-                return prevBuses; // Don't update state if booking fails
+                return prevBuses;
             }
 
-            // If all seats are available, proceed to book them
             const newBuses = prevBuses.map(bus => {
                 if (bus.id === relevantRoute?.busId) {
                     const newSeats = bus.layout.seats.map(seat => {
@@ -245,7 +285,7 @@ export function useDataProvider(): DataStore {
         });
         
         if (success) {
-            setBookings(prev => [...prev, booking]);
+            setGlobalBookings(prev => [...prev, booking]);
         }
         
         return success;

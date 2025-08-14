@@ -1,8 +1,14 @@
+
 export interface Seat {
   id: string; // e.g., "1A", "1B"
   status: 'available' | 'occupied' | 'selected';
   type: 'seat' | 'aisle' | 'blocked' | 'driver';
   priceModifier?: number; // For premium seats
+}
+
+export interface BusOwner {
+  id: string;
+  name: string;
 }
 
 export interface Bus {
@@ -14,6 +20,7 @@ export interface Bus {
     cols: number;
     seats: Seat[];
   };
+  ownerId: string;
 }
 
 export interface Route {
