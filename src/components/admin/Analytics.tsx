@@ -6,7 +6,17 @@ import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { DollarSign, TrendingUp, Zap, Ticket } from "lucide-react";
-import { RouteCard } from "../RouteCard";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "../ui/badge";
+
+interface RouteStat {
+    routeId: string;
+    origin: string;
+    destination: string;
+    price: number;
+    ticketsSold: number;
+    revenue: number;
+}
 
 export function Analytics() {
     const { routes, bookings, getBusById } = useData();
@@ -43,19 +53,35 @@ export function Analytics() {
 
     }, [routes, bookings, getBusById]);
 
-    const suggestedRoutes = useMemo(() => {
-        const routeCounts = bookings.reduce((acc, booking) => {
-            acc[booking.routeId] = (acc[booking.routeId] || 0) + 1;
-            return acc;
-        }, {} as Record<string, number>);
+    const routeStats = useMemo(() => {
+        const stats: Record<string, RouteStat> = {};
 
-        const sortedRouteIds = Object.keys(routeCounts).sort((a, b) => routeCounts[b] - routeCounts[a]);
-        
-        const topRouteIds = sortedRouteIds.slice(0, 3);
+        bookings.forEach(booking => {
+            const route = routes.find(r => r.id === booking.routeId);
+            if (!route) return;
 
-        return topRouteIds.map(id => routes.find(r => r.id === id)).filter(Boolean) as any[];
+            if (!stats[route.id]) {
+                stats[route.id] = {
+                    routeId: route.id,
+                    origin: route.origin,
+                    destination: route.destination,
+                    price: route.price,
+                    ticketsSold: 0,
+                    revenue: 0,
+                };
+            }
+
+            stats[route.id].ticketsSold += booking.seats.length;
+            stats[route.id].revenue += booking.totalPrice;
+        });
+
+        return Object.values(stats).sort((a, b) => b.revenue - a.revenue);
 
     }, [bookings, routes]);
+
+    const totalRevenue = useMemo(() => {
+        return routeStats.reduce((acc, stat) => acc + stat.revenue, 0);
+    }, [routeStats]);
 
     return (
         <div className="space-y-8">
@@ -83,27 +109,55 @@ export function Analytics() {
                 </CardContent>
             </Card>
 
-             <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                     <Zap className="text-primary"/>
-                     <h2 className="font-headline text-2xl font-semibold text-primary">Popular Routes</h2>
-                </div>
-                {suggestedRoutes.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                       {suggestedRoutes.map(route => (
-                           <RouteCard key={route.id} route={route} />
-                       ))}
+             <Card>
+                <CardHeader>
+                     <div className="flex items-center gap-2">
+                         <Zap className="text-primary"/>
+                         <CardTitle className="font-headline text-2xl text-primary">Popular Routes</CardTitle>
                     </div>
+                    <CardDescription>Performance breakdown of your most successful routes based on revenue.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                {routeStats.length > 0 ? (
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Route</TableHead>
+                                <TableHead className="text-center">Ticket Price</TableHead>
+                                <TableHead className="text-center">Tickets Sold</TableHead>
+                                <TableHead className="text-right">Revenue</TableHead>
+                                <TableHead className="text-right">% of Total</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {routeStats.map(stat => (
+                                <TableRow key={stat.routeId}>
+                                    <TableCell className="font-medium">{stat.origin} → {stat.destination}</TableCell>
+                                    <TableCell className="text-center">${stat.price.toFixed(2)}</TableCell>
+                                    <TableCell className="text-center">
+                                        <Badge variant="outline">{stat.ticketsSold}</Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right font-semibold">${stat.revenue.toFixed(2)}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Badge className="bg-green-600 hover:bg-green-700">
+                                            {((stat.revenue / totalRevenue) * 100).toFixed(1)}%
+                                        </Badge>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
                 ) : (
-                    <Card className="col-span-full">
-                        <CardContent className="p-10 flex flex-col items-center justify-center text-center">
+                    <div className="col-span-full">
+                        <div className="p-10 flex flex-col items-center justify-center text-center">
                             <Ticket className="w-16 h-16 text-muted-foreground mb-4" />
                             <h3 className="font-headline text-xl font-semibold mb-2">No Bookings Yet</h3>
                             <p className="text-muted-foreground text-sm">Popular routes will be shown here once customers start buying tickets.</p>
-                        </CardContent>
-                    </Card>
+                        </div>
+                    </div>
                 )}
-            </div>
+                </CardContent>
+            </Card>
         </div>
     )
 }
