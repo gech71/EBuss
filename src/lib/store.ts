@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import type { Route, Bus, Discount, Booking } from './types';
+import type { Route, Bus, Discount, Booking, Seat } from './types';
 import { allRoutes as initialRoutes, allBuses as initialBuses, generateSeats } from './data';
 
 // Derive initial locations from routes
@@ -14,6 +14,75 @@ const getInitialLocations = (routes: Route[]): string[] => {
     });
     return Array.from(locationSet);
 };
+
+const getInitialBookings = (routes: Route[], buses: Bus[]): { bookings: Booking[], updatedBuses: Bus[] } => {
+    const sampleBookings: Booking[] = [];
+    const busesCopy = JSON.parse(JSON.stringify(buses));
+
+    const bookSeat = (busId: string, seatId: string) => {
+        const bus = busesCopy.find((b: Bus) => b.id === busId);
+        if (bus) {
+            const seat = bus.layout.seats.find((s: Seat) => s.id === seatId);
+            if (seat && seat.status === 'available') {
+                seat.status = 'occupied';
+                return seat;
+            }
+        }
+        return null;
+    };
+
+    const route1 = routes[0];
+    const route2 = routes[1];
+    const route3 = routes[0]; // another booking for the first route to make it popular
+
+    if (route1) {
+        const seat1A = bookSeat(route1.busId, '1A');
+        if (seat1A) {
+            sampleBookings.push({
+                id: 'ticket-001',
+                routeId: route1.id,
+                seats: [seat1A],
+                totalPrice: route1.price,
+                bookingTime: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
+                passengerName: 'Alice Johnson',
+                passengerEmail: 'alice@example.com',
+            });
+        }
+    }
+    
+    if (route2) {
+        const seat2B = bookSeat(route2.busId, '2B');
+        const seat2C = bookSeat(route2.busId, '2C');
+        if (seat2B && seat2C) {
+             sampleBookings.push({
+                id: 'ticket-002',
+                routeId: route2.id,
+                seats: [seat2B, seat2C],
+                totalPrice: route2.price * 2,
+                bookingTime: new Date(Date.now() - 12 * 60 * 60 * 1000), // 12 hours ago
+                passengerName: 'Bob Williams',
+                passengerEmail: 'bob@example.com',
+            });
+        }
+    }
+
+    if (route3) {
+        const seat3D = bookSeat(route3.busId, '3D');
+        if (seat3D) {
+            sampleBookings.push({
+                id: 'ticket-003',
+                routeId: route3.id,
+                seats: [seat3D],
+                totalPrice: route3.price,
+                bookingTime: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+                passengerName: 'Charlie Brown',
+                passengerEmail: 'charlie@example.com',
+            });
+        }
+    }
+
+    return { bookings: sampleBookings, updatedBuses: busesCopy };
+}
 
 
 interface DataStore {
@@ -51,10 +120,11 @@ export const useData = () => {
 // This can't be in a server component, so we define it here.
 export function useDataProvider(): DataStore {
     const [routes, setRoutes] = useState<Route[]>(initialRoutes);
-    const [buses, setBuses] = useState<Bus[]>(initialBuses);
+    const { bookings: initialBookings, updatedBuses: initialBusesWithBookings } = getInitialBookings(initialRoutes, initialBuses);
+    const [buses, setBuses] = useState<Bus[]>(initialBusesWithBookings);
     const [locations, setLocations] = useState<string[]>(getInitialLocations(initialRoutes));
     const [discounts, setDiscounts] = useState<Discount[]>([]);
-    const [bookings, setBookings] = useState<Booking[]>([]);
+    const [bookings, setBookings] = useState<Booking[]>(initialBookings);
 
     const getBusById = (busId: string) => {
         return buses.find(b => b.id === busId);
@@ -192,5 +262,3 @@ export function useDataProvider(): DataStore {
         addBooking,
     };
 }
-
-    
