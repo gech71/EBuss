@@ -1,15 +1,14 @@
 
 "use client";
 
-import { PriceRecommender } from "@/components/admin/PriceRecommender";
+import { RecentBookings } from "@/components/admin/RecentBookings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useData } from "@/lib/store";
 import { DollarSign, Route as RouteIcon, Bus } from "lucide-react";
 
 export default function AdminDashboard() {
-  const { routes, buses } = useData();
-  // Note: revenue calculation is still random for demonstration.
-  const totalRevenue = routes.reduce((acc, route) => acc + route.price * Math.floor(Math.random() * 20), 0);
+  const { routes, buses, bookings } = useData();
+  const totalRevenue = bookings.reduce((acc, booking) => acc + booking.totalPrice, 0);
 
   return (
     <div className="space-y-8">
@@ -17,14 +16,14 @@ export default function AdminDashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Estimated Total Revenue
+              Total Revenue
             </CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">${totalRevenue.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              Based on mock sales data
+              Based on all completed bookings
             </p>
           </CardContent>
         </Card>
@@ -55,7 +54,7 @@ export default function AdminDashboard() {
       </div>
 
       <div>
-        <PriceRecommender />
+        <RecentBookings />
       </div>
     </div>
   );
