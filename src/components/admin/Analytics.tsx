@@ -6,7 +6,7 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { DollarSign, TrendingUp, Zap, Ticket, Calendar as CalendarIcon } from "lucide-react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Badge } from "../ui/badge";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ interface RouteStat {
     price: number;
     ticketsSold: number;
     revenue: number;
+    potentialRevenue: number;
 }
 
 export function Analytics() {
@@ -76,6 +77,9 @@ export function Analytics() {
         filteredBookings.forEach(booking => {
             const route = routes.find(r => r.id === booking.routeId);
             if (!route) return;
+            
+            const bus = getBusById(route.busId);
+            const capacity = bus?.capacity || 0;
 
             if (!stats[route.id]) {
                 stats[route.id] = {
@@ -85,6 +89,7 @@ export function Analytics() {
                     price: route.price,
                     ticketsSold: 0,
                     revenue: 0,
+                    potentialRevenue: capacity * route.price,
                 };
             }
 
@@ -94,10 +99,17 @@ export function Analytics() {
 
         return Object.values(stats).sort((a, b) => b.revenue - a.revenue);
 
-    }, [bookings, routes, dateRange]);
+    }, [bookings, routes, dateRange, getBusById]);
 
-    const totalRevenue = useMemo(() => {
-        return routeStats.reduce((acc, stat) => acc + stat.revenue, 0);
+    const { totalRevenue, totalPotentialRevenue } = useMemo(() => {
+        return routeStats.reduce(
+            (acc, stat) => {
+                acc.totalRevenue += stat.revenue;
+                acc.totalPotentialRevenue += stat.potentialRevenue;
+                return acc;
+            },
+            { totalRevenue: 0, totalPotentialRevenue: 0 }
+        );
     }, [routeStats]);
 
     return (
@@ -185,9 +197,9 @@ export function Analytics() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Route</TableHead>
-                                <TableHead className="text-center">Ticket Price</TableHead>
                                 <TableHead className="text-center">Tickets Sold</TableHead>
                                 <TableHead className="text-right">Revenue</TableHead>
+                                <TableHead className="text-right">Potential</TableHead>
                                 <TableHead className="text-right">% of Total</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -195,19 +207,27 @@ export function Analytics() {
                             {routeStats.map(stat => (
                                 <TableRow key={stat.routeId}>
                                     <TableCell className="font-medium">{stat.origin} → {stat.destination}</TableCell>
-                                    <TableCell className="text-center">${stat.price.toFixed(2)}</TableCell>
                                     <TableCell className="text-center">
                                         <Badge variant="outline">{stat.ticketsSold}</Badge>
                                     </TableCell>
                                     <TableCell className="text-right font-semibold">${stat.revenue.toFixed(2)}</TableCell>
+                                    <TableCell className="text-right text-muted-foreground">${stat.potentialRevenue.toFixed(2)}</TableCell>
                                     <TableCell className="text-right">
                                         <Badge className="bg-green-600 hover:bg-green-700">
-                                            {((stat.revenue / totalRevenue) * 100).toFixed(1)}%
+                                            {totalRevenue > 0 ? ((stat.revenue / totalRevenue) * 100).toFixed(1) : 0}%
                                         </Badge>
                                     </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
+                        <TableFooter>
+                            <TableRow>
+                                <TableCell colSpan={2} className="font-bold">Totals</TableCell>
+                                <TableCell className="text-right font-bold">${totalRevenue.toFixed(2)}</TableCell>
+                                <TableCell className="text-right font-bold text-muted-foreground">${totalPotentialRevenue.toFixed(2)}</TableCell>
+                                <TableCell className="text-right font-bold">100%</TableCell>
+                            </TableRow>
+                        </TableFooter>
                     </Table>
                 ) : (
                     <div className="col-span-full">
