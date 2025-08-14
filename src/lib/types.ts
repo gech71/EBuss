@@ -6,9 +6,18 @@ export interface Seat {
   priceModifier?: number; // For premium seats
 }
 
+export interface CommissionTier {
+  id: string;
+  minSales: number;
+  maxSales: number;
+  type: 'fixed' | 'percentage';
+  value: number;
+}
+
 export interface BusOwner {
   id: string;
   name: string;
+  commissionTiers: CommissionTier[];
 }
 
 export interface Bus {
@@ -34,7 +43,7 @@ export interface Route {
 }
 
 export interface Booking {
-  id: string;
+  id:string;
   routeId: string;
   seats: Seat[];
   totalPrice: number;

@@ -25,8 +25,22 @@ export const generateSeats = (rows: number, cols: number, aisleCols: number[], l
 };
 
 export const allOwners: BusOwner[] = [
-  { id: 'owner-01', name: 'FleetFirst Inc.' },
-  { id: 'owner-02', name: 'RoadRunner Co.' },
+  { 
+    id: 'owner-01', 
+    name: 'FleetFirst Inc.',
+    commissionTiers: [
+      { id: 'tier-1', minSales: 1, maxSales: 100, type: 'percentage', value: 5 },
+      { id: 'tier-2', minSales: 101, maxSales: 500, type: 'percentage', value: 4 },
+      { id: 'tier-3', minSales: 501, maxSales: Infinity, type: 'percentage', value: 3 },
+    ]
+  },
+  { 
+    id: 'owner-02', 
+    name: 'RoadRunner Co.',
+    commissionTiers: [
+      { id: 'tier-1', minSales: 1, maxSales: Infinity, type: 'fixed', value: 2.50 },
+    ]
+  },
 ];
 
 

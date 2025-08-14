@@ -10,6 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useData } from '@/lib/store';
+import { Badge } from '@/components/ui/badge';
 
 export default function SuperAdminOwnersPage() {
   const { toast } = useToast();
@@ -53,6 +54,7 @@ export default function SuperAdminOwnersPage() {
               <TableRow>
                 <TableHead>Owner Name</TableHead>
                 <TableHead>Owner ID</TableHead>
+                <TableHead>Commission Tiers</TableHead>
                 <TableHead>
                   <span className="sr-only">Actions</span>
                 </TableHead>
@@ -63,6 +65,9 @@ export default function SuperAdminOwnersPage() {
                 <TableRow key={owner.id}>
                   <TableCell className="font-medium">{owner.name}</TableCell>
                   <TableCell className="font-mono text-xs">{owner.id}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{owner.commissionTiers.length} Tiers</Badge>
+                  </TableCell>
                   <TableCell className="text-right">
                     <AlertDialog>
                       <DropdownMenu>
@@ -74,7 +79,9 @@ export default function SuperAdminOwnersPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem disabled>Edit</DropdownMenuItem>
+                           <DropdownMenuItem asChild>
+                                <Link href={`/super-admin/owners/${owner.id}/edit`}>Edit</Link>
+                           </DropdownMenuItem>
                           <AlertDialogTrigger asChild>
                             <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(e) => e.preventDefault()}>
                               Delete

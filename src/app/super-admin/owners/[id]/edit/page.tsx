@@ -7,62 +7,81 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useData } from "@/lib/store";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useParams, notFound } from "next/navigation";
+import { useState, useEffect } from "react";
 import { Separator } from "@/components/ui/separator";
-import type { CommissionTier } from "@/lib/types";
+import type { CommissionTier, BusOwner } from "@/lib/types";
 import { PlusCircle, Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-
-export default function NewOwnerPage() {
+export default function EditOwnerPage() {
     const { toast } = useToast();
     const router = useRouter();
-    const { addOwner, owners } = useData();
-    const [name, setName] = useState('');
-    const [tiers, setTiers] = useState<Omit<CommissionTier, 'id'>[]>([
-        { minSales: 1, maxSales: 100, type: 'percentage', value: 0 }
-    ]);
+    const params = useParams();
+    const { getOwnerById, updateOwner, owners } = useData();
+
+    const id = params.id as string;
+    const [owner, setOwner] = useState<BusOwner | null>(null);
+
+    useEffect(() => {
+        const o = getOwnerById(id);
+        if (o) {
+            setOwner(o);
+        } else {
+           // notFound();
+        }
+    }, [id, getOwnerById]);
 
     const handleTierChange = (index: number, field: keyof Omit<CommissionTier, 'id' | 'type'>, value: number) => {
-        const newTiers = [...tiers];
-        newTiers[index][field] = value;
-        setTiers(newTiers);
+        if (!owner) return;
+        const newTiers = [...owner.commissionTiers];
+        newTiers[index] = { ...newTiers[index], [field]: value };
+        setOwner({ ...owner, commissionTiers: newTiers });
     };
-    
-    const handleTierTypeChange = (index: number, value: 'fixed' | 'percentage') => {
-        const newTiers = [...tiers];
+
+     const handleTierTypeChange = (index: number, value: 'fixed' | 'percentage') => {
+        if (!owner) return;
+        const newTiers = [...owner.commissionTiers];
         newTiers[index].type = value;
-        setTiers(newTiers);
+        setOwner({ ...owner, commissionTiers: newTiers });
     };
 
     const addTier = () => {
-        const lastTier = tiers[tiers.length - 1];
+        if (!owner) return;
+        const lastTier = owner.commissionTiers[owner.commissionTiers.length - 1];
         const newMinSales = lastTier ? lastTier.maxSales + 1 : 1;
-        setTiers([...tiers, { minSales: newMinSales, maxSales: newMinSales + 100, type: 'percentage', value: 0 }]);
+        const newTiers = [...owner.commissionTiers, { id: `tier-${Date.now()}`, minSales: newMinSales, maxSales: newMinSales + 100, type: 'percentage', value: 0 }];
+        setOwner({ ...owner, commissionTiers: newTiers });
     };
 
     const removeTier = (index: number) => {
-        if (tiers.length > 1) {
-            const newTiers = tiers.filter((_, i) => i !== index);
-            setTiers(newTiers);
+        if (!owner) return;
+        if (owner.commissionTiers.length > 1) {
+            const newTiers = owner.commissionTiers.filter((_, i) => i !== index);
+            setOwner({ ...owner, commissionTiers: newTiers });
         } else {
-             toast({ title: "Error", description: "You must have at least one commission tier.", variant: "destructive" });
+             toast({ title: "Error", description: "You must have at least one tier.", variant: "destructive" });
         }
     };
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (!name) {
+        if (!owner) {
+            toast({ title: "Error", description: "Owner not found.", variant: "destructive" });
+            return;
+        }
+
+        if (!owner.name) {
             toast({ title: "Error", description: "Owner name cannot be empty.", variant: "destructive" });
             return;
         }
-        if (owners.some(o => o.name.toLowerCase() === name.toLowerCase())) {
+        
+        if (owners.some(o => o.name.toLowerCase() === owner.name.toLowerCase() && o.id !== owner.id)) {
              toast({ title: "Error", description: "An owner with this name already exists.", variant: "destructive" });
              return;
         }
-
-        for (const tier of tiers) {
+        
+        for (const tier of owner.commissionTiers) {
             if (tier.minSales <= 0 || tier.maxSales <= 0 || tier.value <= 0) {
                 toast({ title: "Error", description: "Please fill out all tier fields with valid numbers greater than 0.", variant: "destructive" });
                 return;
@@ -73,21 +92,25 @@ export default function NewOwnerPage() {
             }
         }
         
-        addOwner(name, tiers.map(tier => ({...tier, id: `tier-${Math.random()}`})));
-        
+        updateOwner(owner);
+
         toast({
             title: "Success!",
-            description: `Owner "${name}" has been added.`,
+            description: "Owner details have been updated.",
         });
         router.push("/super-admin/owners");
     };
+
+    if (!owner) {
+        return <p>Loading...</p>;
+    }
 
     return (
         <form onSubmit={handleSubmit}>
             <Card className="max-w-3xl mx-auto">
                 <CardHeader>
-                    <CardTitle>Add New Bus Owner</CardTitle>
-                    <CardDescription>Enter the details for the new bus owner account and their commission structure.</CardDescription>
+                    <CardTitle>Edit Bus Owner</CardTitle>
+                    <CardDescription>Update the details for this bus owner and their commission structure.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <div className="space-y-2">
@@ -96,8 +119,8 @@ export default function NewOwnerPage() {
                             id="name" 
                             placeholder="e.g., Metro Transit Inc." 
                             required
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
+                            value={owner.name}
+                            onChange={(e) => setOwner({...owner, name: e.target.value})}
                         />
                     </div>
                     
@@ -111,12 +134,12 @@ export default function NewOwnerPage() {
                                 Add Tier
                             </Button>
                         </div>
-                        <p className="text-sm text-muted-foreground">
+                         <p className="text-sm text-muted-foreground">
                             Define commission rates based on total daily ticket sales.
                         </p>
 
-                        {tiers.map((tier, index) => (
-                            <div key={index} className="p-4 border rounded-lg space-y-4 relative bg-muted/50">
+                        {owner.commissionTiers.map((tier, index) => (
+                            <div key={tier.id} className="p-4 border rounded-lg space-y-4 relative bg-muted/50">
                                 <Label className="font-semibold">Tier {index + 1}</Label>
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                     <div className="space-y-2">
@@ -144,7 +167,7 @@ export default function NewOwnerPage() {
                                         <Input id={`value-${index}`} type="number" placeholder="e.g., 3" required value={tier.value || ''} onChange={e => handleTierChange(index, 'value', Number(e.target.value))} />
                                     </div>
                                 </div>
-                                <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => removeTier(index)} disabled={tiers.length <= 1}>
+                                <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => removeTier(index)} disabled={owner.commissionTiers.length <= 1}>
                                     <Trash2 className="h-4 w-4"/>
                                     <span className="sr-only">Remove Tier</span>
                                 </Button>
@@ -153,8 +176,8 @@ export default function NewOwnerPage() {
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-                    <Button type="submit">Save Owner</Button>
+                    <Button type="button" variant="outline" onClick={() => router.push('/super-admin/owners')}>Cancel</Button>
+                    <Button type="submit">Save Changes</Button>
                 </CardFooter>
             </Card>
         </form>

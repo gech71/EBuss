@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode, useMemo } from 'react';
-import type { Route, Bus, Discount, Booking, Seat, BusOwner } from './types';
+import type { Route, Bus, Discount, Booking, Seat, BusOwner, CommissionTier } from './types';
 import { allRoutes as initialGlobalRoutes, allBuses as initialGlobalBuses, allOwners as initialAllOwnersData, generateSeats } from './data';
 import { usePathname } from 'next/navigation';
 
@@ -10,7 +10,11 @@ import { usePathname } from 'next/navigation';
 // --- SIMULATED AUTH ---
 // In a real app, this would come from an auth context (e.g., Firebase Auth)
 const SUPER_ADMIN_ID = 'super-admin';
-const SUPER_ADMIN_USER: BusOwner = { id: SUPER_ADMIN_ID, name: 'System Provider' };
+const SUPER_ADMIN_USER: BusOwner = { 
+    id: SUPER_ADMIN_ID, 
+    name: 'System Provider',
+    commissionTiers: [] // Super admin has no commission
+};
 const LOGGED_IN_USER_ID = SUPER_ADMIN_ID; // Simulate logging in as the super admin
 // To test as a regular owner, change the above to: const LOGGED_IN_USER_ID = initialAllOwnersData[0].id;
 // --- END SIMULATED AUTH ---
@@ -107,6 +111,7 @@ interface DataStore {
     viewedOwnerId: string;
     setViewedOwnerId: (id: string) => void;
     getBusById: (busId: string) => Bus | undefined;
+    getOwnerById: (ownerId: string) => BusOwner | undefined;
     addRoute: (route: Omit<Route, 'id'>) => void;
     updateRoute: (route: Route) => void;
     deleteRoute: (id: string) => void;
@@ -120,7 +125,8 @@ interface DataStore {
     updateDiscount: (discount: Discount) => void;
     deleteDiscount: (id: string) => void;
     addBooking: (booking: Booking) => boolean;
-    addOwner: (name: string) => void;
+    addOwner: (name: string, commissionTiers: CommissionTier[]) => void;
+    updateOwner: (owner: BusOwner) => void;
     deleteOwner: (id: string) => void;
 }
 
@@ -144,10 +150,10 @@ export function useDataProvider(): DataStore {
     const { bookings: initialBookings, updatedBuses: initialBusesWithBookings } = getInitialBookings(initialGlobalRoutes, initialGlobalBuses);
     const [globalBuses, setGlobalBuses] = useState<Bus[]>(initialBusesWithBookings);
     const [globalBookings, setGlobalBookings] = useState<Booking[]>(initialBookings);
-    const [allOwners, setAllOwners] = useState<BusOwner[]>(initialAllOwnersData);
+    const [allOwners, setAllOwners] = useState<BusOwner[]>([SUPER_ADMIN_USER, ...initialAllOwnersData]);
 
 
-    // --- View State (for super-admin owner switching) ---
+    // --- View State (for super-admin switching) ---
     const [viewState, setViewState] = useState<{ viewedOwnerId?: string }>({});
 
     // --- Scoped State (based on logged-in user) ---
@@ -155,7 +161,7 @@ export function useDataProvider(): DataStore {
         const admin = LOGGED_IN_USER_ID === SUPER_ADMIN_ID;
         // In super-admin section, view the selected owner. Otherwise, view your own.
         let currentId = admin && isSuperAdminPage 
-            ? (viewState.viewedOwnerId || allOwners[0]?.id) 
+            ? (viewState.viewedOwnerId || initialAllOwnersData[0]?.id) 
             : LOGGED_IN_USER_ID;
 
         // If a non-admin somehow lands on super-admin page, default to their own ID.
@@ -168,13 +174,14 @@ export function useDataProvider(): DataStore {
             viewedOwnerId: currentId,
             setViewedOwnerId: (id: string) => setViewState(s => ({...s, viewedOwnerId: id})),
         };
-    }, [viewState.viewedOwnerId, isSuperAdminPage, allOwners]);
+    }, [viewState.viewedOwnerId, isSuperAdminPage]);
 
     
     const buses = useMemo(() => {
         if (!viewedOwnerId) return [];
+        if (isSuperAdmin && !isSuperAdminPage) return []; // Super admin on /admin sees nothing
         return globalBuses.filter(bus => bus.ownerId === viewedOwnerId);
-    }, [globalBuses, viewedOwnerId]);
+    }, [globalBuses, viewedOwnerId, isSuperAdmin, isSuperAdminPage]);
 
     const busIdsForCurrentUser = useMemo(() => new Set(buses.map(b => b.id)), [buses]);
 
@@ -185,8 +192,9 @@ export function useDataProvider(): DataStore {
     const routeIdsForCurrentUser = useMemo(() => new Set(routes.map(r => r.id)), [routes]);
 
     const bookings = useMemo(() => {
+        if (isSuperAdmin && !isSuperAdminPage) return [];
         return globalBookings.filter(booking => routeIdsForCurrentUser.has(booking.routeId));
-    }, [globalBookings, routeIdsForCurrentUser]);
+    }, [globalBookings, routeIdsForCurrentUser, isSuperAdmin, isSuperAdminPage]);
     
     // Non-scoped data
     const [locations, setLocations] = useState<string[]>(getInitialLocations(initialGlobalRoutes));
@@ -195,6 +203,10 @@ export function useDataProvider(): DataStore {
 
     const getBusById = (busId: string) => {
         return globalBuses.find(b => b.id === busId);
+    };
+    
+    const getOwnerById = (ownerId: string) => {
+        return allOwners.find(o => o.id === ownerId);
     };
 
     const addRoute = (route: Omit<Route, 'id'>) => {
@@ -321,13 +333,16 @@ export function useDataProvider(): DataStore {
         return success;
     };
     
-    const addOwner = (name: string) => {
-        const newOwner: BusOwner = { id: `owner-${Date.now()}`, name };
+    const addOwner = (name: string, commissionTiers: CommissionTier[]) => {
+        const newOwner: BusOwner = { id: `owner-${Date.now()}`, name, commissionTiers };
         setAllOwners(prev => [...prev, newOwner]);
     };
 
+    const updateOwner = (updatedOwner: BusOwner) => {
+        setAllOwners(prev => prev.map(o => o.id === updatedOwner.id ? updatedOwner : o));
+    };
+
     const deleteOwner = (id: string) => {
-        // Prevent deleting an owner who still has buses
         const ownerHasBuses = globalBuses.some(bus => bus.ownerId === id);
         if (ownerHasBuses) {
             console.error("Cannot delete owner with active buses.");
@@ -339,12 +354,12 @@ export function useDataProvider(): DataStore {
 
     return {
         routes, buses, locations, discounts, bookings, owners: allOwners, isSuperAdmin, viewedOwnerId, setViewedOwnerId,
-        getBusById,
+        getBusById, getOwnerById,
         addRoute, updateRoute, deleteRoute,
         addBus, updateBus, deleteBus,
         addLocation, updateLocation, deleteLocation,
         addDiscount, updateDiscount, deleteDiscount,
         addBooking,
-        addOwner, deleteOwner
+        addOwner, updateOwner, deleteOwner
     };
 }
