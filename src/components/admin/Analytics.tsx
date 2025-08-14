@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { DollarSign, TrendingUp, Zap } from "lucide-react";
-import { RouteCard } from "./RouteCard";
+import { RouteCard } from "../RouteCard";
 
 export function Analytics() {
     const { routes, bookings, getBusById } = useData();
@@ -58,7 +58,7 @@ export function Analytics() {
     }, [bookings, routes]);
 
     return (
-        <div className="space-y-8 mb-12">
+        <div className="space-y-8">
             <Card>
                 <CardHeader>
                     <CardTitle className="font-headline text-2xl text-primary">Today's Snapshot</CardTitle>

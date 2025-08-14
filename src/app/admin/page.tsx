@@ -2,6 +2,7 @@
 "use client";
 
 import { RecentBookings } from "@/components/admin/RecentBookings";
+import { Analytics } from "@/components/admin/Analytics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useData } from "@/lib/store";
 import { DollarSign, Route as RouteIcon, Bus } from "lucide-react";
@@ -12,6 +13,9 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-8">
+
+      <Analytics />
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
