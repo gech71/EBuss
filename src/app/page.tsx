@@ -9,7 +9,7 @@ export default function Home() {
       <Header />
       <main className="flex-1 container mx-auto py-8 px-4">
         <section className="text-center mb-12">
-          <h1 className="font-headline text-5xl md:text-6xl font-bold text-primary mb-4">
+          <h1 className="font-headline text-4xl md:text-5xl font-bold text-primary mb-4">
             Find Your Next Journey
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
