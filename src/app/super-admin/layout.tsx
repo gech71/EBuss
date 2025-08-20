@@ -45,7 +45,9 @@ export default function SuperAdminLayout({
             </SidebarContent>
           </Sidebar>
           <main className="flex-1 p-4 md:p-6 bg-background">
-            {children}
+            <div className="container mx-auto px-0">
+              {children}
+            </div>
           </main>
         </div>
       </div>
