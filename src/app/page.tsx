@@ -8,7 +8,7 @@ export default function Home() {
     <div className="flex flex-col min-h-screen bg-background">
       <Header />
       <main className="flex-1 container mx-auto py-8 px-4">
-        <section className="text-center mb-12">
+        <section className="text-center mb-8">
           <h1 className="font-headline text-2xl md:text-3xl font-bold text-primary mb-4">
             Find Your Next Journey
           </h1>
