@@ -26,6 +26,7 @@ export interface User {
   name: string;
   email: string;
   ownerId: string;
+  password?: string;
 }
 
 export interface Bus {

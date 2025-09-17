@@ -4,8 +4,6 @@
 import React, { createContext, useContext, useState, ReactNode, useMemo } from 'react';
 import type { Route, Bus, Discount, Booking, Seat, BusOwner, CommissionTier, User } from './types';
 import { allRoutes as initialGlobalRoutes, allBuses as initialGlobalBuses, allOwners as initialAllOwnersData, generateSeats } from './data';
-import { usePathname } from 'next/navigation';
-
 
 // --- SIMULATED AUTH ---
 const SUPER_ADMIN_ID = 'super-admin';
@@ -15,6 +13,10 @@ const SUPER_ADMIN_USER: BusOwner = {
     commissionTiers: [] // Super admin has no commission
 };
 const CUSTOMER_ID = 'customer';
+
+const initialUsers: User[] = [
+    { id: 'user-super', name: 'Super Admin', email: 'super@example.com', ownerId: SUPER_ADMIN_ID, password: 'password' }
+];
 // --- END SIMULATED AUTH ---
 
 
@@ -107,14 +109,17 @@ interface DataStore {
     owners: BusOwner[];
     users: User[];
     isSuperAdmin: boolean;
-    loggedInUserId: string;
+    loggedInUserId: string | null;
+    loggedInUser: User | null;
     setLoggedInUserId: (id: string) => void;
+    login: (email: string, password: string) => User | null;
+    logout: () => void;
     getBusById: (busId: string) => Bus | undefined;
     getOwnerById: (ownerId: string) => BusOwner | undefined;
     addRoute: (route: Omit<Route, 'id'>) => void;
     updateRoute: (route: Route) => void;
     deleteRoute: (id: string) => void;
-    addBus: (bus: Omit<Bus, 'id' | 'layout' | 'ownerId'> & { layout?: Bus['layout'] }) => void;
+    addBus: (bus: Omit<Bus, 'id' | 'layout'>) => void;
     updateBus: (bus: Bus) => void;
     deleteBus: (id: string) => void;
     addLocation: (location: string) => void;
@@ -127,7 +132,7 @@ interface DataStore {
     addOwner: (name: string, commissionTiers: CommissionTier[]) => void;
     updateOwner: (owner: BusOwner) => void;
     deleteOwner: (id: string) => void;
-    addUser: (user: Omit<User, 'id'>) => void;
+    addUser: (user: Omit<User, 'id' | 'password'>, password?: string) => void;
 }
 
 export const DataContext = createContext<DataStore | undefined>(undefined);
@@ -140,41 +145,55 @@ export const useData = () => {
     return context;
 };
 
-// This can't be in a server component, so we define it here.
 export function useDataProvider(): DataStore {
-    const pathname = usePathname();
-    const isSuperAdminPage = pathname.startsWith('/super-admin');
-
     // --- Global State ---
     const [globalRoutes, setGlobalRoutes] = useState<Route[]>(initialGlobalRoutes);
     const { bookings: initialBookings, updatedBuses: initialBusesWithBookings } = getInitialBookings(initialGlobalRoutes, initialGlobalBuses);
     const [globalBuses, setGlobalBuses] = useState<Bus[]>(initialBusesWithBookings);
     const [globalBookings, setGlobalBookings] = useState<Booking[]>(initialBookings);
     const [allOwners, setAllOwners] = useState<BusOwner[]>([SUPER_ADMIN_USER, ...initialAllOwnersData]);
-    const [loggedInUserId, setLoggedInUserId] = useState(SUPER_ADMIN_ID); // Default to super admin
-    const [users, setUsers] = useState<User[]>([]);
+    const [users, setUsers] = useState<User[]>(initialUsers);
+
+    const [loggedInUserId, setLoggedInUserIdState] = useState<string | null>(CUSTOMER_ID);
+
+    const setLoggedInUserId = (id: string) => {
+        setLoggedInUserIdState(id);
+    };
+    
+    const login = (email: string, password: string): User | null => {
+        const user = users.find(u => u.email === email && u.password === password);
+        if (user) {
+            setLoggedInUserIdState(user.ownerId);
+            return user;
+        }
+        return null;
+    };
+
+    const logout = () => {
+        setLoggedInUserIdState(null);
+    };
 
     // --- Scoped State (based on logged-in user) ---
     const isSuperAdmin = loggedInUserId === SUPER_ADMIN_ID;
+    const loggedInUser = useMemo(() => users.find(u => u.ownerId === loggedInUserId) || null, [users, loggedInUserId]);
 
-    
     const buses = useMemo(() => {
-        if (loggedInUserId === CUSTOMER_ID) return globalBuses;
-        if (isSuperAdmin) return globalBuses; // Super admin sees all buses on super-admin pages
+        if (loggedInUserId === CUSTOMER_ID || !loggedInUserId) return globalBuses;
+        if (isSuperAdmin) return globalBuses;
         return globalBuses.filter(bus => bus.ownerId === loggedInUserId);
     }, [globalBuses, loggedInUserId, isSuperAdmin]);
 
     const busIdsForCurrentUser = useMemo(() => new Set(buses.map(b => b.id)), [buses]);
 
     const routes = useMemo(() => {
-        if (isSuperAdmin || loggedInUserId === CUSTOMER_ID) return globalRoutes;
+        if (isSuperAdmin || loggedInUserId === CUSTOMER_ID || !loggedInUserId) return globalRoutes;
         return globalRoutes.filter(route => busIdsForCurrentUser.has(route.busId));
     }, [globalRoutes, busIdsForCurrentUser, isSuperAdmin, loggedInUserId]);
 
     const routeIdsForCurrentUser = useMemo(() => new Set(routes.map(r => r.id)), [routes]);
 
     const bookings = useMemo(() => {
-        if (loggedInUserId === CUSTOMER_ID) return [];
+        if (loggedInUserId === CUSTOMER_ID || !loggedInUserId) return [];
         if (isSuperAdmin) return globalBookings;
         return globalBookings.filter(booking => routeIdsForCurrentUser.has(booking.routeId));
     }, [globalBookings, routeIdsForCurrentUser, isSuperAdmin, loggedInUserId]);
@@ -208,13 +227,13 @@ export function useDataProvider(): DataStore {
         setGlobalRoutes(prev => prev.filter(r => r.id !== id));
     };
 
-    const addBus = (bus: Omit<Bus, 'id' | 'layout' | 'ownerId'> & { layout?: Bus['layout'] }) => {
-        if(loggedInUserId === CUSTOMER_ID || isSuperAdmin) return;
+    const addBus = (bus: Omit<Bus, 'id' | 'layout'>) => {
+        if (loggedInUserId === CUSTOMER_ID || isSuperAdmin || !loggedInUserId) return;
         
         const newBus: Bus = { 
             ...bus, 
             id: `bus-${Date.now()}`,
-            ownerId: loggedInUserId, // Assign to the currently logged-in owner
+            ownerId: loggedInUserId,
             layout: bus.layout || {
                 rows: Math.ceil(bus.capacity / 4),
                 cols: 5,
@@ -336,14 +355,14 @@ export function useDataProvider(): DataStore {
         setAllOwners(prev => prev.filter(owner => owner.id !== id));
     };
 
-    const addUser = (user: Omit<User, 'id'>) => {
-        const newUser = { ...user, id: `user-${Date.now()}`};
+    const addUser = (user: Omit<User, 'id' | 'password'>, password = 'password') => {
+        const newUser: User = { ...user, id: `user-${Date.now()}`, password };
         setUsers(prev => [...prev, newUser]);
     };
 
 
     return {
-        routes, buses, locations, discounts, bookings, owners: allOwners, users, isSuperAdmin, loggedInUserId, setLoggedInUserId,
+        routes, buses, locations, discounts, bookings, owners: allOwners, users, isSuperAdmin, loggedInUserId, loggedInUser, setLoggedInUserId, login, logout,
         getBusById, getOwnerById,
         addRoute, updateRoute, deleteRoute,
         addBus, updateBus, deleteBus,
