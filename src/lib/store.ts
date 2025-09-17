@@ -15,8 +15,8 @@ const SUPER_ADMIN_USER: BusOwner = {
     name: 'System Provider',
     commissionTiers: [] // Super admin has no commission
 };
-const LOGGED_IN_USER_ID = SUPER_ADMIN_ID; // Simulate logging in as the super admin
-// To test as a regular owner, change the above to: const LOGGED_IN_USER_ID = initialAllOwnersData[0].id;
+const LOGGED_IN_USER_ID = initialAllOwnersData[0].id; // Simulate logging in as the first bus owner
+// To test as super admin, change the above to: const LOGGED_IN_USER_ID = SUPER_ADMIN_ID;
 // --- END SIMULATED AUTH ---
 
 
@@ -229,7 +229,7 @@ export function useDataProvider(): DataStore {
         const newBus: Bus = { 
             ...bus, 
             id: `bus-${Date.now()}`,
-            ownerId: viewedOwnerId, // Assign to the currently viewed/logged-in owner
+            ownerId: LOGGED_IN_USER_ID, // Assign to the currently logged-in owner
             layout: bus.layout || {
                 rows: Math.ceil(bus.capacity / 4),
                 cols: 5,
