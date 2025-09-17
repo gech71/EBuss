@@ -20,7 +20,7 @@ import { useRouter } from 'next/navigation';
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
-  const { isSuperAdmin, loggedInUserId, loggedInUser, logout } = useData();
+  const { isSuperAdmin, loggedInUserId, loggedInUser, logout } from useData();
   const isCustomer = loggedInUserId === 'customer' || !loggedInUserId;
 
   const isAdminPage = pathname.startsWith('/admin') && !pathname.startsWith('/super-admin');
@@ -48,7 +48,7 @@ export function Header() {
         </div>
         
         <nav className="flex items-center gap-4">
-          {!isCustomer && loggedInUser && (
+          {!isCustomer && loggedInUser ? (
              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-fit px-4">
@@ -66,15 +66,24 @@ export function Header() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                   <DropdownMenuItem onClick={() => router.push('/admin')}>
+                      <Shield className="mr-2 h-4 w-4" />
+                      <span>Admin</span>
+                  </DropdownMenuItem>
+                   {isSuperAdmin && (
+                    <DropdownMenuItem onClick={() => router.push('/super-admin')}>
+                        <Gem className="mr-2 h-4 w-4" />
+                        <span>Super Admin</span>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Log out</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-          )}
-
-          {isCustomer && (
+          ) : (
              <Button asChild variant="outline" size="sm">
                 <Link href="/login">
                   <LogIn className="mr-2 h-4 w-4" />
@@ -82,26 +91,6 @@ export function Header() {
                 </Link>
               </Button>
           )}
-          
-          {!isCustomer && (
-            <>
-               <Button asChild variant={isAdminPage ? 'secondary' : 'ghost'} size="sm">
-                <Link href="/admin">
-                  <Shield className="mr-2 h-4 w-4" />
-                  Admin
-                </Link>
-              </Button>
-              {isSuperAdmin && (
-                <Button asChild variant={isSuperAdminPage ? 'secondary' : 'ghost'} size="sm">
-                    <Link href="/super-admin">
-                    <Gem className="mr-2 h-4 w-4" />
-                    Super Admin
-                    </Link>
-                </Button>
-              )}
-            </>
-          )}
-
         </nav>
       </div>
     </header>

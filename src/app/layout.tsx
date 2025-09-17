@@ -6,15 +6,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { DataContext, useDataProvider } from '@/lib/store';
 import React from 'react';
 
-// Note: Metadata is commented out but kept here to show it would be in a server component.
-/*
-import type {Metadata} from 'next';
-export const metadata: Metadata = {
-  title: 'EZBus',
-  description: 'The easiest way to book your bus tickets.',
-};
-*/
-
 function DataProvider({ children }: { children: React.ReactNode }) {
     const data = useDataProvider();
     return <DataContext.Provider value={data}>{children}</DataContext.Provider>;
