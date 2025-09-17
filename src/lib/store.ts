@@ -15,8 +15,8 @@ const SUPER_ADMIN_USER: BusOwner = {
     name: 'System Provider',
     commissionTiers: [] // Super admin has no commission
 };
-const LOGGED_IN_USER_ID = initialAllOwnersData[0].id; // Simulate logging in as the first bus owner
-// To test as super admin, change the above to: const LOGGED_IN_USER_ID = SUPER_ADMIN_ID;
+// To test as a regular owner, change the below to: initialAllOwnersData[0].id;
+const LOGGED_IN_USER_ID = SUPER_ADMIN_ID; 
 // --- END SIMULATED AUTH ---
 
 
