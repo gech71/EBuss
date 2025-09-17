@@ -1,4 +1,5 @@
 
+
 export interface Seat {
   id: string; // e.g., "1A", "1B"
   status: 'available' | 'occupied' | 'selected';
@@ -18,6 +19,13 @@ export interface BusOwner {
   id: string;
   name: string;
   commissionTiers: CommissionTier[];
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  ownerId: string;
 }
 
 export interface Bus {

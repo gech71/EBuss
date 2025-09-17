@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode, useMemo } from 'react';
-import type { Route, Bus, Discount, Booking, Seat, BusOwner, CommissionTier } from './types';
+import type { Route, Bus, Discount, Booking, Seat, BusOwner, CommissionTier, User } from './types';
 import { allRoutes as initialGlobalRoutes, allBuses as initialGlobalBuses, allOwners as initialAllOwnersData, generateSeats } from './data';
 import { usePathname } from 'next/navigation';
 
@@ -105,6 +105,7 @@ interface DataStore {
     discounts: Discount[];
     bookings: Booking[];
     owners: BusOwner[];
+    users: User[];
     isSuperAdmin: boolean;
     loggedInUserId: string;
     setLoggedInUserId: (id: string) => void;
@@ -126,6 +127,7 @@ interface DataStore {
     addOwner: (name: string, commissionTiers: CommissionTier[]) => void;
     updateOwner: (owner: BusOwner) => void;
     deleteOwner: (id: string) => void;
+    addUser: (user: Omit<User, 'id'>) => void;
 }
 
 export const DataContext = createContext<DataStore | undefined>(undefined);
@@ -149,8 +151,8 @@ export function useDataProvider(): DataStore {
     const [globalBuses, setGlobalBuses] = useState<Bus[]>(initialBusesWithBookings);
     const [globalBookings, setGlobalBookings] = useState<Booking[]>(initialBookings);
     const [allOwners, setAllOwners] = useState<BusOwner[]>([SUPER_ADMIN_USER, ...initialAllOwnersData]);
-    const [loggedInUserId, setLoggedInUserId] = useState(CUSTOMER_ID); // Default to customer
-
+    const [loggedInUserId, setLoggedInUserId] = useState(SUPER_ADMIN_ID); // Default to super admin
+    const [users, setUsers] = useState<User[]>([]);
 
     // --- Scoped State (based on logged-in user) ---
     const isSuperAdmin = loggedInUserId === SUPER_ADMIN_ID;
@@ -207,7 +209,7 @@ export function useDataProvider(): DataStore {
     };
 
     const addBus = (bus: Omit<Bus, 'id' | 'layout' | 'ownerId'> & { layout?: Bus['layout'] }) => {
-        if(loggedInUserId === CUSTOMER_ID || loggedInUserId === SUPER_ADMIN_ID) return;
+        if(loggedInUserId === CUSTOMER_ID || isSuperAdmin) return;
         
         const newBus: Bus = { 
             ...bus, 
@@ -334,15 +336,21 @@ export function useDataProvider(): DataStore {
         setAllOwners(prev => prev.filter(owner => owner.id !== id));
     };
 
+    const addUser = (user: Omit<User, 'id'>) => {
+        const newUser = { ...user, id: `user-${Date.now()}`};
+        setUsers(prev => [...prev, newUser]);
+    };
+
 
     return {
-        routes, buses, locations, discounts, bookings, owners: allOwners, isSuperAdmin, loggedInUserId, setLoggedInUserId,
+        routes, buses, locations, discounts, bookings, owners: allOwners, users, isSuperAdmin, loggedInUserId, setLoggedInUserId,
         getBusById, getOwnerById,
         addRoute, updateRoute, deleteRoute,
         addBus, updateBus, deleteBus,
         addLocation, updateLocation, deleteLocation,
         addDiscount, updateDiscount, deleteDiscount,
         addBooking,
-        addOwner, updateOwner, deleteOwner
+        addOwner, updateOwner, deleteOwner,
+        addUser
     };
 }
