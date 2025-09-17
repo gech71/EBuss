@@ -5,12 +5,13 @@ import { Button } from './ui/button';
 import { usePathname } from 'next/navigation';
 import { User, Shield, Gem } from 'lucide-react';
 import { SidebarTrigger } from './ui/sidebar';
-import { UserSwitcher } from './super-admin/UserSwitcher';
+import { UserLoginSwitcher } from './UserLoginSwitcher';
 import { useData } from '@/lib/store';
 
 export function Header() {
   const pathname = usePathname();
-  const { isSuperAdmin } = useData();
+  const { isSuperAdmin, loggedInUserId } = useData();
+  const isCustomer = loggedInUserId === 'customer';
 
   const isAdminPage = pathname.startsWith('/admin') && !pathname.startsWith('/super-admin');
   const isSuperAdminPage = pathname.startsWith('/super-admin');
@@ -27,32 +28,32 @@ export function Header() {
             {isSuperAdminPage && (
                 <div className="hidden md:flex items-center gap-4">
                      <h1 className="font-headline text-xl font-bold text-primary">Super Admin</h1>
-                     {isSuperAdmin && <UserSwitcher />}
                 </div>
             )}
         </div>
         
-        <nav className="flex items-center gap-2">
-          <Button asChild variant={!isAdminPage && !isSuperAdminPage ? 'secondary' : 'ghost'} size="sm">
-            <Link href="/">
-              <User className="mr-2 h-4 w-4" />
-              Customer
-            </Link>
-          </Button>
-          <Button asChild variant={isAdminPage ? 'secondary' : 'ghost'} size="sm">
-            <Link href="/admin">
-              <Shield className="mr-2 h-4 w-4" />
-              Admin
-            </Link>
-          </Button>
-          {isSuperAdmin && (
-            <Button asChild variant={isSuperAdminPage ? 'secondary' : 'ghost'} size="sm">
-                <Link href="/super-admin">
-                <Gem className="mr-2 h-4 w-4" />
-                Super Admin
+        <nav className="flex items-center gap-4">
+          <UserLoginSwitcher />
+          
+          {!isCustomer && (
+            <>
+               <Button asChild variant={isAdminPage ? 'secondary' : 'ghost'} size="sm">
+                <Link href="/admin">
+                  <Shield className="mr-2 h-4 w-4" />
+                  Admin
                 </Link>
-            </Button>
+              </Button>
+              {isSuperAdmin && (
+                <Button asChild variant={isSuperAdminPage ? 'secondary' : 'ghost'} size="sm">
+                    <Link href="/super-admin">
+                    <Gem className="mr-2 h-4 w-4" />
+                    Super Admin
+                    </Link>
+                </Button>
+              )}
+            </>
           )}
+
         </nav>
       </div>
     </header>

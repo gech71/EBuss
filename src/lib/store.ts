@@ -8,15 +8,13 @@ import { usePathname } from 'next/navigation';
 
 
 // --- SIMULATED AUTH ---
-// In a real app, this would come from an auth context (e.g., Firebase Auth)
 const SUPER_ADMIN_ID = 'super-admin';
 const SUPER_ADMIN_USER: BusOwner = { 
     id: SUPER_ADMIN_ID, 
     name: 'System Provider',
     commissionTiers: [] // Super admin has no commission
 };
-// To test as a regular owner, change the below to: initialAllOwnersData[0].id;
-const LOGGED_IN_USER_ID = SUPER_ADMIN_ID; 
+const CUSTOMER_ID = 'customer';
 // --- END SIMULATED AUTH ---
 
 
@@ -108,8 +106,8 @@ interface DataStore {
     bookings: Booking[];
     owners: BusOwner[];
     isSuperAdmin: boolean;
-    viewedOwnerId: string;
-    setViewedOwnerId: (id: string) => void;
+    loggedInUserId: string;
+    setLoggedInUserId: (id: string) => void;
     getBusById: (busId: string) => Bus | undefined;
     getOwnerById: (ownerId: string) => BusOwner | undefined;
     addRoute: (route: Omit<Route, 'id'>) => void;
@@ -151,50 +149,47 @@ export function useDataProvider(): DataStore {
     const [globalBuses, setGlobalBuses] = useState<Bus[]>(initialBusesWithBookings);
     const [globalBookings, setGlobalBookings] = useState<Booking[]>(initialBookings);
     const [allOwners, setAllOwners] = useState<BusOwner[]>([SUPER_ADMIN_USER, ...initialAllOwnersData]);
+    const [loggedInUserId, setLoggedInUserId] = useState(CUSTOMER_ID); // Default to customer
 
-
-    // --- View State (for super-admin switching) ---
-    const [viewState, setViewState] = useState<{ viewedOwnerId?: string }>({});
 
     // --- Scoped State (based on logged-in user) ---
-    const { isSuperAdmin, viewedOwnerId, setViewedOwnerId } = useMemo(() => {
-        const admin = LOGGED_IN_USER_ID === SUPER_ADMIN_ID;
-        // In super-admin section, view the selected owner. Otherwise, view your own.
+    const { isSuperAdmin, viewedOwnerId } = useMemo(() => {
+        const admin = loggedInUserId === SUPER_ADMIN_ID;
+        
+        // Super admin on the super admin page can view other owners.
+        // On the regular admin page, they see their own (empty) data.
+        // A regular owner always sees their own data.
         let currentId = admin && isSuperAdminPage 
-            ? (viewState.viewedOwnerId || initialAllOwnersData[0]?.id) 
-            : LOGGED_IN_USER_ID;
-
-        // If a non-admin somehow lands on super-admin page, default to their own ID.
-        if (isSuperAdminPage && !admin) {
-            currentId = LOGGED_IN_USER_ID;
-        }
+            ? (loggedInUserId) // This part might need a separate state for "viewing as"
+            : loggedInUserId;
 
         return {
             isSuperAdmin: admin,
             viewedOwnerId: currentId,
-            setViewedOwnerId: (id: string) => setViewState(s => ({...s, viewedOwnerId: id})),
         };
-    }, [viewState.viewedOwnerId, isSuperAdminPage]);
+    }, [loggedInUserId, isSuperAdminPage]);
 
     
     const buses = useMemo(() => {
-        if (!viewedOwnerId) return [];
-        if (isSuperAdmin && !isSuperAdminPage) return []; // Super admin on /admin sees nothing
-        return globalBuses.filter(bus => bus.ownerId === viewedOwnerId);
-    }, [globalBuses, viewedOwnerId, isSuperAdmin, isSuperAdminPage]);
+        if (loggedInUserId === CUSTOMER_ID) return [];
+        if (isSuperAdmin) return globalBuses; // Super admin sees all buses on super-admin pages
+        return globalBuses.filter(bus => bus.ownerId === loggedInUserId);
+    }, [globalBuses, loggedInUserId, isSuperAdmin]);
 
     const busIdsForCurrentUser = useMemo(() => new Set(buses.map(b => b.id)), [buses]);
 
     const routes = useMemo(() => {
+        if (isSuperAdmin) return globalRoutes;
         return globalRoutes.filter(route => busIdsForCurrentUser.has(route.busId));
-    }, [globalRoutes, busIdsForCurrentUser]);
+    }, [globalRoutes, busIdsForCurrentUser, isSuperAdmin]);
 
     const routeIdsForCurrentUser = useMemo(() => new Set(routes.map(r => r.id)), [routes]);
 
     const bookings = useMemo(() => {
-        if (isSuperAdmin && !isSuperAdminPage) return [];
+        if (loggedInUserId === CUSTOMER_ID) return [];
+        if (isSuperAdmin) return globalBookings;
         return globalBookings.filter(booking => routeIdsForCurrentUser.has(booking.routeId));
-    }, [globalBookings, routeIdsForCurrentUser, isSuperAdmin, isSuperAdminPage]);
+    }, [globalBookings, routeIdsForCurrentUser, isSuperAdmin, loggedInUserId]);
     
     // Non-scoped data
     const [locations, setLocations] = useState<string[]>(getInitialLocations(initialGlobalRoutes));
@@ -226,10 +221,12 @@ export function useDataProvider(): DataStore {
     };
 
     const addBus = (bus: Omit<Bus, 'id' | 'layout' | 'ownerId'> & { layout?: Bus['layout'] }) => {
+        if(loggedInUserId === CUSTOMER_ID || loggedInUserId === SUPER_ADMIN_ID) return;
+        
         const newBus: Bus = { 
             ...bus, 
             id: `bus-${Date.now()}`,
-            ownerId: LOGGED_IN_USER_ID, // Assign to the currently logged-in owner
+            ownerId: loggedInUserId, // Assign to the currently logged-in owner
             layout: bus.layout || {
                 rows: Math.ceil(bus.capacity / 4),
                 cols: 5,
@@ -240,14 +237,14 @@ export function useDataProvider(): DataStore {
     };
     
     const updateBus = (updatedBus: Bus) => {
-        if (updatedBus.ownerId !== viewedOwnerId && !isSuperAdmin) return;
+        if (updatedBus.ownerId !== loggedInUserId && !isSuperAdmin) return;
         setGlobalBuses(prev => prev.map(b => b.id === updatedBus.id ? updatedBus : b));
     };
     
     const deleteBus = (id: string) => {
         const busToDelete = globalBuses.find(b => b.id === id);
         if (!busToDelete) return;
-        if (busToDelete.ownerId !== viewedOwnerId && !isSuperAdmin) return;
+        if (busToDelete.ownerId !== loggedInUserId && !isSuperAdmin) return;
         setGlobalBuses(prev => prev.filter(b => b.id !== id));
     };
 
@@ -353,7 +350,7 @@ export function useDataProvider(): DataStore {
 
 
     return {
-        routes, buses, locations, discounts, bookings, owners: allOwners, isSuperAdmin, viewedOwnerId, setViewedOwnerId,
+        routes, buses, locations, discounts, bookings, owners: allOwners, isSuperAdmin, loggedInUserId, setLoggedInUserId,
         getBusById, getOwnerById,
         addRoute, updateRoute, deleteRoute,
         addBus, updateBus, deleteBus,
