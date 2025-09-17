@@ -153,25 +153,11 @@ export function useDataProvider(): DataStore {
 
 
     // --- Scoped State (based on logged-in user) ---
-    const { isSuperAdmin, viewedOwnerId } = useMemo(() => {
-        const admin = loggedInUserId === SUPER_ADMIN_ID;
-        
-        // Super admin on the super admin page can view other owners.
-        // On the regular admin page, they see their own (empty) data.
-        // A regular owner always sees their own data.
-        let currentId = admin && isSuperAdminPage 
-            ? (loggedInUserId) // This part might need a separate state for "viewing as"
-            : loggedInUserId;
-
-        return {
-            isSuperAdmin: admin,
-            viewedOwnerId: currentId,
-        };
-    }, [loggedInUserId, isSuperAdminPage]);
+    const isSuperAdmin = loggedInUserId === SUPER_ADMIN_ID;
 
     
     const buses = useMemo(() => {
-        if (loggedInUserId === CUSTOMER_ID) return [];
+        if (loggedInUserId === CUSTOMER_ID) return globalBuses;
         if (isSuperAdmin) return globalBuses; // Super admin sees all buses on super-admin pages
         return globalBuses.filter(bus => bus.ownerId === loggedInUserId);
     }, [globalBuses, loggedInUserId, isSuperAdmin]);
@@ -179,9 +165,9 @@ export function useDataProvider(): DataStore {
     const busIdsForCurrentUser = useMemo(() => new Set(buses.map(b => b.id)), [buses]);
 
     const routes = useMemo(() => {
-        if (isSuperAdmin) return globalRoutes;
+        if (isSuperAdmin || loggedInUserId === CUSTOMER_ID) return globalRoutes;
         return globalRoutes.filter(route => busIdsForCurrentUser.has(route.busId));
-    }, [globalRoutes, busIdsForCurrentUser, isSuperAdmin]);
+    }, [globalRoutes, busIdsForCurrentUser, isSuperAdmin, loggedInUserId]);
 
     const routeIdsForCurrentUser = useMemo(() => new Set(routes.map(r => r.id)), [routes]);
 
