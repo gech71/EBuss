@@ -80,13 +80,19 @@ export const allBuses: Bus[] = [
   }
 ];
 
+const tomorrow = new Date();
+tomorrow.setDate(tomorrow.getDate() + 1);
+
+const dayAfterTomorrow = new Date();
+dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+
 export const allRoutes: Route[] = [
   {
     id: 'route-01',
     origin: 'New York, NY',
     destination: 'Boston, MA',
-    departureTime: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours from now
-    arrivalTime: new Date(Date.now() + 6 * 60 * 60 * 1000), // 6 hours from now
+    departureTime: new Date(tomorrow.setHours(9, 0, 0, 0)),
+    arrivalTime: new Date(tomorrow.setHours(13, 30, 0, 0)),
     price: 45.00,
     busId: 'bus-001',
   },
@@ -94,8 +100,8 @@ export const allRoutes: Route[] = [
     id: 'route-02',
     origin: 'Los Angeles, CA',
     destination: 'San Francisco, CA',
-    departureTime: new Date(Date.now() + 3 * 60 * 60 * 1000), // 3 hours from now
-    arrivalTime: new Date(Date.now() + 9 * 60 * 60 * 1000), // 9 hours from now
+    departureTime: new Date(tomorrow.setHours(11, 0, 0, 0)),
+    arrivalTime: new Date(tomorrow.setHours(18, 0, 0, 0)),
     price: 60.00,
     busId: 'bus-002',
   },
@@ -103,8 +109,8 @@ export const allRoutes: Route[] = [
     id: 'route-03',
     origin: 'Chicago, IL',
     destination: 'Detroit, MI',
-    departureTime: new Date(Date.now() + 4 * 60 * 60 * 1000),
-    arrivalTime: new Date(Date.now() + 9 * 60 * 60 * 1000),
+    departureTime: new Date(dayAfterTomorrow.setHours(8, 30, 0, 0)),
+    arrivalTime: new Date(dayAfterTomorrow.setHours(14, 0, 0, 0)),
     price: 35.00,
     busId: 'bus-001',
   },
@@ -112,8 +118,8 @@ export const allRoutes: Route[] = [
     id: 'route-04',
     origin: 'Miami, FL',
     destination: 'Orlando, FL',
-    departureTime: new Date(Date.now() + 5 * 60 * 60 * 1000),
-    arrivalTime: new Date(Date.now() + 9 * 60 * 60 * 1000),
+    departureTime: new Date(dayAfterTomorrow.setHours(14, 0, 0, 0)),
+    arrivalTime: new Date(dayAfterTomorrow.setHours(18, 0, 0, 0)),
     price: 25.00,
     busId: 'bus-002',
   },
@@ -121,8 +127,8 @@ export const allRoutes: Route[] = [
     id: 'route-05',
     origin: 'New York, NY',
     destination: 'Boston, MA',
-    departureTime: new Date(Date.now() + 2 * 60 * 60 * 1000), // Same time as route-01, but different bus
-    arrivalTime: new Date(Date.now() + 6 * 60 * 60 * 1000),
+    departureTime: new Date(tomorrow.setHours(9, 0, 0, 0)),
+    arrivalTime: new Date(tomorrow.setHours(13, 30, 0, 0)),
     price: 55.00,
     busId: 'bus-003',
   },
