@@ -3,17 +3,11 @@
 
 import { Header } from "@/components/Header";
 import { RouteSearch } from "@/components/RouteSearch";
-import { DataContext, useDataProvider } from '@/lib/store';
 import React from 'react';
 
-function DataProvider({ children }: { children: React.ReactNode }) {
-    const data = useDataProvider();
-    return <DataContext.Provider value={data}>{children}</DataContext.Provider>;
-}
 
 export default function Home() {
   return (
-    <DataProvider>
       <div className="flex flex-col min-h-screen bg-background">
         <Header />
         <main className="flex-1 container mx-auto py-8 px-4">
@@ -32,6 +26,5 @@ export default function Home() {
           
         </main>
       </div>
-    </DataProvider>
   );
 }
