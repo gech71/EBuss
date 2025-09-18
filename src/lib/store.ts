@@ -1,9 +1,9 @@
 
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode, useMemo } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useMemo, useEffect } from 'react';
 import type { Route, Bus, Discount, Booking, Seat, BusOwner, CommissionTier, User } from './types';
-import { allRoutes as initialGlobalRoutes, allBuses as initialGlobalBuses, allOwners as initialAllOwnersData, generateSeats } from './data';
+import { allRoutes as initialGlobalRoutes, allBuses as initialGlobalBuses, allOwners as initialAllOwnersData, allDiscounts as initialGlobalDiscounts, generateSeats } from './data';
 
 // --- SIMULATED AUTH ---
 const SUPER_ADMIN_ID = 'super-admin';
@@ -101,6 +101,7 @@ const getInitialBookings = (routes: Route[], buses: Bus[]): { bookings: Booking[
 
 
 interface DataStore {
+    loading: boolean;
     routes: Route[];
     buses: Bus[];
     locations: string[];
@@ -119,7 +120,7 @@ interface DataStore {
     addRoute: (route: Omit<Route, 'id'>) => void;
     updateRoute: (route: Route) => void;
     deleteRoute: (id: string) => void;
-    addBus: (bus: Omit<Bus, 'id' | 'layout'>) => void;
+    addBus: (bus: Omit<Bus, 'id' | 'ownerId'> & { layout?: Bus['layout'] }) => void;
     updateBus: (bus: Bus) => void;
     deleteBus: (id: string) => void;
     addLocation: (location: string) => void;
@@ -128,8 +129,8 @@ interface DataStore {
     addDiscount: (discount: Omit<Discount, 'id'>) => void;
     updateDiscount: (discount: Discount) => void;
     deleteDiscount: (id: string) => void;
-    addBooking: (booking: Booking) => boolean;
-    addOwner: (name: string, commissionTiers: CommissionTier[]) => void;
+    addBooking: (booking: Omit<Booking, 'id'>) => boolean;
+    addOwner: (name: string, commissionTiers: Omit<CommissionTier, 'id'>[]) => void;
     updateOwner: (owner: BusOwner) => void;
     deleteOwner: (id: string) => void;
     addUser: (user: Omit<User, 'id' | 'password'>, password?: string) => void;
@@ -146,15 +147,33 @@ export const useData = () => {
 };
 
 export function useDataProvider(): DataStore {
+    const [loading, setLoading] = useState(true);
     // --- Global State ---
-    const [globalRoutes, setGlobalRoutes] = useState<Route[]>(initialGlobalRoutes);
-    const { bookings: initialBookings, updatedBuses: initialBusesWithBookings } = getInitialBookings(initialGlobalRoutes, initialGlobalBuses);
-    const [globalBuses, setGlobalBuses] = useState<Bus[]>(initialBusesWithBookings);
-    const [globalBookings, setGlobalBookings] = useState<Booking[]>(initialBookings);
-    const [allOwners, setAllOwners] = useState<BusOwner[]>([SUPER_ADMIN_USER, ...initialAllOwnersData]);
-    const [users, setUsers] = useState<User[]>(initialUsers);
-
+    const [globalRoutes, setGlobalRoutes] = useState<Route[]>([]);
+    const [globalBuses, setGlobalBuses] = useState<Bus[]>([]);
+    const [globalBookings, setGlobalBookings] = useState<Booking[]>([]);
+    const [allOwners, setAllOwners] = useState<BusOwner[]>([]);
+    const [users, setUsers] = useState<User[]>([]);
+    const [locations, setLocations] = useState<string[]>([]);
+    const [discounts, setDiscounts] = useState<Discount[]>([]);
+    
     const [loggedInUserId, setLoggedInUserIdState] = useState<string | null>(CUSTOMER_ID);
+
+    useEffect(() => {
+        // Simulate fetching initial data
+        const { bookings: initialBookings, updatedBuses: initialBusesWithBookings } = getInitialBookings(initialGlobalRoutes, initialGlobalBuses);
+        
+        setGlobalRoutes(initialGlobalRoutes);
+        setGlobalBuses(initialBusesWithBookings);
+        setGlobalBookings(initialBookings);
+        setAllOwners([SUPER_ADMIN_USER, ...initialAllOwnersData]);
+        setUsers(initialUsers);
+        setLocations(getInitialLocations(initialGlobalRoutes));
+        setDiscounts(initialGlobalDiscounts);
+
+        setLoading(false);
+    }, [initialGlobalRoutes, initialGlobalBuses, initialAllOwnersData, initialGlobalDiscounts]);
+
 
     const setLoggedInUserId = (id: string) => {
         setLoggedInUserIdState(id);
@@ -198,11 +217,6 @@ export function useDataProvider(): DataStore {
         return globalBookings.filter(booking => routeIdsForCurrentUser.has(booking.routeId));
     }, [globalBookings, routeIdsForCurrentUser, isSuperAdmin, loggedInUserId]);
     
-    // Non-scoped data
-    const [locations, setLocations] = useState<string[]>(getInitialLocations(initialGlobalRoutes));
-    const [discounts, setDiscounts] = useState<Discount[]>([]);
-
-
     const getBusById = (busId: string) => {
         return globalBuses.find(b => b.id === busId);
     };
@@ -227,11 +241,13 @@ export function useDataProvider(): DataStore {
         setGlobalRoutes(prev => prev.filter(r => r.id !== id));
     };
 
-    const addBus = (bus: Omit<Bus, 'id' | 'layout'>) => {
+    const addBus = (bus: Omit<Bus, 'id' | 'ownerId'> & { layout?: Bus['layout'] }) => {
         if (loggedInUserId === CUSTOMER_ID || isSuperAdmin || !loggedInUserId) return;
         
         const newBus: Bus = { 
-            ...bus, 
+            ...bus,
+            name: bus.name,
+            capacity: bus.capacity,
             id: `bus-${Date.now()}`,
             ownerId: loggedInUserId,
             layout: bus.layout || {
@@ -291,8 +307,9 @@ export function useDataProvider(): DataStore {
         setDiscounts(prev => prev.filter(d => d.id !== id));
     };
 
-    const addBooking = (booking: Booking): boolean => {
+    const addBooking = (booking: Omit<Booking, 'id'>): boolean => {
         let success = true;
+        let newBooking: Booking | null = null;
         setGlobalBuses(prevBuses => {
             const relevantRoute = globalRoutes.find(r => r.id === booking.routeId);
             const busToUpdate = prevBuses.find(bus => bus.id === relevantRoute?.busId);
@@ -313,6 +330,8 @@ export function useDataProvider(): DataStore {
             if (!success) {
                 return prevBuses;
             }
+            
+            newBooking = { ...booking, id: `ticket-${Date.now()}` };
 
             const newBuses = prevBuses.map(bus => {
                 if (bus.id === relevantRoute?.busId) {
@@ -330,15 +349,19 @@ export function useDataProvider(): DataStore {
             return newBuses;
         });
         
-        if (success) {
-            setGlobalBookings(prev => [...prev, booking]);
+        if (success && newBooking) {
+            setGlobalBookings(prev => [...prev, newBooking!]);
         }
         
         return success;
     };
     
-    const addOwner = (name: string, commissionTiers: CommissionTier[]) => {
-        const newOwner: BusOwner = { id: `owner-${Date.now()}`, name, commissionTiers };
+    const addOwner = (name: string, commissionTiers: Omit<CommissionTier, 'id'>[]) => {
+        const newOwner: BusOwner = { 
+            id: `owner-${Date.now()}`, 
+            name, 
+            commissionTiers: commissionTiers.map(tier => ({...tier, id: `tier-${Math.random()}`}))
+        };
         setAllOwners(prev => [...prev, newOwner]);
     };
 
@@ -362,6 +385,7 @@ export function useDataProvider(): DataStore {
 
 
     return {
+        loading,
         routes, buses, locations, discounts, bookings, owners: allOwners, users, isSuperAdmin, loggedInUserId, loggedInUser, setLoggedInUserId, login, logout,
         getBusById, getOwnerById,
         addRoute, updateRoute, deleteRoute,

@@ -1,5 +1,5 @@
 
-import type { Bus, Route, Seat, BusOwner } from './types';
+import type { Bus, Route, Seat, BusOwner, Discount } from './types';
 
 export const generateSeats = (rows: number, cols: number, aisleCols: number[], lastRowFull: boolean = false): Seat[] => {
   const seats: Seat[] = [];
@@ -132,4 +132,17 @@ export const allRoutes: Route[] = [
     busId: 'bus-003',
     discountId: 'discount-summer-2025',
   },
+];
+
+export const allDiscounts: Discount[] = [
+    {
+        id: 'discount-summer-2025',
+        name: 'Summer Group Offer',
+        startDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000), // active 10 days ago
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // active for 30 more days
+        tiers: [
+            { id: 'tier-d1-1', minTickets: 2, maxTickets: 4, percentage: 10 },
+            { id: 'tier-d1-2', minTickets: 5, maxTickets: 10, percentage: 15 },
+        ]
+    }
 ];
