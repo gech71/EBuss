@@ -11,11 +11,15 @@ type AuthRedirectOptions = {
 
 export function useAuthRedirect(options: AuthRedirectOptions = {}) {
     const { requiredRole } = options;
-    const { loggedInUserId, isSuperAdmin } = useData();
+    const { loggedInUserId, isSuperAdmin, loading: dataLoading } = useData();
     const router = useRouter();
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        if (dataLoading) {
+            return; // Wait for data to be loaded, including auth state from localStorage
+        }
+
         const isCustomer = loggedInUserId === 'customer' || !loggedInUserId;
 
         if (isCustomer) {
@@ -30,7 +34,7 @@ export function useAuthRedirect(options: AuthRedirectOptions = {}) {
 
         setLoading(false);
 
-    }, [loggedInUserId, isSuperAdmin, requiredRole, router]);
+    }, [loggedInUserId, isSuperAdmin, requiredRole, router, dataLoading]);
 
-    return { loading };
+    return { loading: loading || dataLoading };
 }

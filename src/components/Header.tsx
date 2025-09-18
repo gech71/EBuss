@@ -21,7 +21,8 @@ export function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const { isSuperAdmin, loggedInUserId, loggedInUser, logout } = useData();
-  const isCustomer = loggedInUserId === 'customer' || !loggedInUserId;
+  const isCustomer = loggedInUserId === 'customer';
+  const isAdminOrSuper = loggedInUserId && !isCustomer;
 
   const isAdminPage = pathname.startsWith('/admin') && !pathname.startsWith('/super-admin');
   const isSuperAdminPage = pathname.startsWith('/super-admin');
@@ -48,7 +49,7 @@ export function Header() {
         </div>
         
         <nav className="flex items-center gap-4">
-          {!isCustomer && loggedInUser && (
+          {loggedInUser ? (
              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-fit px-4">
@@ -72,18 +73,16 @@ export function Header() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-          )}
-
-          {isCustomer && (
+          ) : (
              <Button asChild variant="outline" size="sm">
                 <Link href="/login">
                   <LogIn className="mr-2 h-4 w-4" />
-                  Admin Login
+                  Login / Register
                 </Link>
               </Button>
           )}
           
-          {!isCustomer && (
+          {isAdminOrSuper && (
             <>
                <Button asChild variant={isAdminPage ? 'secondary' : 'ghost'} size="sm">
                 <Link href="/admin">

@@ -112,9 +112,10 @@ interface DataStore {
     isSuperAdmin: boolean;
     loggedInUserId: string | null;
     loggedInUser: User | null;
-    setLoggedInUserId: (id: string) => void;
-    login: (email: string, password: string) => User | null;
+    setLoggedInUserId: (id: string | null) => void;
+    login: (email: string, password: string) => { user: User; token: string } | null;
     logout: () => void;
+    register: (details: Omit<User, 'id' | 'ownerId'>) => { success: boolean, message?: string };
     getBusById: (busId: string) => Bus | undefined;
     getOwnerById: (ownerId: string) => BusOwner | undefined;
     addRoute: (route: Omit<Route, 'id'>) => void;
@@ -157,10 +158,9 @@ export function useDataProvider(): DataStore {
     const [locations, setLocations] = useState<string[]>([]);
     const [discounts, setDiscounts] = useState<Discount[]>([]);
     
-    const [loggedInUserId, setLoggedInUserIdState] = useState<string | null>(CUSTOMER_ID);
+    const [loggedInUserId, setLoggedInUserIdState] = useState<string | null>(null);
 
     useEffect(() => {
-        // Simulate fetching initial data
         const { bookings: initialBookings, updatedBuses: initialBusesWithBookings } = getInitialBookings(initialGlobalRoutes, initialGlobalBuses);
         
         setGlobalRoutes(initialGlobalRoutes);
@@ -171,25 +171,57 @@ export function useDataProvider(): DataStore {
         setLocations(getInitialLocations(initialGlobalRoutes));
         setDiscounts(initialGlobalDiscounts);
 
+        // Check for token in localStorage on initial load
+        const token = localStorage.getItem('authToken');
+        if (token) {
+            try {
+                const decoded = JSON.parse(atob(token.split('.')[1]));
+                setLoggedInUserIdState(decoded.sub);
+            } catch (e) {
+                localStorage.removeItem('authToken');
+            }
+        }
+
         setLoading(false);
-    }, [initialGlobalRoutes, initialGlobalBuses, initialAllOwnersData, initialGlobalDiscounts]);
+    }, []);
 
 
-    const setLoggedInUserId = (id: string) => {
+    const setLoggedInUserId = (id: string | null) => {
         setLoggedInUserIdState(id);
     };
     
-    const login = (email: string, password: string): User | null => {
+    const login = (email: string, password: string): { user: User; token: string } | null => {
         const user = users.find(u => u.email === email && u.password === password);
         if (user) {
             setLoggedInUserIdState(user.ownerId);
-            return user;
+            // Create a mock JWT token
+            const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+            const payload = btoa(JSON.stringify({ sub: user.ownerId, name: user.name, iat: Date.now() }));
+            const signature = 'mock-signature'; // In a real app, this would be a real signature
+            const token = `${header}.${payload}.${signature}`;
+            return { user, token };
         }
         return null;
     };
 
     const logout = () => {
         setLoggedInUserIdState(null);
+        localStorage.removeItem('authToken');
+    };
+
+    const register = (details: Omit<User, 'id' | 'ownerId'>): { success: boolean, message?: string } => {
+        if (users.some(u => u.email === details.email)) {
+            return { success: false, message: 'A user with this email already exists.' };
+        }
+        const newUser: User = {
+            id: `user-${Date.now()}`,
+            name: details.name,
+            email: details.email,
+            password: details.password,
+            ownerId: CUSTOMER_ID, // All registered users are customers
+        };
+        setUsers(prev => [...prev, newUser]);
+        return { success: true };
     };
 
     // --- Scoped State (based on logged-in user) ---
@@ -197,7 +229,7 @@ export function useDataProvider(): DataStore {
     const loggedInUser = useMemo(() => users.find(u => u.ownerId === loggedInUserId) || null, [users, loggedInUserId]);
 
     const buses = useMemo(() => {
-        if (loggedInUserId === CUSTOMER_ID || !loggedInUserId) return globalBuses;
+        if (!loggedInUserId || loggedInUserId === CUSTOMER_ID) return globalBuses;
         if (isSuperAdmin) return globalBuses;
         return globalBuses.filter(bus => bus.ownerId === loggedInUserId);
     }, [globalBuses, loggedInUserId, isSuperAdmin]);
@@ -205,14 +237,14 @@ export function useDataProvider(): DataStore {
     const busIdsForCurrentUser = useMemo(() => new Set(buses.map(b => b.id)), [buses]);
 
     const routes = useMemo(() => {
-        if (isSuperAdmin || loggedInUserId === CUSTOMER_ID || !loggedInUserId) return globalRoutes;
+        if (isSuperAdmin || !loggedInUserId || loggedInUserId === CUSTOMER_ID) return globalRoutes;
         return globalRoutes.filter(route => busIdsForCurrentUser.has(route.busId));
     }, [globalRoutes, busIdsForCurrentUser, isSuperAdmin, loggedInUserId]);
 
     const routeIdsForCurrentUser = useMemo(() => new Set(routes.map(r => r.id)), [routes]);
 
     const bookings = useMemo(() => {
-        if (loggedInUserId === CUSTOMER_ID || !loggedInUserId) return [];
+        if (!loggedInUserId || loggedInUserId === CUSTOMER_ID) return [];
         if (isSuperAdmin) return globalBookings;
         return globalBookings.filter(booking => routeIdsForCurrentUser.has(booking.routeId));
     }, [globalBookings, routeIdsForCurrentUser, isSuperAdmin, loggedInUserId]);
@@ -386,7 +418,7 @@ export function useDataProvider(): DataStore {
 
     return {
         loading,
-        routes, buses, locations, discounts, bookings, owners: allOwners, users, isSuperAdmin, loggedInUserId, loggedInUser, setLoggedInUserId, login, logout,
+        routes, buses, locations, discounts, bookings, owners: allOwners, users, isSuperAdmin, loggedInUserId, loggedInUser, setLoggedInUserId, login, logout, register,
         getBusById, getOwnerById,
         addRoute, updateRoute, deleteRoute,
         addBus, updateBus, deleteBus,

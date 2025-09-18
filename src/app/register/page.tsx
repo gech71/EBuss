@@ -13,35 +13,28 @@ import { Logo } from "@/components/Logo";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
 
-export default function LoginPage() {
-  const [email, setEmail] = useState("super@example.com");
-  const [password, setPassword] = useState("password");
-  const { login } = useData();
+export default function RegisterPage() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const { register } = useData();
   const router = useRouter();
   const { toast } = useToast();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
-    const result = login(email, password);
-    if (result) {
+    const result = register({ name, email, password });
+    
+    if (result.success) {
       toast({
-        title: "Login Successful",
-        description: `Welcome back, ${result.user.name}!`,
+        title: "Registration Successful",
+        description: "You can now log in with your new account.",
       });
-      // Store mock token
-      localStorage.setItem('authToken', result.token);
-      
-      if (result.user.ownerId === 'super-admin') {
-          router.push("/super-admin");
-      } else if (result.user.ownerId.startsWith('owner-')) {
-          router.push("/admin");
-      } else {
-          router.push("/");
-      }
+      router.push("/login");
     } else {
       toast({
-        title: "Login Failed",
-        description: "Invalid email or password.",
+        title: "Registration Failed",
+        description: result.message,
         variant: "destructive",
       });
     }
@@ -54,11 +47,22 @@ export default function LoginPage() {
           <div className="mb-4 flex justify-center">
             <Logo />
           </div>
-          <CardTitle>Welcome Back</CardTitle>
-          <CardDescription>Enter your credentials to access your account.</CardDescription>
+          <CardTitle>Create an Account</CardTitle>
+          <CardDescription>Sign up to start booking your bus tickets.</CardDescription>
         </CardHeader>
-        <form onSubmit={handleLogin}>
+        <form onSubmit={handleRegister}>
           <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Full Name</Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="John Doe"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -82,13 +86,13 @@ export default function LoginPage() {
             </div>
           </CardContent>
           <CardFooter className="flex-col gap-4">
-            <Button className="w-full" type="submit">Login</Button>
+            <Button className="w-full" type="submit">Create Account</Button>
             <Separator className="my-2" />
-            <div className="text-center text-sm text-muted-foreground">
-              Don't have an account?{' '}
+             <div className="text-center text-sm text-muted-foreground">
+              Already have an account?{' '}
               <Button variant="link" asChild className="p-0 h-auto">
-                <Link href="/register">
-                  Register
+                <Link href="/login">
+                  Login
                 </Link>
               </Button>
             </div>
