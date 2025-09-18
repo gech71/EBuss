@@ -16,12 +16,13 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useState } from "react";
 import type { Route } from "@/lib/types";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 
 export default function NewRoutePage() {
     const { toast } = useToast();
     const router = useRouter();
-    const { locations, buses, addRoute } = useData();
+    const { locations, buses, discounts, addRoute } = useData();
     
     const [origin, setOrigin] = useState<string>('');
     const [destination, setDestination] = useState<string>('');
@@ -31,6 +32,7 @@ export default function NewRoutePage() {
     const [arrivalTime, setArrivalTime] = useState('16:00');
     const [selectedBusIds, setSelectedBusIds] = useState<string[]>([]);
     const [price, setPrice] = useState<number>(0);
+    const [discountId, setDiscountId] = useState<string | undefined>();
 
     const [openOrigin, setOpenOrigin] = useState(false)
     const [openDestination, setOpenDestination] = useState(false)
@@ -72,6 +74,7 @@ export default function NewRoutePage() {
                 arrivalTime: fullArrivalTime,
                 busId,
                 price,
+                discountId: discountId === 'none' ? undefined : discountId,
             };
             addRoute(newRoute);
         });
@@ -254,9 +257,25 @@ export default function NewRoutePage() {
                                 </PopoverContent>
                             </Popover>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="price">Price</Label>
-                            <Input id="price" type="number" step="0.01" placeholder="e.g., 45.00" required value={price || ''} onChange={e => setPrice(Number(e.target.value))} />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="price">Price</Label>
+                                <Input id="price" type="number" step="0.01" placeholder="e.g., 45.00" required value={price || ''} onChange={e => setPrice(Number(e.target.value))} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="discount">Discount Offer</Label>
+                                 <Select onValueChange={setDiscountId}>
+                                    <SelectTrigger id="discount">
+                                        <SelectValue placeholder="Select a discount..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">No Discount</SelectItem>
+                                        {discounts.map(d => (
+                                            <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
                     </div>
                 </CardContent>

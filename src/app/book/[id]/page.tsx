@@ -86,26 +86,25 @@ export default function BookPage() {
   const applicableDiscountInfo = useMemo(() => {
     const now = new Date();
     const selectedCount = selectedSeats.length;
-    if (selectedCount === 0) return null;
-
-    let bestDiscount: Discount | null = null;
-    let bestTier: DiscountTier | null = null;
-
-    for (const discount of discounts) {
-      if (now >= discount.startDate && now <= discount.endDate) {
-        for (const tier of discount.tiers) {
-          if (selectedCount >= tier.minTickets && selectedCount <= tier.maxTickets) {
-            if (!bestTier || tier.percentage > bestTier.percentage) {
-              bestDiscount = discount;
-              bestTier = tier;
-            }
-          }
-        }
-      }
+    if (selectedCount === 0 || !route.discountId) return null;
+    
+    const discount = discounts.find(d => d.id === route.discountId);
+    if (!discount || now < discount.startDate || now > discount.endDate) {
+        return null;
     }
     
-    return bestDiscount && bestTier ? { discount: bestDiscount, tier: bestTier } : null;
-  }, [selectedSeats.length, discounts]);
+    let bestTier: DiscountTier | null = null;
+    for (const tier of discount.tiers) {
+        if (selectedCount >= tier.minTickets && selectedCount <= tier.maxTickets) {
+            if (!bestTier || tier.percentage > bestTier.percentage) {
+                bestTier = tier;
+            }
+        }
+    }
+    
+    return discount && bestTier ? { discount, tier: bestTier } : null;
+  }, [selectedSeats.length, discounts, route]);
+
 
   const originalPrice = selectedSeats.length * route.price;
   const discountAmount = applicableDiscountInfo ? originalPrice * (applicableDiscountInfo.tier.percentage / 100) : 0;
@@ -258,5 +257,3 @@ export default function BookPage() {
     </div>
   );
 }
-
-    

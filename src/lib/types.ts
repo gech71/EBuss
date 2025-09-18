@@ -49,6 +49,7 @@ export interface Route {
   arrivalTime: Date;
   price: number;
   busId: string;
+  discountId?: string;
 }
 
 export interface Booking {
