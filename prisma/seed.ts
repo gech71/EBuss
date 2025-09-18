@@ -107,18 +107,16 @@ async function main() {
   console.log(`Created buses: ${bus1.name}, ${bus2.name}, ${bus3.name}`);
   
   // 3. Create Routes
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const dayAfterTomorrow = new Date();
-  dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+  const tomorrow = new Date('2025-09-19T00:00:00.000Z');
+  const dayAfterTomorrow = new Date('2025-09-20T00:00:00.000Z');
 
 
   const route1 = await prisma.route.create({
     data: {
       origin: 'New York, NY',
       destination: 'Boston, MA',
-      departureTime: new Date(tomorrow.setHours(9, 0, 0, 0)),
-      arrivalTime: new Date(tomorrow.setHours(13, 30, 0, 0)),
+      departureTime: new Date(new Date(tomorrow).setHours(9, 0, 0, 0)),
+      arrivalTime: new Date(new Date(tomorrow).setHours(13, 30, 0, 0)),
       price: 45.00,
       busId: bus1.id,
     }
@@ -128,8 +126,8 @@ async function main() {
     data: {
         origin: 'Los Angeles, CA',
         destination: 'San Francisco, CA',
-        departureTime: new Date(tomorrow.setHours(11, 0, 0, 0)),
-        arrivalTime: new Date(tomorrow.setHours(18, 0, 0, 0)),
+        departureTime: new Date(new Date(tomorrow).setHours(11, 0, 0, 0)),
+        arrivalTime: new Date(new Date(tomorrow).setHours(18, 0, 0, 0)),
         price: 60.00,
         busId: bus2.id,
     }
@@ -139,8 +137,8 @@ async function main() {
     data: {
         origin: 'Chicago, IL',
         destination: 'Detroit, MI',
-        departureTime: new Date(dayAfterTomorrow.setHours(8, 30, 0, 0)),
-        arrivalTime: new Date(dayAfterTomorrow.setHours(14, 0, 0, 0)),
+        departureTime: new Date(new Date(dayAfterTomorrow).setHours(8, 30, 0, 0)),
+        arrivalTime: new Date(new Date(dayAfterTomorrow).setHours(14, 0, 0, 0)),
         price: 35.00,
         busId: bus1.id,
     }
@@ -150,8 +148,8 @@ async function main() {
     data: {
         origin: 'Miami, FL',
         destination: 'Orlando, FL',
-        departureTime: new Date(dayAfterTomorrow.setHours(14, 0, 0, 0)),
-        arrivalTime: new Date(dayAfterTomorrow.setHours(18, 0, 0, 0)),
+        departureTime: new Date(new Date(dayAfterTomorrow).setHours(14, 0, 0, 0)),
+        arrivalTime: new Date(new Date(dayAfterTomorrow).setHours(18, 0, 0, 0)),
         price: 25.00,
         busId: bus2.id,
     }
@@ -161,8 +159,8 @@ async function main() {
     data: {
         origin: 'New York, NY',
         destination: 'Boston, MA',
-        departureTime: new Date(tomorrow.setHours(9, 0, 0, 0)),
-        arrivalTime: new Date(tomorrow.setHours(13, 30, 0, 0)),
+        departureTime: new Date(new Date(tomorrow).setHours(9, 0, 0, 0)),
+        arrivalTime: new Date(new Date(tomorrow).setHours(13, 30, 0, 0)),
         price: 55.00,
         busId: bus3.id,
     }

@@ -80,28 +80,27 @@ export const allBuses: Bus[] = [
   }
 ];
 
-const tomorrow = new Date();
-tomorrow.setDate(tomorrow.getDate() + 1);
+const tomorrow = new Date('2025-09-19T00:00:00.000Z');
+const dayAfterTomorrow = new Date('2025-09-20T00:00:00.000Z');
 
-const dayAfterTomorrow = new Date();
-dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
 
 export const allRoutes: Route[] = [
   {
     id: 'route-01',
     origin: 'New York, NY',
     destination: 'Boston, MA',
-    departureTime: new Date(tomorrow.setHours(9, 0, 0, 0)),
-    arrivalTime: new Date(tomorrow.setHours(13, 30, 0, 0)),
+    departureTime: new Date(new Date(tomorrow).setHours(9, 0, 0, 0)),
+    arrivalTime: new Date(new Date(tomorrow).setHours(13, 30, 0, 0)),
     price: 45.00,
     busId: 'bus-001',
+    discountId: 'discount-summer-2025',
   },
   {
     id: 'route-02',
     origin: 'Los Angeles, CA',
     destination: 'San Francisco, CA',
-    departureTime: new Date(tomorrow.setHours(11, 0, 0, 0)),
-    arrivalTime: new Date(tomorrow.setHours(18, 0, 0, 0)),
+    departureTime: new Date(new Date(tomorrow).setHours(11, 0, 0, 0)),
+    arrivalTime: new Date(new Date(tomorrow).setHours(18, 0, 0, 0)),
     price: 60.00,
     busId: 'bus-002',
   },
@@ -109,8 +108,8 @@ export const allRoutes: Route[] = [
     id: 'route-03',
     origin: 'Chicago, IL',
     destination: 'Detroit, MI',
-    departureTime: new Date(dayAfterTomorrow.setHours(8, 30, 0, 0)),
-    arrivalTime: new Date(dayAfterTomorrow.setHours(14, 0, 0, 0)),
+    departureTime: new Date(new Date(dayAfterTomorrow).setHours(8, 30, 0, 0)),
+    arrivalTime: new Date(new Date(dayAfterTomorrow).setHours(14, 0, 0, 0)),
     price: 35.00,
     busId: 'bus-001',
   },
@@ -118,8 +117,8 @@ export const allRoutes: Route[] = [
     id: 'route-04',
     origin: 'Miami, FL',
     destination: 'Orlando, FL',
-    departureTime: new Date(dayAfterTomorrow.setHours(14, 0, 0, 0)),
-    arrivalTime: new Date(dayAfterTomorrow.setHours(18, 0, 0, 0)),
+    departureTime: new Date(new Date(dayAfterTomorrow).setHours(14, 0, 0, 0)),
+    arrivalTime: new Date(new Date(dayAfterTomorrow).setHours(18, 0, 0, 0)),
     price: 25.00,
     busId: 'bus-002',
   },
@@ -127,9 +126,10 @@ export const allRoutes: Route[] = [
     id: 'route-05',
     origin: 'New York, NY',
     destination: 'Boston, MA',
-    departureTime: new Date(tomorrow.setHours(9, 0, 0, 0)),
-    arrivalTime: new Date(tomorrow.setHours(13, 30, 0, 0)),
+    departureTime: new Date(new Date(tomorrow).setHours(9, 0, 0, 0)),
+    arrivalTime: new Date(new Date(tomorrow).setHours(13, 30, 0, 0)),
     price: 55.00,
     busId: 'bus-003',
+    discountId: 'discount-summer-2025',
   },
 ];
