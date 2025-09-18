@@ -3,9 +3,10 @@
 
 import Link from "next/link";
 import { Header } from "@/components/Header";
-import { SidebarProvider, Sidebar, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
+import { SidebarProvider, Sidebar, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "@/components/ui/sidebar";
 import { LayoutDashboard, Route as RouteIcon, Bus, QrCode, MapPin, Percent } from "lucide-react";
 import { useAuthRedirect } from "@/hooks/use-auth-redirect";
+import { UserNav } from "@/components/UserNav";
 
 export default function AdminLayout({
   children,
@@ -76,6 +77,9 @@ export default function AdminLayout({
                 </SidebarMenuItem>
               </SidebarMenu>
             </SidebarContent>
+            <SidebarFooter>
+                <UserNav />
+            </SidebarFooter>
           </Sidebar>
           <main className="flex-1 container mx-auto p-4 md:p-6">
             {children}
