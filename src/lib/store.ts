@@ -193,10 +193,11 @@ export function useDataProvider(): DataStore {
     const login = (email: string, password: string): { user: User; token: string } | null => {
         const user = users.find(u => u.email === email && u.password === password);
         if (user) {
-            setLoggedInUserIdState(user.ownerId);
+            const subject = user.ownerId === CUSTOMER_ID ? user.id : user.ownerId;
+            setLoggedInUserIdState(subject);
             // Create a mock JWT token
             const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-            const payload = btoa(JSON.stringify({ sub: user.ownerId, name: user.name, iat: Date.now() }));
+            const payload = btoa(JSON.stringify({ sub: subject, name: user.name, iat: Date.now() }));
             const signature = 'mock-signature'; // In a real app, this would be a real signature
             const token = `${header}.${payload}.${signature}`;
             return { user, token };
@@ -226,10 +227,18 @@ export function useDataProvider(): DataStore {
 
     // --- Scoped State (based on logged-in user) ---
     const isSuperAdmin = loggedInUserId === SUPER_ADMIN_ID;
-    const loggedInUser = useMemo(() => users.find(u => u.ownerId === loggedInUserId) || null, [users, loggedInUserId]);
+    
+    const loggedInUser = useMemo(() => {
+        if (!loggedInUserId) return null;
+        // If the ID starts with 'user-', it's a customer. Otherwise, it's an ownerId for an admin/super-admin.
+        if (loggedInUserId.startsWith('user-')) {
+             return users.find(u => u.id === loggedInUserId) || null;
+        }
+        return users.find(u => u.ownerId === loggedInUserId) || null;
+    }, [users, loggedInUserId]);
 
     const buses = useMemo(() => {
-        if (!loggedInUserId || loggedInUserId === CUSTOMER_ID) return globalBuses;
+        if (!loggedInUserId || loggedInUserId.startsWith('user-')) return globalBuses;
         if (isSuperAdmin) return globalBuses;
         return globalBuses.filter(bus => bus.ownerId === loggedInUserId);
     }, [globalBuses, loggedInUserId, isSuperAdmin]);
@@ -237,14 +246,14 @@ export function useDataProvider(): DataStore {
     const busIdsForCurrentUser = useMemo(() => new Set(buses.map(b => b.id)), [buses]);
 
     const routes = useMemo(() => {
-        if (isSuperAdmin || !loggedInUserId || loggedInUserId === CUSTOMER_ID) return globalRoutes;
+        if (isSuperAdmin || !loggedInUserId || loggedInUserId.startsWith('user-')) return globalRoutes;
         return globalRoutes.filter(route => busIdsForCurrentUser.has(route.busId));
     }, [globalRoutes, busIdsForCurrentUser, isSuperAdmin, loggedInUserId]);
 
     const routeIdsForCurrentUser = useMemo(() => new Set(routes.map(r => r.id)), [routes]);
 
     const bookings = useMemo(() => {
-        if (!loggedInUserId || loggedInUserId === CUSTOMER_ID) return [];
+        if (!loggedInUserId || loggedInUserId.startsWith('user-')) return [];
         if (isSuperAdmin) return globalBookings;
         return globalBookings.filter(booking => routeIdsForCurrentUser.has(booking.routeId));
     }, [globalBookings, routeIdsForCurrentUser, isSuperAdmin, loggedInUserId]);
