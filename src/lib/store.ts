@@ -230,11 +230,11 @@ export function useDataProvider(): DataStore {
     
     const loggedInUser = useMemo(() => {
         if (!loggedInUserId) return null;
-        // If the ID starts with 'user-', it's a customer. Otherwise, it's an ownerId for an admin/super-admin.
-        if (loggedInUserId.startsWith('user-')) {
-             return users.find(u => u.id === loggedInUserId) || null;
-        }
-        return users.find(u => u.ownerId === loggedInUserId) || null;
+        // The `sub` in the token can be either an ownerId or a customer's userId
+        const userById = users.find(u => u.id === loggedInUserId);
+        if (userById) return userById;
+        const userByOwnerId = users.find(u => u.ownerId === loggedInUserId);
+        return userByOwnerId || null;
     }, [users, loggedInUserId]);
 
     const buses = useMemo(() => {

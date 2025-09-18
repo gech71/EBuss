@@ -22,8 +22,7 @@ export function Header() {
   const router = useRouter();
   const { isSuperAdmin, loggedInUserId, loggedInUser, logout } = useData();
   
-  const isCustomer = loggedInUserId?.startsWith('user-');
-  const isAdminOrSuper = loggedInUserId && !isCustomer;
+  const isAdminOrSuper = loggedInUserId && !loggedInUserId.startsWith('user-');
 
   const isAdminPage = pathname.startsWith('/admin') && !pathname.startsWith('/super-admin');
   const isSuperAdminPage = pathname.startsWith('/super-admin');
