@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode, useMemo, useEffect } from 'react';
@@ -130,7 +131,7 @@ interface DataStore extends AllData {
     addLocation: (location: string) => void;
     updateLocation: (oldName: string, newName: string) => void;
     deleteLocation: (name: string) => void;
-    addDiscount: (discount: Omit<Discount, 'id'>) => void;
+    addDiscount: (discount: Omit<Discount, 'id' | 'ownerId'>) => void;
     updateDiscount: (discount: Discount) => void;
     deleteDiscount: (id: string) => void;
     addBooking: (booking: Omit<Booking, 'bookingTime'>) => boolean;
@@ -300,6 +301,11 @@ export function useDataProvider(): DataStore {
         if (isSuperAdmin) return allData.bookings;
         return allData.bookings.filter(booking => routeIdsForCurrentUser.has(booking.routeId));
     }, [allData.bookings, routeIdsForCurrentUser, isSuperAdmin, loggedInUserId]);
+
+    const discounts = useMemo(() => {
+        if (isSuperAdmin || !loggedInUserId || loggedInUserId.startsWith('user-')) return allData.discounts;
+        return allData.discounts.filter(d => d.ownerId === loggedInUserId);
+    }, [allData.discounts, loggedInUserId, isSuperAdmin]);
     
     const getBusById = (busId: string) => {
         return allData.buses.find(b => b.id === busId);
@@ -378,19 +384,25 @@ export function useDataProvider(): DataStore {
         updateAndPersistData(data => ({ ...data, locations: data.locations.filter(loc => loc !== name) }));
     };
 
-    const addDiscount = (discount: Omit<Discount, 'id'>) => {
+    const addDiscount = (discount: Omit<Discount, 'id' | 'ownerId'>) => {
+        if (loggedInUserId === CUSTOMER_ID || isSuperAdmin || !loggedInUserId) return;
         const newDiscount: Discount = {
             ...discount,
-            id: `discount-${Date.now()}`
+            id: `discount-${Date.now()}`,
+            ownerId: loggedInUserId,
         };
         updateAndPersistData(data => ({ ...data, discounts: [...data.discounts, newDiscount] }));
     };
 
     const updateDiscount = (updatedDiscount: Discount) => {
+        if (updatedDiscount.ownerId !== loggedInUserId && !isSuperAdmin) return;
         updateAndPersistData(data => ({ ...data, discounts: data.discounts.map(d => d.id === updatedDiscount.id ? updatedDiscount : d) }));
     };
 
     const deleteDiscount = (id: string) => {
+        const discountToDelete = allData.discounts.find(d => d.id === id);
+        if (!discountToDelete) return;
+        if (discountToDelete.ownerId !== loggedInUserId && !isSuperAdmin) return;
         updateAndPersistData(data => ({ ...data, discounts: data.discounts.filter(d => d.id !== id) }));
     };
 
@@ -482,8 +494,8 @@ export function useDataProvider(): DataStore {
         routes, 
         buses, 
         locations: allData.locations, 
-        discounts: allData.discounts, 
-        bookings: allData.bookings, 
+        discounts, 
+        bookings, 
         owners: allData.owners, 
         users: allData.users, 
         isSuperAdmin, loggedInUserId, loggedInUser, setLoggedInUserId, login, logout, register,

@@ -75,4 +75,5 @@ export interface Discount {
   tiers: DiscountTier[];
   startDate: Date;
   endDate: Date;
+  ownerId: string;
 }

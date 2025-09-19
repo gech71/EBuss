@@ -143,6 +143,38 @@ export const allDiscounts: Discount[] = [
         tiers: [
             { id: 'tier-d1-1', minTickets: 2, maxTickets: 4, percentage: 10 },
             { id: 'tier-d1-2', minTickets: 5, maxTickets: 10, percentage: 15 },
-        ]
+        ],
+        ownerId: 'owner-01',
+    },
+    {
+        id: 'discount-early-bird',
+        name: 'Early Bird Special',
+        startDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        tiers: [
+            { id: 'tier-d2-1', minTickets: 1, maxTickets: 1, percentage: 5 },
+        ],
+        ownerId: 'owner-01',
+    },
+     {
+        id: 'discount-weekend-deal',
+        name: 'Weekend Deal',
+        startDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+        endDate: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000),
+        tiers: [
+            { id: 'tier-d3-1', minTickets: 2, maxTickets: 2, percentage: 5 },
+            { id: 'tier-d3-2', minTickets: 3, maxTickets: 5, percentage: 8 },
+        ],
+        ownerId: 'owner-02',
+    },
+    {
+        id: 'discount-roadrunner-special',
+        name: 'RoadRunner Special',
+        startDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+        endDate: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000),
+        tiers: [
+            { id: 'tier-d4-1', minTickets: 4, maxTickets: 10, percentage: 12 },
+        ],
+        ownerId: 'owner-02',
     }
 ];
