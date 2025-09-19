@@ -28,7 +28,7 @@ const getInitialLocations = (routes: Route[]): string[] => {
         locationSet.add(route.origin);
         locationSet.add(route.destination);
     });
-    return Array.from(locationSet);
+    return Array.from(locationSet).sort();
 };
 
 const getInitialBookings = (routes: Route[], buses: Bus[]): { bookings: Booking[], updatedBuses: Bus[] } => {
@@ -100,16 +100,18 @@ const getInitialBookings = (routes: Route[], buses: Bus[]): { bookings: Booking[
     return { bookings: sampleBookings, updatedBuses: busesCopy };
 }
 
-
-interface DataStore {
-    loading: boolean;
+interface AllData {
     routes: Route[];
     buses: Bus[];
-    locations: string[];
-    discounts: Discount[];
     bookings: Booking[];
     owners: BusOwner[];
     users: User[];
+    locations: string[];
+    discounts: Discount[];
+}
+
+interface DataStore extends AllData {
+    loading: boolean;
     isSuperAdmin: boolean;
     loggedInUserId: string | null;
     loggedInUser: User | null;
@@ -148,59 +150,96 @@ export const useData = () => {
     return context;
 };
 
+// --- LocalStorage keys ---
+const LOCAL_STORAGE_KEY = 'ezbus_data';
+
 export function useDataProvider(): DataStore {
     const [loading, setLoading] = useState(true);
+    
     // --- Global State ---
-    const [globalRoutes, setGlobalRoutes] = useState<Route[]>([]);
-    const [globalBuses, setGlobalBuses] = useState<Bus[]>([]);
-    const [globalBookings, setGlobalBookings] = useState<Booking[]>([]);
-    const [allOwners, setAllOwners] = useState<BusOwner[]>([]);
-    const [users, setUsers] = useState<User[]>([]);
-    const [locations, setLocations] = useState<string[]>([]);
-    const [discounts, setDiscounts] = useState<Discount[]>([]);
+    const [allData, setAllData] = useState<AllData>({
+        routes: [],
+        buses: [],
+        bookings: [],
+        owners: [],
+        users: [],
+        locations: [],
+        discounts: []
+    });
     
     const [loggedInUserId, setLoggedInUserIdState] = useState<string | null>(null);
 
+    // Effect to load data from localStorage or initialize it
     useEffect(() => {
-        const { bookings: initialBookings, updatedBuses: initialBusesWithBookings } = getInitialBookings(initialGlobalRoutes, initialGlobalBuses);
-        
-        setGlobalRoutes(initialGlobalRoutes);
-        setGlobalBuses(initialBusesWithBookings);
-        setGlobalBookings(initialBookings);
-        setAllOwners([SUPER_ADMIN_USER, ...initialAllOwnersData]);
-        setUsers(initialUsers);
-        setLocations(getInitialLocations(initialGlobalRoutes));
-        setDiscounts(initialGlobalDiscounts);
+        try {
+            const storedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (storedData) {
+                const parsedData = JSON.parse(storedData);
+                // Dates need to be re-hydrated from strings
+                parsedData.routes.forEach((r: Route) => {
+                    r.departureTime = new Date(r.departureTime);
+                    r.arrivalTime = new Date(r.arrivalTime);
+                });
+                parsedData.bookings.forEach((b: Booking) => {
+                    b.bookingTime = new Date(b.bookingTime);
+                });
+                parsedData.discounts.forEach((d: Discount) => {
+                    d.startDate = new Date(d.startDate);
+                    d.endDate = new Date(d.endDate);
+                });
+                setAllData(parsedData);
+            } else {
+                // Initialize with default data if nothing is stored
+                const { bookings: initialBookings, updatedBuses: initialBusesWithBookings } = getInitialBookings(initialGlobalRoutes, initialGlobalBuses);
+                const initialData = {
+                    routes: initialGlobalRoutes,
+                    buses: initialBusesWithBookings,
+                    bookings: initialBookings,
+                    owners: [SUPER_ADMIN_USER, ...initialAllOwnersData],
+                    users: initialUsers,
+                    locations: getInitialLocations(initialGlobalRoutes),
+                    discounts: initialGlobalDiscounts,
+                };
+                setAllData(initialData);
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(initialData));
+            }
 
-        // Check for token in localStorage on initial load
-        const token = localStorage.getItem('authToken');
-        if (token) {
-            try {
+            const token = localStorage.getItem('authToken');
+            if (token) {
                 const decoded = JSON.parse(atob(token.split('.')[1]));
                 setLoggedInUserIdState(decoded.sub);
-            } catch (e) {
-                localStorage.removeItem('authToken');
             }
+        } catch (error) {
+            console.error("Failed to load or initialize data:", error);
+            // Handle potential errors (e.g., corrupted data) by resetting to default
+            localStorage.removeItem(LOCAL_STORAGE_KEY);
+        } finally {
+            setLoading(false);
         }
-
-        setLoading(false);
     }, []);
 
+    const updateAndPersistData = (updater: (currentData: AllData) => AllData) => {
+        setAllData(prevData => {
+            const newData = updater(prevData);
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newData));
+            return newData;
+        });
+    };
 
     const setLoggedInUserId = (id: string | null) => {
         setLoggedInUserIdState(id);
     };
     
     const login = (email: string, password: string): { user: User; token: string } | null => {
-        const user = users.find(u => u.email === email && u.password === password);
+        const user = allData.users.find(u => u.email === email && u.password === password);
         if (user) {
             const isCustomer = user.ownerId === CUSTOMER_ID;
-            const subject = isCustomer ? user.id : user.ownerId;
+            // Admins are identified by their ownerId, customers by their own userId.
+            const subject = isCustomer || !user.ownerId ? user.id : user.ownerId;
             setLoggedInUserIdState(subject);
-            // Create a mock JWT token
             const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
             const payload = btoa(JSON.stringify({ sub: subject, name: user.name, iat: Date.now() }));
-            const signature = 'mock-signature'; // In a real app, this would be a real signature
+            const signature = 'mock-signature'; 
             const token = `${header}.${payload}.${signature}`;
             return { user, token };
         }
@@ -213,7 +252,7 @@ export function useDataProvider(): DataStore {
     };
 
     const register = (details: Omit<User, 'id' | 'ownerId'>): { success: boolean, message?: string } => {
-        if (users.some(u => u.email === details.email)) {
+        if (allData.users.some(u => u.email === details.email)) {
             return { success: false, message: 'A user with this email already exists.' };
         }
         const newUser: User = {
@@ -221,9 +260,9 @@ export function useDataProvider(): DataStore {
             name: details.name,
             email: details.email,
             password: details.password,
-            ownerId: CUSTOMER_ID, // All registered users are customers
+            ownerId: CUSTOMER_ID,
         };
-        setUsers(prev => [...prev, newUser]);
+        updateAndPersistData(data => ({ ...data, users: [...data.users, newUser] }));
         return { success: true };
     };
 
@@ -232,40 +271,39 @@ export function useDataProvider(): DataStore {
     
     const loggedInUser = useMemo(() => {
         if (!loggedInUserId) return null;
-        // The `sub` in the token can be either an ownerId or a customer's userId
-        const userById = users.find(u => u.id === loggedInUserId);
+        const userById = allData.users.find(u => u.id === loggedInUserId);
         if (userById) return userById;
-        const userByOwnerId = users.find(u => u.ownerId === loggedInUserId);
+        const userByOwnerId = allData.users.find(u => u.ownerId === loggedInUserId);
         return userByOwnerId || null;
-    }, [users, loggedInUserId]);
+    }, [allData.users, loggedInUserId]);
 
     const buses = useMemo(() => {
-        if (!loggedInUserId || loggedInUserId.startsWith('user-')) return globalBuses;
-        if (isSuperAdmin) return globalBuses;
-        return globalBuses.filter(bus => bus.ownerId === loggedInUserId);
-    }, [globalBuses, loggedInUserId, isSuperAdmin]);
+        if (!loggedInUserId || loggedInUserId.startsWith('user-')) return allData.buses;
+        if (isSuperAdmin) return allData.buses;
+        return allData.buses.filter(bus => bus.ownerId === loggedInUserId);
+    }, [allData.buses, loggedInUserId, isSuperAdmin]);
 
     const busIdsForCurrentUser = useMemo(() => new Set(buses.map(b => b.id)), [buses]);
 
     const routes = useMemo(() => {
-        if (isSuperAdmin || !loggedInUserId || loggedInUserId.startsWith('user-')) return globalRoutes;
-        return globalRoutes.filter(route => busIdsForCurrentUser.has(route.busId));
-    }, [globalRoutes, busIdsForCurrentUser, isSuperAdmin, loggedInUserId]);
+        if (isSuperAdmin || !loggedInUserId || loggedInUserId.startsWith('user-')) return allData.routes;
+        return allData.routes.filter(route => busIdsForCurrentUser.has(route.busId));
+    }, [allData.routes, busIdsForCurrentUser, isSuperAdmin, loggedInUserId]);
 
     const routeIdsForCurrentUser = useMemo(() => new Set(routes.map(r => r.id)), [routes]);
 
     const bookings = useMemo(() => {
         if (!loggedInUserId || loggedInUserId.startsWith('user-')) return [];
-        if (isSuperAdmin) return globalBookings;
-        return globalBookings.filter(booking => routeIdsForCurrentUser.has(booking.routeId));
-    }, [globalBookings, routeIdsForCurrentUser, isSuperAdmin, loggedInUserId]);
+        if (isSuperAdmin) return allData.bookings;
+        return allData.bookings.filter(booking => routeIdsForCurrentUser.has(booking.routeId));
+    }, [allData.bookings, routeIdsForCurrentUser, isSuperAdmin, loggedInUserId]);
     
     const getBusById = (busId: string) => {
-        return globalBuses.find(b => b.id === busId);
+        return allData.buses.find(b => b.id === busId);
     };
     
     const getOwnerById = (ownerId: string) => {
-        return allOwners.find(o => o.id === ownerId);
+        return allData.owners.find(o => o.id === ownerId);
     };
 
     const addRoute = (route: Omit<Route, 'id'>) => {
@@ -273,15 +311,15 @@ export function useDataProvider(): DataStore {
             ...route, 
             id: `route-${Date.now()}`,
         };
-        setGlobalRoutes(prev => [...prev, newRoute]);
+        updateAndPersistData(data => ({ ...data, routes: [...data.routes, newRoute] }));
     };
 
     const updateRoute = (route: Route) => {
-        setGlobalRoutes(prev => prev.map(r => r.id === route.id ? route : r));
+        updateAndPersistData(data => ({ ...data, routes: data.routes.map(r => r.id === route.id ? route : r) }));
     };
 
     const deleteRoute = (id: string) => {
-        setGlobalRoutes(prev => prev.filter(r => r.id !== id));
+        updateAndPersistData(data => ({ ...data, routes: data.routes.filter(r => r.id !== id) }));
     };
 
     const addBus = (bus: Omit<Bus, 'id' | 'ownerId'> & { layout?: Bus['layout'] }) => {
@@ -299,39 +337,42 @@ export function useDataProvider(): DataStore {
                 seats: generateSeats(Math.ceil(bus.capacity / 4), 5, [2]),
             }
         };
-        setGlobalBuses(prev => [...prev, newBus]);
+        updateAndPersistData(data => ({ ...data, buses: [...data.buses, newBus] }));
     };
     
     const updateBus = (updatedBus: Bus) => {
         if (updatedBus.ownerId !== loggedInUserId && !isSuperAdmin) return;
-        setGlobalBuses(prev => prev.map(b => b.id === updatedBus.id ? updatedBus : b));
+        updateAndPersistData(data => ({ ...data, buses: data.buses.map(b => b.id === updatedBus.id ? updatedBus : b) }));
     };
     
     const deleteBus = (id: string) => {
-        const busToDelete = globalBuses.find(b => b.id === id);
+        const busToDelete = allData.buses.find(b => b.id === id);
         if (!busToDelete) return;
         if (busToDelete.ownerId !== loggedInUserId && !isSuperAdmin) return;
-        setGlobalBuses(prev => prev.filter(b => b.id !== id));
+        updateAndPersistData(data => ({ ...data, buses: data.buses.filter(b => b.id !== id) }));
     };
 
     const addLocation = (location: string) => {
-        if (!locations.includes(location)) {
-            setLocations(prev => [...prev, location].sort());
+        if (!allData.locations.includes(location)) {
+            updateAndPersistData(data => ({ ...data, locations: [...data.locations, location].sort() }));
         }
     };
     
     const updateLocation = (oldName: string, newName: string) => {
-        setLocations(prev => prev.map(loc => loc === oldName ? newName : loc));
-        setGlobalRoutes(prev => prev.map(route => {
-            let newRoute = {...route};
-            if(route.origin === oldName) newRoute.origin = newName;
-            if(route.destination === oldName) newRoute.destination = newName;
-            return newRoute;
-        }));
+        updateAndPersistData(data => {
+            const newLocations = data.locations.map(loc => loc === oldName ? newName : loc);
+            const newRoutes = data.routes.map(route => {
+                let newRoute = {...route};
+                if(route.origin === oldName) newRoute.origin = newName;
+                if(route.destination === oldName) newRoute.destination = newName;
+                return newRoute;
+            });
+            return { ...data, locations: newLocations, routes: newRoutes };
+        });
     };
     
     const deleteLocation = (name: string) => {
-        setLocations(prev => prev.filter(loc => loc !== name));
+        updateAndPersistData(data => ({ ...data, locations: data.locations.filter(loc => loc !== name) }));
     };
 
     const addDiscount = (discount: Omit<Discount, 'id'>) => {
@@ -339,27 +380,28 @@ export function useDataProvider(): DataStore {
             ...discount,
             id: `discount-${Date.now()}`
         };
-        setDiscounts(prev => [...prev, newDiscount]);
+        updateAndPersistData(data => ({ ...data, discounts: [...data.discounts, newDiscount] }));
     };
 
     const updateDiscount = (updatedDiscount: Discount) => {
-        setDiscounts(prev => prev.map(d => d.id === updatedDiscount.id ? updatedDiscount : d));
+        updateAndPersistData(data => ({ ...data, discounts: data.discounts.map(d => d.id === updatedDiscount.id ? updatedDiscount : d) }));
     };
 
     const deleteDiscount = (id: string) => {
-        setDiscounts(prev => prev.filter(d => d.id !== id));
+        updateAndPersistData(data => ({ ...data, discounts: data.discounts.filter(d => d.id !== id) }));
     };
 
     const addBooking = (booking: Omit<Booking, 'id'>): boolean => {
         let success = true;
         let newBooking: Booking | null = null;
-        setGlobalBuses(prevBuses => {
-            const relevantRoute = globalRoutes.find(r => r.id === booking.routeId);
-            const busToUpdate = prevBuses.find(bus => bus.id === relevantRoute?.busId);
+        
+        updateAndPersistData(data => {
+            const relevantRoute = data.routes.find(r => r.id === booking.routeId);
+            const busToUpdate = data.buses.find(bus => bus.id === relevantRoute?.busId);
 
             if (!busToUpdate) {
                 success = false;
-                return prevBuses;
+                return data;
             }
 
             for (const selectedSeat of booking.seats) {
@@ -371,12 +413,12 @@ export function useDataProvider(): DataStore {
             }
 
             if (!success) {
-                return prevBuses;
+                return data;
             }
             
             newBooking = { ...booking, id: `ticket-${Date.now()}` };
 
-            const newBuses = prevBuses.map(bus => {
+            const newBuses = data.buses.map(bus => {
                 if (bus.id === relevantRoute?.busId) {
                     const newSeats = bus.layout.seats.map(seat => {
                         if (booking.seats.find(s => s.id === seat.id)) {
@@ -388,13 +430,13 @@ export function useDataProvider(): DataStore {
                 }
                 return bus;
             });
-
-            return newBuses;
+            
+            if (success && newBooking) {
+                return { ...data, buses: newBuses, bookings: [...data.bookings, newBooking] };
+            }
+            
+            return data;
         });
-        
-        if (success && newBooking) {
-            setGlobalBookings(prev => [...prev, newBooking!]);
-        }
         
         return success;
     };
@@ -405,31 +447,38 @@ export function useDataProvider(): DataStore {
             name, 
             commissionTiers: commissionTiers.map(tier => ({...tier, id: `tier-${Math.random()}`}))
         };
-        setAllOwners(prev => [...prev, newOwner]);
+        updateAndPersistData(data => ({ ...data, owners: [...data.owners, newOwner] }));
     };
 
     const updateOwner = (updatedOwner: BusOwner) => {
-        setAllOwners(prev => prev.map(o => o.id === updatedOwner.id ? updatedOwner : o));
+        updateAndPersistData(data => ({ ...data, owners: data.owners.map(o => o.id === updatedOwner.id ? updatedOwner : o) }));
     };
 
     const deleteOwner = (id: string) => {
-        const ownerHasBuses = globalBuses.some(bus => bus.ownerId === id);
+        const ownerHasBuses = allData.buses.some(bus => bus.ownerId === id);
         if (ownerHasBuses) {
             console.error("Cannot delete owner with active buses.");
             return;
         }
-        setAllOwners(prev => prev.filter(owner => owner.id !== id));
+        updateAndPersistData(data => ({ ...data, owners: data.owners.filter(owner => owner.id !== id) }));
     };
 
     const addUser = (user: Omit<User, 'id' | 'password'>, password = 'password') => {
         const newUser: User = { ...user, id: `user-${Date.now()}`, password };
-        setUsers(prev => [...prev, newUser]);
+        updateAndPersistData(data => ({ ...data, users: [...data.users, newUser] }));
     };
 
 
     return {
         loading,
-        routes, buses, locations, discounts, bookings, owners: allOwners, users, isSuperAdmin, loggedInUserId, loggedInUser, setLoggedInUserId, login, logout, register,
+        routes, 
+        buses, 
+        locations: allData.locations, 
+        discounts: allData.discounts, 
+        bookings, 
+        owners: allData.owners, 
+        users: allData.users, 
+        isSuperAdmin, loggedInUserId, loggedInUser, setLoggedInUserId, login, logout, register,
         getBusById, getOwnerById,
         addRoute, updateRoute, deleteRoute,
         addBus, updateBus, deleteBus,
@@ -440,5 +489,3 @@ export function useDataProvider(): DataStore {
         addUser
     };
 }
-
-    
