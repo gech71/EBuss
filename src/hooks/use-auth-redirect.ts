@@ -17,39 +17,42 @@ export function useAuthRedirect(options: AuthRedirectOptions = {}) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // If the initial data (including auth state from localStorage) is still loading,
+        // we keep showing the loading screen.
         if (dataLoading) {
-            return; // Wait for data to be loaded, including auth state from localStorage
+            return;
         }
 
-        let shouldRedirect = false;
         const isAdmin = loggedInUserId && !isSuperAdmin;
+        let shouldRedirect = false;
 
+        // Scenario 1: User is not logged in
         if (!loggedInUserId) {
             if (requiredRole) {
                 router.replace(loginPath);
                 shouldRedirect = true;
             }
         } else {
-            if (requiredRole === 'admin') {
-                if (!isAdmin) {
-                    router.replace('/unauthorized');
-                    shouldRedirect = true;
-                }
-            } else if (requiredRole === 'super-admin') {
-                if (!isSuperAdmin) {
-                    router.replace('/unauthorized');
-                    shouldRedirect = true;
-                }
+            // Scenario 2: User is logged in, check roles
+            if (requiredRole === 'admin' && !isAdmin) {
+                // Accessing admin page, but user is not an admin
+                router.replace('/unauthorized');
+                shouldRedirect = true;
+            } else if (requiredRole === 'super-admin' && !isSuperAdmin) {
+                // Accessing super-admin page, but user is not a super-admin
+                router.replace('/unauthorized');
+                shouldRedirect = true;
             }
         }
         
-        // Only set loading to false if we are not about to redirect.
-        // The component will unmount on redirect anyway.
+        // If no redirect is needed, we can stop showing the loading screen.
         if (!shouldRedirect) {
             setLoading(false);
         }
+        // If a redirect is triggered, the component will unmount, so we don't need to setLoading(false).
 
     }, [loggedInUserId, isSuperAdmin, requiredRole, router, dataLoading, loginPath]);
 
-    return { loading: loading || dataLoading };
+    // The loading state of the hook is dependent on the data loading from the store.
+    return { loading: dataLoading || loading };
 }
