@@ -2,11 +2,12 @@
 
 import { redirect } from 'next/navigation';
 import prisma from '@/lib/prisma';
-import { lucia } from '@/app/lib/auth';
 import { cookies } from 'next/headers';
-import { ActionResult } from 'next/dist/server/app-render/types';
 import { Argon2id } from 'oslo/password';
+import { SignJWT } from 'jose';
+import { lucia } from '@/app/lib/auth';
 import { validateRequest } from '@/app/lib/auth';
+import { ActionResult } from 'next/dist/server/app-render/types';
 
 export async function authenticate(
   prevState: string | undefined,
@@ -38,13 +39,27 @@ export async function authenticate(
       return 'Invalid email or password.';
     }
 
-    const session = await lucia.createSession(existingUser.id, {});
-    const sessionCookie = lucia.createSessionCookie(session.id);
-    cookies().set(
-      sessionCookie.name,
-      sessionCookie.value,
-      sessionCookie.attributes
-    );
+    // Create JWT
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+    const alg = 'HS256';
+    const jwt = await new SignJWT({ 
+        userId: existingUser.id, 
+        role: existingUser.role,
+        name: existingUser.name,
+        email: existingUser.email
+    })
+      .setProtectedHeader({ alg })
+      .setExpirationTime('24h')
+      .setIssuedAt()
+      .sign(secret);
+
+    // Set cookie
+    cookies().set('auth_session', jwt, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 60 * 60 * 24, // 24 hours
+      path: '/',
+    });
 
     if (existingUser.role === 'SUPER_ADMIN') {
       return redirect('/super-admin');
@@ -63,16 +78,6 @@ export async function authenticate(
 }
 
 export async function logout(): Promise<ActionResult> {
-	const { session } = await validateRequest();
-	if (!session) {
-		return {
-			error: "Unauthorized"
-		};
-	}
-
-	await lucia.invalidateSession(session.id);
-
-	const sessionCookie = lucia.createBlankSessionCookie();
-	cookies().set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
+	cookies().delete("auth_session");
 	return redirect("/login");
 }

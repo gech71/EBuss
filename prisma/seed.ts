@@ -1,5 +1,6 @@
 
 import { PrismaClient, SeatStatus, SeatType, CommissionType, Role } from '@prisma/client';
+import { Argon2id } from 'oslo/password';
 
 const prisma = new PrismaClient();
 
@@ -72,7 +73,7 @@ async function main() {
     data: {
       name: 'Super Admin',
       email: 'super@example.com',
-      password: 'password', // In a real app, hash this!
+      hashed_password: await new Argon2id().hash('password'),
       role: Role.SUPER_ADMIN,
     },
   });
@@ -81,7 +82,7 @@ async function main() {
     data: {
       name: 'Admin User',
       email: 'admin@example.com',
-      password: 'password', // In a real app, hash this!
+      hashed_password: await new Argon2id().hash('password'),
       role: Role.ADMIN,
       busOwner: {
         connect: { id: owner1.id },
@@ -93,7 +94,7 @@ async function main() {
     data: {
       name: 'RoadRunner Admin',
       email: 'runner@example.com',
-      password: 'password', // In a real app, hash this!
+      hashed_password: await new Argon2id().hash('password'),
       role: Role.ADMIN,
       busOwner: {
         connect: { id: owner2.id },
