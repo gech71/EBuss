@@ -22,6 +22,7 @@ export async function authenticate(
   prevState: string | undefined,
   formData: FormData
 ): Promise<string | undefined> {
+  let redirectUrl: string | null = null;
   try {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
@@ -76,18 +77,22 @@ export async function authenticate(
 
 
     if (existingUser.role === 'SUPER_ADMIN') {
-      redirect('/super-admin');
+      redirectUrl = '/super-admin';
     } else if (existingUser.role === 'ADMIN') {
-      redirect('/admin');
+      redirectUrl = '/admin';
     } else {
-      redirect('/');
+      redirectUrl = '/';
     }
   } catch (error) {
     console.error(error);
-    if (error instanceof Error && error.message.includes('redirect')) {
+    if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
       throw error;
     }
     return 'An unexpected error occurred.';
+  }
+  
+  if(redirectUrl) {
+    redirect(redirectUrl);
   }
 }
 
