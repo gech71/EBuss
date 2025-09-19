@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button";
-import { LogOut, User, Building } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { useData } from "@/lib/store";
 import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback } from "./ui/avatar";
@@ -51,8 +51,8 @@ export function UserNav() {
                     {loggedInUser.email}
                 </p>
                  {owner && owner.id !== 'super-admin' && (
-                    <p className="text-xs leading-none text-muted-foreground pt-1 flex items-center gap-1">
-                        <Building className="h-3 w-3" /> {owner.name}
+                    <p className="text-xs leading-none text-muted-foreground pt-1">
+                        {owner.name}
                     </p>
                 )}
                 </div>
@@ -81,8 +81,8 @@ export function UserNav() {
                         {loggedInUser.email}
                     </p>
                     {owner && owner.id !== 'super-admin' && (
-                        <p className="text-xs leading-none text-muted-foreground pt-1 flex items-center gap-1 truncate">
-                            <Building className="h-3 w-3" /> {owner.name}
+                        <p className="text-xs leading-none text-muted-foreground pt-1 truncate">
+                            {owner.name}
                         </p>
                     )}
                 </div>
@@ -97,8 +97,8 @@ export function UserNav() {
                 {loggedInUser.email}
               </p>
                {owner && owner.id !== 'super-admin' && (
-                    <p className="text-xs leading-none text-muted-foreground pt-1 flex items-center gap-1">
-                       <Building className="h-3 w-3" /> {owner.name}
+                    <p className="text-xs leading-none text-muted-foreground pt-1">
+                       {owner.name}
                     </p>
                 )}
             </div>
