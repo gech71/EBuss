@@ -133,7 +133,7 @@ interface DataStore extends AllData {
     addDiscount: (discount: Omit<Discount, 'id'>) => void;
     updateDiscount: (discount: Discount) => void;
     deleteDiscount: (id: string) => void;
-    addBooking: (booking: Booking) => boolean;
+    addBooking: (booking: Omit<Booking, 'bookingTime'>) => boolean;
     addOwner: (name: string, commissionTiers: Omit<CommissionTier, 'id'>[]) => void;
     updateOwner: (owner: BusOwner) => void;
     deleteOwner: (id: string) => void;
@@ -235,7 +235,7 @@ export function useDataProvider(): DataStore {
         if (user) {
             const isCustomer = user.ownerId === CUSTOMER_ID;
             // Admins are identified by their ownerId, customers by their own userId.
-            const subject = isCustomer || !user.ownerId ? user.id : user.ownerId;
+            const subject = (isCustomer || !user.ownerId || user.ownerId === SUPER_ADMIN_ID) ? user.id : user.ownerId;
             setLoggedInUserIdState(subject);
             const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
             const payload = btoa(JSON.stringify({ sub: subject, name: user.name, iat: Date.now() }));
@@ -267,15 +267,18 @@ export function useDataProvider(): DataStore {
     };
 
     // --- Scoped State (based on logged-in user) ---
-    const isSuperAdmin = loggedInUserId === SUPER_ADMIN_ID;
+    const isSuperAdmin = loggedInUserId === allData.users.find(u => u.ownerId === SUPER_ADMIN_ID)?.id;
     
     const loggedInUser = useMemo(() => {
         if (!loggedInUserId) return null;
+        // Check if loggedInUserId is a user's own ID first
         const userById = allData.users.find(u => u.id === loggedInUserId);
         if (userById) return userById;
+        // If not, it might be an ownerId, so find the admin user for that owner
         const userByOwnerId = allData.users.find(u => u.ownerId === loggedInUserId);
         return userByOwnerId || null;
     }, [allData.users, loggedInUserId]);
+
 
     const buses = useMemo(() => {
         if (!loggedInUserId || loggedInUserId.startsWith('user-')) return allData.buses;
@@ -391,50 +394,58 @@ export function useDataProvider(): DataStore {
         updateAndPersistData(data => ({ ...data, discounts: data.discounts.filter(d => d.id !== id) }));
     };
 
-    const addBooking = (booking: Booking): boolean => {
-        let success = true;
+    const addBooking = (bookingData: Omit<Booking, 'bookingTime'>): boolean => {
+        let success = false;
         
-        updateAndPersistData(data => {
-            const relevantRoute = data.routes.find(r => r.id === booking.routeId);
-            const busToUpdate = data.buses.find(bus => bus.id === relevantRoute?.busId);
+        setAllData(currentData => {
+            const relevantRoute = currentData.routes.find(r => r.id === bookingData.routeId);
+            const busToUpdate = currentData.buses.find(bus => bus.id === relevantRoute?.busId);
 
             if (!busToUpdate) {
+                console.error("Bus not found for booking.");
                 success = false;
-                return data;
+                return currentData;
             }
 
-            for (const selectedSeat of booking.seats) {
+            // Verify all selected seats are available
+            for (const selectedSeat of bookingData.seats) {
                 const seatInStore = busToUpdate.layout.seats.find(s => s.id === selectedSeat.id);
                 if (!seatInStore || seatInStore.status !== 'available') {
+                    console.error(`Seat ${selectedSeat.id} is not available.`);
                     success = false;
-                    break;
+                    return currentData;
                 }
             }
 
-            if (!success) {
-                return data;
-            }
+            // All seats are available, proceed with booking
+            const newBooking: Booking = {
+                ...bookingData,
+                bookingTime: new Date(),
+            };
 
-            const newBuses = data.buses.map(bus => {
+            const newBuses = currentData.buses.map(bus => {
                 if (bus.id === relevantRoute?.busId) {
-                    const newSeats = bus.layout.seats.map(seat => {
-                        if (booking.seats.find(s => s.id === seat.id)) {
-                            return { ...seat, status: 'occupied' };
-                        }
-                        return seat;
-                    });
+                    const newSeats = bus.layout.seats.map(seat => 
+                        bookingData.seats.find(s => s.id === seat.id)
+                            ? { ...seat, status: 'occupied' as const }
+                            : seat
+                    );
                     return { ...bus, layout: { ...bus.layout, seats: newSeats } };
                 }
                 return bus;
             });
-            
-            if (success) {
-                return { ...data, buses: newBuses, bookings: [...data.bookings, booking] };
-            }
-            
-            return data;
+
+            const newData = {
+                ...currentData,
+                buses: newBuses,
+                bookings: [...currentData.bookings, newBooking],
+            };
+
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newData));
+            success = true;
+            return newData;
         });
-        
+
         return success;
     };
     
@@ -472,7 +483,7 @@ export function useDataProvider(): DataStore {
         buses, 
         locations: allData.locations, 
         discounts: allData.discounts, 
-        bookings, 
+        bookings: allData.bookings, 
         owners: allData.owners, 
         users: allData.users, 
         isSuperAdmin, loggedInUserId, loggedInUser, setLoggedInUserId, login, logout, register,

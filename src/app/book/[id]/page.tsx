@@ -127,7 +127,6 @@ export default function BookPage() {
         routeId: route.id,
         seats: selectedSeats,
         totalPrice: totalPrice,
-        bookingTime: new Date(),
         passengerName: 'John Doe',
         passengerEmail: 'john.doe@example.com',
     });
