@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { validateRequest } from '@/app/lib/auth';
+import { uncachedValidateRequest } from '@/app/lib/auth';
 
 export const runtime = 'nodejs';
  
 export async function middleware(request: NextRequest) {
-  const { user } = await validateRequest();
+  const { user } = await uncachedValidateRequest();
   const { pathname } = request.nextUrl;
 
   // If the user is authenticated and tries to access login, redirect them away
@@ -50,5 +50,5 @@ export async function middleware(request: NextRequest) {
  
 // See "Matching Paths" below to learn more
 export const config = {
-  matcher: ['/admin/:path*', '/super-admin/:path*', '/login', '/unauthorized'],
+  matcher: ['/admin/:path*', '/super-admin/:path*', '/login'],
 }
