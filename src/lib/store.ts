@@ -194,7 +194,8 @@ export function useDataProvider(): DataStore {
     const login = (email: string, password: string): { user: User; token: string } | null => {
         const user = users.find(u => u.email === email && u.password === password);
         if (user) {
-            const subject = user.ownerId === CUSTOMER_ID ? user.id : user.ownerId;
+            const isCustomer = user.ownerId === CUSTOMER_ID;
+            const subject = isCustomer ? user.id : user.ownerId;
             setLoggedInUserIdState(subject);
             // Create a mock JWT token
             const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
