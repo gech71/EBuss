@@ -1,4 +1,3 @@
-
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
@@ -24,24 +23,29 @@ async function verifyJwt(token: string) {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
-  const sessionCookie = request.cookies.get('auth_session')?.value;
-  const decodedToken = sessionCookie ? await verifyJwt(sessionCookie) : null;
+  const jwtCookie = request.cookies.get('auth_session')?.value;
+  const decodedToken = jwtCookie ? await verifyJwt(jwtCookie) : null;
   const isAuthenticated = !!decodedToken;
 
   const isProtectedRoute = pathname.startsWith('/admin') || pathname.startsWith('/super-admin');
   const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register');
 
   if (isProtectedRoute && !isAuthenticated) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    return NextResponse.redirect(url);
   }
 
   if (isAuthRoute && isAuthenticated) {
-    // Redirect authenticated users to the appropriate dashboard
+    const url = request.nextUrl.clone();
     const userRole = decodedToken?.role;
+
     if (userRole === 'SUPER_ADMIN') {
-        return NextResponse.redirect(new URL('/super-admin', request.url));
+        url.pathname = '/super-admin';
+    } else {
+        url.pathname = '/admin';
     }
-    return NextResponse.redirect(new URL('/admin', request.url));
+    return NextResponse.redirect(url);
   }
 
   return NextResponse.next();

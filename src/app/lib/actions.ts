@@ -21,7 +21,6 @@ export async function authenticate(
   prevState: string | undefined,
   formData: FormData
 ): Promise<string | undefined> {
-  let redirectUrl: string | null = null;
   try {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
@@ -48,19 +47,17 @@ export async function authenticate(
       return 'Invalid email or password.';
     }
 
-    // Create JWT
+    // 1. Create JWT for middleware
     const token = await new SignJWT({ 
         userId: existingUser.id, 
         role: existingUser.role,
-        name: existingUser.name,
-        email: existingUser.email
       })
       .setProtectedHeader({ alg: 'HS256' })
       .setIssuedAt()
       .setExpirationTime('1h') // Token expires in 1 hour
       .sign(getJwtSecret());
 
-    // Set JWT in cookie
+    // Set JWT in 'auth_session' cookie for the middleware
     cookies().set('auth_session', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -69,29 +66,25 @@ export async function authenticate(
         maxAge: 60 * 60 // 1 hour
     });
 
-    // Create Lucia session as well for server-side validation in layouts
+    // 2. Create Lucia session for server components
     const session = await lucia.createSession(existingUser.id, {});
     const sessionCookie = lucia.createSessionCookie(session.id);
     cookies().set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
 
-
+    // 3. Redirect after setting cookies
     if (existingUser.role === 'SUPER_ADMIN') {
-      redirectUrl = '/super-admin';
+      return redirect('/super-admin');
     } else if (existingUser.role === 'ADMIN') {
-      redirectUrl = '/admin';
+      return redirect('/admin');
     } else {
-      redirectUrl = '/';
+      return redirect('/');
     }
   } catch (error) {
-    console.error(error);
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
+    if (error instanceof Error && 'message' in error && error.message.includes('NEXT_REDIRECT')) {
       throw error;
     }
+    console.error(error);
     return 'An unexpected error occurred.';
-  }
-  
-  if(redirectUrl) {
-    redirect(redirectUrl);
   }
 }
 
@@ -107,7 +100,9 @@ export async function logout(): Promise<ActionResult> {
 
 	const sessionCookie = lucia.createBlankSessionCookie();
 	cookies().set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
-    // Also clear the JWT cookie
-    cookies().set('auth_session', '', { expires: new Date(0), path: '/' });
-	return redirect("/login");
+  
+  // Also clear the JWT cookie
+  cookies().set('auth_session', '', { expires: new Date(0), path: '/' });
+	
+  return redirect("/login");
 }
