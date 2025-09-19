@@ -21,40 +21,42 @@ export function useAuthRedirect(options: AuthRedirectOptions = {}) {
             return; // Wait for data to be loaded, including auth state from localStorage
         }
 
-        const isCustomer = loggedInUserId === 'customer' || !loggedInUserId;
+        const isCustomer = !loggedInUserId;
         const isAdmin = loggedInUserId && !isCustomer && !isSuperAdmin;
 
-        if (!requiredRole) {
-            // No role required, but user must be logged in
-            if (isCustomer) {
+        let shouldRedirect = false;
+
+        if (!loggedInUserId) {
+            // If any role is required and user is not logged in, redirect.
+            if (requiredRole) {
                 router.replace(loginPath);
-                return;
+                shouldRedirect = true;
             }
         } else {
-             // A specific role is required
-            if (isCustomer) {
-                router.replace(loginPath);
-                return;
-            }
-
+            // A specific role is required
             if (requiredRole === 'admin') {
                 if (isSuperAdmin) {
-                    router.replace('/unauthorized'); // Super admin should not see admin page
-                    return;
-                }
-                if (!isAdmin) {
-                    router.replace(loginPath); // Not an admin, redirect
-                    return;
+                    router.replace('/super-admin'); // Super admin should not see admin page
+                    shouldRedirect = true;
+                } else if (!isAdmin) {
+                    router.replace('/unauthorized'); // Not an admin, redirect
+                    shouldRedirect = true;
                 }
             }
 
             if (requiredRole === 'super-admin' && !isSuperAdmin) {
-                router.replace('/unauthorized'); // Admin trying to access super-admin page
-                return;
+                router.replace('/unauthorized'); // Non-super-admin trying to access super-admin page
+                shouldRedirect = true;
             }
         }
 
-        setLoading(false);
+        if (!shouldRedirect) {
+            setLoading(false);
+        }
+        // If a redirect is happening, we don't need to setLoading(false)
+        // because the component will unmount and a new one will load.
+        // However, in some fast-refresh scenarios or edge cases, not setting it can cause a flicker.
+        // The most robust solution is to let it remain loading until unmount.
 
     }, [loggedInUserId, isSuperAdmin, requiredRole, router, dataLoading, loginPath]);
 
