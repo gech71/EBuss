@@ -22,27 +22,36 @@ export function useAuthRedirect(options: AuthRedirectOptions = {}) {
         }
 
         const isCustomer = loggedInUserId === 'customer' || !loggedInUserId;
+        const isAdmin = loggedInUserId && !isCustomer && !isSuperAdmin;
 
-        if (isCustomer) {
-            router.replace(loginPath);
-            return;
-        }
-        
-        const isAdmin = loggedInUserId && !loggedInUserId.startsWith('user-') && !isSuperAdmin;
+        if (!requiredRole) {
+            // No role required, but user must be logged in
+            if (isCustomer) {
+                router.replace(loginPath);
+                return;
+            }
+        } else {
+             // A specific role is required
+            if (isCustomer) {
+                router.replace(loginPath);
+                return;
+            }
 
-        if (requiredRole === 'admin' && !isAdmin && !isSuperAdmin) {
-            router.replace(loginPath);
-            return;
-        }
+            if (requiredRole === 'admin') {
+                if (isSuperAdmin) {
+                    router.replace('/super-admin'); // Super admin should not see admin page
+                    return;
+                }
+                if (!isAdmin) {
+                    router.replace(loginPath); // Not an admin, redirect
+                    return;
+                }
+            }
 
-        if (requiredRole === 'super-admin' && !isSuperAdmin) {
-             router.replace('/admin'); // Or a dedicated access-denied page
-             return;
-        }
-        
-        if (requiredRole === 'admin' && isSuperAdmin) {
-             router.replace('/super-admin');
-             return;
+            if (requiredRole === 'super-admin' && !isSuperAdmin) {
+                router.replace('/admin'); // Or a dedicated access-denied page
+                return;
+            }
         }
 
         setLoading(false);
