@@ -27,7 +27,6 @@ async function main() {
 
   // 1. Clear previous data
   console.log('Clearing existing data...');
-  await prisma.bookedSeat.deleteMany();
   await prisma.booking.deleteMany();
   await prisma.discountTier.deleteMany();
   await prisma.route.deleteMany();
@@ -257,7 +256,7 @@ async function main() {
       passengerEmail: 'alice@example.com',
       totalPrice: 45.00,
       routeId: route1.id,
-      seats: {
+      bookedSeats: {
         create: [
           { seatNumber: '1A' },
         ]
@@ -271,7 +270,7 @@ async function main() {
       passengerEmail: 'bob@example.com',
       totalPrice: 120.00,
       routeId: route2.id,
-      seats: {
+      bookedSeats: {
         create: [
           { seatNumber: '2B' },
           { seatNumber: '2C' },
