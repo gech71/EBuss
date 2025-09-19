@@ -6,6 +6,7 @@ import { lucia } from '@/app/lib/auth';
 import { cookies } from 'next/headers';
 import { ActionResult } from 'next/dist/server/app-render/types';
 import { Argon2id } from 'oslo/password';
+import { validateRequest } from '@/app/lib/auth';
 
 export async function authenticate(
   prevState: string | undefined,
@@ -25,7 +26,7 @@ export async function authenticate(
       },
     });
 
-    if (!existingUser) {
+    if (!existingUser || !existingUser.hashed_password) {
       return 'Invalid email or password.';
     }
 

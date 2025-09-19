@@ -46,7 +46,7 @@ import {
 import { Label } from '@/components/ui/label';
 import type { User } from 'lucia';
 
-export default function BookPage({ user }: { user: User | null }) {
+export default function BookPage() {
   const params = useParams();
   const { routes, buses, discounts, addBooking, getBusById } = useData();
   const { toast } = useToast();
@@ -189,7 +189,7 @@ export default function BookPage({ user }: { user: User | null }) {
 
   return (
     <div className="flex flex-col min-h-screen bg-muted/20">
-      <Header user={user} />
+      <Header user={null} />
       <main className="flex-1 container mx-auto py-8 px-4">
         <div className="max-w-3xl mx-auto">
           <Card>

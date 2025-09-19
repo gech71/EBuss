@@ -31,7 +31,7 @@ export function UserNav({ user }: UserNavProps) {
   }
 
   const owner = owners.find((o) => o.id === user.busOwnerId);
-  const userInitial = user.name.charAt(0).toUpperCase();
+  const userInitial = user.name ? user.name.charAt(0).toUpperCase() : 'U';
 
   if (sidebarState === 'collapsed') {
     return (
