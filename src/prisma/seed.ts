@@ -74,7 +74,7 @@ async function main() {
     data: {
       name: 'Super Admin',
       email: 'super@example.com',
-      hashed_password: await new Argon2id().hash('password'),
+      password: await new Argon2id().hash('password'),
       role: Role.SUPER_ADMIN,
     },
   });
@@ -83,7 +83,7 @@ async function main() {
     data: {
       name: 'Admin User',
       email: 'admin@example.com',
-      hashed_password: await new Argon2id().hash('password'),
+      password: await new Argon2id().hash('password'),
       role: Role.ADMIN,
       busOwner: {
         connect: { id: owner1.id },
@@ -95,7 +95,7 @@ async function main() {
     data: {
       name: 'RoadRunner Admin',
       email: 'runner@example.com',
-      hashed_password: await new Argon2id().hash('password'),
+      password: await new Argon2id().hash('password'),
       role: Role.ADMIN,
       busOwner: {
         connect: { id: owner2.id },
