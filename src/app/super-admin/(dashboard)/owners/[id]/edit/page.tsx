@@ -37,12 +37,12 @@ export default async function EditOwnerPage({ params }: EditOwnerPageProps) {
 
     const otherOwnerNames = allOwners.map(o => o.name);
 
-    // Prisma returns Decimal for 'value', need to convert to number for the form
+    // Prisma returns Decimal for 'value', which is serialized as a number. No conversion is needed.
     const sanitizedOwner = {
         ...owner,
         commissionTiers: owner.commissionTiers.map(tier => ({
             ...tier,
-            value: tier.value.toNumber()
+            value: tier.value // This is already a number
         }))
     } as BusOwner & { commissionTiers: CommissionTier[] }
 
@@ -51,4 +51,3 @@ export default async function EditOwnerPage({ params }: EditOwnerPageProps) {
         <EditOwnerForm owner={sanitizedOwner} otherOwnerNames={otherOwnerNames} />
     );
 }
-
