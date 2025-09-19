@@ -7,7 +7,6 @@ import { SidebarProvider, Sidebar, SidebarContent, SidebarMenu, SidebarMenuItem,
 import { LayoutDashboard, Route as RouteIcon, Bus, QrCode, MapPin, Percent } from "lucide-react";
 import { useAuthRedirect } from "@/hooks/use-auth-redirect";
 import { UserNav } from "@/components/UserNav";
-import { useData } from "@/lib/store";
 
 export default function AdminLayout({
   children,
@@ -15,16 +14,9 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const { loading } = useAuthRedirect({ requiredRole: 'admin' });
-  const { isSuperAdmin } = useData();
-
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
-  }
-  
-  // This prevents a flash of the admin layout if a super admin navigates here before redirecting.
-  if (isSuperAdmin) {
-     return <div className="flex items-center justify-center min-h-screen">Redirecting...</div>;
   }
   
   return (
