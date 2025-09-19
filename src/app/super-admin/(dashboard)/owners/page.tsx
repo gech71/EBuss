@@ -9,11 +9,6 @@ import { OwnerActions } from '@/components/super-admin/OwnerActions';
 
 export default async function SuperAdminOwnersPage() {
   const owners = await prisma.busOwner.findMany({
-    where: {
-      role: {
-        not: 'SUPER_ADMIN'
-      }
-    },
     include: {
       _count: {
         select: { buses: true, users: true }
