@@ -39,7 +39,7 @@ export function useAuthRedirect(options: AuthRedirectOptions = {}) {
 
             if (requiredRole === 'admin') {
                 if (isSuperAdmin) {
-                    router.replace('/super-admin'); // Super admin should not see admin page
+                    router.replace('/unauthorized'); // Super admin should not see admin page
                     return;
                 }
                 if (!isAdmin) {
@@ -49,7 +49,7 @@ export function useAuthRedirect(options: AuthRedirectOptions = {}) {
             }
 
             if (requiredRole === 'super-admin' && !isSuperAdmin) {
-                router.replace('/admin'); // Or a dedicated access-denied page
+                router.replace('/unauthorized'); // Admin trying to access super-admin page
                 return;
             }
         }
