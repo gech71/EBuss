@@ -1,330 +1,45 @@
 
-"use client";
+import { notFound } from "next/navigation";
+import prisma from "@/lib/prisma";
+import { EditRouteForm } from "@/components/admin/EditRouteForm";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useData } from "@/lib/store";
-import { useToast } from "@/hooks/use-toast";
-import { useRouter, useParams, notFound } from "next/navigation";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { CalendarIcon, Check, ChevronsUpDown } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
-import { format, parse } from "date-fns";
-import { useState, useEffect } from "react";
-import type { Route } from "@/lib/types";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+interface EditRoutePageProps {
+    params: { id: string };
+}
 
+export default async function EditRoutePage({ params }: EditRoutePageProps) {
 
-export default function EditRoutePage() {
-    const { toast } = useToast();
-    const router = useRouter();
-    const params = useParams();
-    const { locations, buses, routes, discounts, updateRoute, addRoute } = useData();
+    const route = await prisma.route.findUnique({
+        where: { id: params.id },
+    });
 
-    const id = params.id as string;
-    
-    const [origin, setOrigin] = useState<string>('');
-    const [destination, setDestination] = useState<string>('');
-    const [departureDate, setDepartureDate] = useState<Date>();
-    const [departureTime, setDepartureTime] = useState('12:00');
-    const [arrivalDate, setArrivalDate] = useState<Date>();
-    const [arrivalTime, setArrivalTime] = useState('16:00');
-    const [selectedBusIds, setSelectedBusIds] = useState<string[]>([]);
-    const [price, setPrice] = useState<number>(0);
-    const [discountId, setDiscountId] = useState<string | undefined>();
-
-    const [openOrigin, setOpenOrigin] = useState(false)
-    const [openDestination, setOpenDestination] = useState(false)
-    const [openBuses, setOpenBuses] = useState(false);
-
-    useEffect(() => {
-        const routeToEdit = routes.find(r => r.id === id);
-        if (routeToEdit) {
-            setOrigin(routeToEdit.origin);
-            setDestination(routeToEdit.destination);
-            setDepartureDate(new Date(routeToEdit.departureTime));
-            setDepartureTime(format(new Date(routeToEdit.departureTime), "HH:mm"));
-            setArrivalDate(new Date(routeToEdit.arrivalTime));
-            setArrivalTime(format(new Date(routeToEdit.arrivalTime), "HH:mm"));
-            setSelectedBusIds([routeToEdit.busId]);
-            setPrice(routeToEdit.price);
-            setDiscountId(routeToEdit.discountId);
-        } else {
-            // notFound();
-        }
-    }, [id, routes]);
-
-
-    const combineDateTime = (date: Date, time: string): Date => {
-        const [hours, minutes] = time.split(':').map(Number);
-        const newDate = new Date(date);
-        newDate.setHours(hours, minutes, 0, 0);
-        return newDate;
-    };
-
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        if (!origin || !destination || !departureDate || !arrivalDate || selectedBusIds.length === 0 || price <= 0) {
-            toast({ title: "Error", description: "Please fill out all fields and select at least one bus.", variant: "destructive" });
-            return;
-        }
-
-        if (origin === destination) {
-            toast({ title: "Error", description: "Origin and destination cannot be the same.", variant: "destructive" });
-            return;
-        }
-
-        const fullDepartureTime = combineDateTime(departureDate, departureTime);
-        const fullArrivalTime = combineDateTime(arrivalDate, arrivalTime);
-
-        if (fullArrivalTime <= fullDepartureTime) {
-            toast({ title: "Error", description: "Arrival time must be after departure time.", variant: "destructive" });
-            return;
-        }
-        
-        const [firstBusId, ...additionalBusIds] = selectedBusIds;
-        
-        // Update the original route with the first selected bus
-        const updatedRoute: Route = {
-            id: id,
-            origin,
-            destination,
-            departureTime: fullDepartureTime,
-            arrivalTime: fullArrivalTime,
-            busId: firstBusId,
-            price,
-            discountId: discountId === 'none' ? undefined : discountId,
-        };
-        updateRoute(updatedRoute);
-
-        // Create new routes for any additional buses selected
-        additionalBusIds.forEach(busId => {
-            const newRoute: Omit<Route, 'id'> = {
-                origin,
-                destination,
-                departureTime: fullDepartureTime,
-                arrivalTime: fullArrivalTime,
-                busId,
-                price,
-                discountId: discountId === 'none' ? undefined : discountId,
-            };
-            addRoute(newRoute);
-        });
-
-
-        toast({
-            title: "Success!",
-            description: `Updated 1 route and created ${additionalBusIds.length} new route(s).`,
-        });
-        router.push("/admin/routes");
-    };
-    
-    const toggleBusSelection = (busId: string) => {
-        setSelectedBusIds(prev => 
-            prev.includes(busId) 
-            ? prev.filter(id => id !== busId)
-            : [...prev, busId]
-        );
-    };
-
-    const selectedBuses = buses.filter(b => selectedBusIds.includes(b.id));
-
-
-    if (!id) {
-        return <p>Loading route...</p>
+    if (!route) {
+        notFound();
     }
+    
+    const [locations, buses, discounts] = await Promise.all([
+        prisma.route.findMany({
+            select: { origin: true, destination: true },
+        }),
+        prisma.bus.findMany({ orderBy: { name: 'asc' } }),
+        prisma.discount.findMany({ orderBy: { name: 'asc' } })
+    ]);
+
+    const locationSet = new Set<string>();
+    locations.forEach(loc => {
+        locationSet.add(loc.origin);
+        locationSet.add(loc.destination);
+    });
+    const uniqueLocations = Array.from(locationSet).sort();
+
 
     return (
-        <form onSubmit={handleSubmit}>
-            <Card className="max-w-xl mx-auto">
-                <CardHeader>
-                    <CardTitle>Edit Route</CardTitle>
-                    <CardDescription>Update the details for this bus route. Selecting multiple buses will update this route and create new ones.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="origin">Origin</Label>
-                                 <Popover open={openOrigin} onOpenChange={setOpenOrigin}>
-                                    <PopoverTrigger asChild>
-                                        <Button variant="outline" role="combobox" aria-expanded={openOrigin} className="w-full justify-between">
-                                            {origin ? locations.find((l) => l === origin) : "Select origin..."}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Search location..." />
-                                            <CommandList>
-                                                <CommandEmpty>No location found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {locations.map((location) => (
-                                                        <CommandItem
-                                                            key={location}
-                                                            value={location}
-                                                            onSelect={(currentValue) => {
-                                                                setOrigin(currentValue === origin ? "" : currentValue)
-                                                                setOpenOrigin(false)
-                                                            }}
-                                                        >
-                                                            <Check className={cn("mr-2 h-4 w-4", origin === location ? "opacity-100" : "opacity-0")} />
-                                                            {location}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="destination">Destination</Label>
-                                <Popover open={openDestination} onOpenChange={setOpenDestination}>
-                                    <PopoverTrigger asChild>
-                                        <Button variant="outline" role="combobox" aria-expanded={openDestination} className="w-full justify-between">
-                                            {destination ? locations.find((l) => l === destination) : "Select destination..."}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Search location..." />
-                                            <CommandList>
-                                                <CommandEmpty>No location found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {locations.map((location) => (
-                                                        <CommandItem
-                                                            key={location}
-                                                            value={location}
-                                                            onSelect={(currentValue) => {
-                                                                setDestination(currentValue === destination ? "" : currentValue)
-                                                                setOpenDestination(false)
-                                                            }}
-                                                        >
-                                                            <Check className={cn("mr-2 h-4 w-4", destination === location ? "opacity-100" : "opacity-0")} />
-                                                            {location}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="departureTime">Departure</Label>
-                                <div className="flex gap-2">
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !departureDate && "text-muted-foreground")}>
-                                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                                {departureDate ? format(departureDate, "PPP") : <span>Pick a date</span>}
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0">
-                                            <Calendar mode="single" selected={departureDate} onSelect={setDepartureDate} initialFocus />
-                                        </PopoverContent>
-                                    </Popover>
-                                    <Input type="time" value={departureTime} onChange={e => setDepartureTime(e.target.value)} />
-                                </div>
-                            </div>
-                             <div className="space-y-2">
-                                <Label htmlFor="arrivalTime">Arrival</Label>
-                                <div className="flex gap-2">
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !arrivalDate && "text-muted-foreground")}>
-                                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                                {arrivalDate ? format(arrivalDate, "PPP") : <span>Pick a date</span>}
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0">
-                                            <Calendar mode="single" selected={arrivalDate} onSelect={setArrivalDate} initialFocus />
-                                        </PopoverContent>
-                                    </Popover>
-                                     <Input type="time" value={arrivalTime} onChange={e => setArrivalTime(e.target.value)} />
-                                </div>
-                            </div>
-                        </div>
-                         <div className="space-y-2">
-                            <Label htmlFor="busId">Bus</Label>
-                            <Popover open={openBuses} onOpenChange={setOpenBuses}>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                    variant="outline"
-                                    role="combobox"
-                                    aria-expanded={openBuses}
-                                    className="w-full justify-between"
-                                    >
-                                    <span className="truncate">
-                                        {selectedBuses.length > 0 ? selectedBuses.map(b => b.name).join(', ') : "Select buses..."}
-                                    </span>
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                    <Command>
-                                        <CommandInput placeholder="Search bus types..." />
-                                        <CommandList>
-                                            <CommandEmpty>No bus types found.</CommandEmpty>
-                                            <CommandGroup>
-                                                {buses.map((bus) => (
-                                                <CommandItem
-                                                    key={bus.id}
-                                                    value={bus.name}
-                                                    onSelect={() => {
-                                                        toggleBusSelection(bus.id);
-                                                    }}
-                                                >
-                                                    <Check
-                                                    className={cn(
-                                                        "mr-2 h-4 w-4",
-                                                        selectedBusIds.includes(bus.id) ? "opacity-100" : "opacity-0"
-                                                    )}
-                                                    />
-                                                    {bus.name}
-                                                </CommandItem>
-                                                ))}
-                                            </CommandGroup>
-                                        </CommandList>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="price">Price</Label>
-                                <Input id="price" type="number" step="0.01" placeholder="e.g., 45.00" required value={price || ''} onChange={e => setPrice(Number(e.target.value))} />
-                            </div>
-                             <div className="space-y-2">
-                                <Label htmlFor="discount">Discount Offer</Label>
-                                 <Select value={discountId || 'none'} onValueChange={setDiscountId}>
-                                    <SelectTrigger id="discount">
-                                        <SelectValue placeholder="Select a discount..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">No Discount</SelectItem>
-                                        {discounts.map(d => (
-                                            <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-                    </div>
-                </CardContent>
-                <CardFooter className="flex justify-end gap-2">
-                     <Button type="button" variant="outline" onClick={() => router.push('/admin/routes')}>Cancel</Button>
-                    <Button type="submit">Save Changes</Button>
-                </CardFooter>
-            </Card>
-        </form>
+       <EditRouteForm 
+            route={route}
+            locations={uniqueLocations}
+            buses={buses}
+            discounts={discounts}
+        />
     );
 }
+
