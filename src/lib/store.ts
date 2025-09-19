@@ -411,7 +411,7 @@ export function useDataProvider(): DataStore {
     const addBooking = (bookingData: Omit<Booking, 'bookingTime'>): boolean => {
         let success = false;
         
-        setAllData(currentData => {
+        updateAndPersistData(currentData => {
             const relevantRoute = currentData.routes.find(r => r.id === bookingData.routeId);
             const busToUpdate = currentData.buses.find(bus => bus.id === relevantRoute?.busId);
 
@@ -455,7 +455,6 @@ export function useDataProvider(): DataStore {
                 bookings: [...currentData.bookings, newBooking],
             };
 
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newData));
             success = true;
             return newData;
         });
