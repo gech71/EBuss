@@ -5,12 +5,16 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useData } from "@/lib/store";
 import { Search, Ticket } from "lucide-react";
 import { Badge } from "../ui/badge";
+import type { Booking, Route } from "@prisma/client";
 
-export function RecentBookings() {
-  const { bookings, routes, getBusById } = useData();
+interface RecentBookingsProps {
+    bookings: (Booking & { bookedSeats: { seatNumber: string }[] })[];
+    routes: Route[];
+}
+
+export function RecentBookings({ bookings, routes }: RecentBookingsProps) {
   const [searchTerm, setSearchTerm] = useState("");
 
   const filteredBookings = useMemo(() => {
@@ -32,7 +36,7 @@ export function RecentBookings() {
     });
   }, [searchTerm, bookings, routes]);
   
-  // Sort bookings by most recent
+  // Sort bookings by most recent (already sorted by query, but good for client-side filtering)
   const sortedBookings = useMemo(() => {
       return [...filteredBookings].sort((a, b) => new Date(b.bookingTime).getTime() - new Date(a.bookingTime).getTime());
   }, [filteredBookings]);
@@ -76,11 +80,11 @@ export function RecentBookings() {
                 return (
                   <TableRow key={booking.id}>
                     <TableCell className="font-medium">
-                      <Badge variant="outline">{booking.id.split('-').pop()}</Badge>
+                       <Badge variant="outline">{booking.id.substring(0, 8)}...</Badge>
                     </TableCell>
                     <TableCell>{booking.passengerName}</TableCell>
                     <TableCell>{route ? `${route.origin} → ${route.destination}` : "N/A"}</TableCell>
-                    <TableCell>{booking.seats.map(s => s.id).join(', ')}</TableCell>
+                    <TableCell>{booking.bookedSeats.map(s => s.seatNumber).join(', ')}</TableCell>
                     <TableCell>{new Date(booking.bookingTime).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">${booking.totalPrice.toFixed(2)}</TableCell>
                   </TableRow>

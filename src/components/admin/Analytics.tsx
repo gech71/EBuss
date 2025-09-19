@@ -1,7 +1,6 @@
 
 "use client";
 
-import { useData } from "@/lib/store";
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -14,6 +13,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
+import type { Booking, Route, Bus } from "@prisma/client";
 
 interface RouteStat {
     routeId: string;
@@ -25,9 +25,16 @@ interface RouteStat {
     potentialRevenue: number;
 }
 
-export function Analytics() {
-    const { routes, bookings, getBusById } = useData();
+interface AnalyticsProps {
+    bookings: (Booking & { bookedSeats: { seatNumber: string }[] })[];
+    routes: Route[];
+    buses: Bus[];
+}
+
+export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
+    
+    const getBusById = (busId: string) => buses.find(b => b.id === busId);
 
     const todayStats = useMemo(() => {
         const today = new Date();
@@ -93,7 +100,7 @@ export function Analytics() {
                 };
             }
 
-            stats[route.id].ticketsSold += booking.seats.length;
+            stats[route.id].ticketsSold += booking.bookedSeats.length;
             stats[route.id].revenue += booking.totalPrice;
         });
 
