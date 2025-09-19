@@ -68,7 +68,7 @@ async function main() {
   console.log(`Created owners: ${owner1.name}, ${owner2.name}`);
 
   // 3. Create Users
-  await prisma.user.create({
+  const superAdmin = await prisma.user.create({
     data: {
       name: 'Super Admin',
       email: 'super@example.com',
@@ -77,22 +77,27 @@ async function main() {
     },
   });
 
-  await prisma.user.create({
+  const admin1 = await prisma.user.create({
     data: {
       name: 'Admin User',
       email: 'admin@example.com',
       password: 'password', // In a real app, hash this!
       role: Role.ADMIN,
-      ownerId: owner1.id,
+      busOwner: {
+        connect: { id: owner1.id },
+      },
     },
   });
-   await prisma.user.create({
+
+   const admin2 = await prisma.user.create({
     data: {
       name: 'RoadRunner Admin',
       email: 'runner@example.com',
       password: 'password', // In a real app, hash this!
       role: Role.ADMIN,
-      ownerId: owner2.id,
+      busOwner: {
+        connect: { id: owner2.id },
+      },
     },
   });
 
@@ -104,7 +109,9 @@ async function main() {
     data: {
       name: 'Standard Cruiser',
       capacity: 48,
-      ownerId: owner1.id,
+      owner: {
+        connect: { id: owner1.id }
+      },
       layout: {
         create: {
           rows: 12,
@@ -121,7 +128,9 @@ async function main() {
     data: {
       name: 'Luxury Liner',
       capacity: 36,
-      ownerId: owner2.id,
+      owner: {
+        connect: { id: owner2.id }
+      },
       layout: {
         create: {
           rows: 9,
@@ -138,7 +147,9 @@ async function main() {
     data: {
       name: 'City Hopper',
       capacity: 52,
-      ownerId: owner1.id,
+      owner: {
+        connect: { id: owner1.id }
+      },
       layout: {
         create: {
           rows: 13,
@@ -159,7 +170,9 @@ async function main() {
         name: 'Summer Group Offer',
         startDate: new Date(),
         endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-        ownerId: owner1.id,
+        owner: {
+            connect: { id: owner1.id }
+        },
         tiers: {
             create: [
                 { minTickets: 2, maxTickets: 4, percentage: 10 },
@@ -174,7 +187,9 @@ async function main() {
         name: 'Weekend Deal',
         startDate: new Date(),
         endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days from now
-        ownerId: owner2.id,
+        owner: {
+            connect: { id: owner2.id }
+        },
         tiers: {
             create: [
                 { minTickets: 2, maxTickets: 5, percentage: 8 },
@@ -293,3 +308,5 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+
+    
