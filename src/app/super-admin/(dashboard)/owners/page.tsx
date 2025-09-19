@@ -57,7 +57,7 @@ export default async function SuperAdminOwnersPage() {
                     <Badge variant="secondary">{owner._count.admins}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{owner.commissionTiers.length} Tiers</Badge>
+                    <Badge variant="outline">{(owner.commissionTiers as any[]).length} Tiers</Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <OwnerActions owner={owner} />
