@@ -1,29 +1,50 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { lucia } from '@/app/lib/auth';
+import { jwtVerify } from 'jose';
+
+const getJwtSecret = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET environment variable is not set');
+  }
+  return new TextEncoder().encode(secret);
+};
+
+async function verifyJwt(token: string) {
+  try {
+    const { payload } = await jwtVerify(token, getJwtSecret());
+    return payload;
+  } catch (error) {
+    return null;
+  }
+}
 
 export async function middleware(request: NextRequest) {
-  const sessionId = request.cookies.get(lucia.sessionCookieName)?.value ?? null;
   const { pathname } = request.nextUrl;
-
-  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register');
-  const isProtectedRoute = pathname.startsWith('/admin') || pathname.startsWith('/super-admin');
   
-  let isAuthenticated = !!sessionId;
+  // Routes that are for authentication
+  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register');
+  
+  // Public routes that don't require authentication
+  const isPublicRoute = pathname === '/'; // Add any other public routes here
 
-  // If the user is not authenticated and is trying to access a protected route,
-  // redirect them to the login page.
-  if (!isAuthenticated && isProtectedRoute) {
+  // Protected routes that require authentication
+  const isProtectedRoute = pathname.startsWith('/admin') || pathname.startsWith('/super-admin');
+
+  const sessionCookie = request.cookies.get('auth_session')?.value;
+  const decodedToken = sessionCookie ? await verifyJwt(sessionCookie) : null;
+  const isAuthenticated = !!decodedToken;
+
+  if (isProtectedRoute && !isAuthenticated) {
+    // Redirect unauthenticated users from protected routes to the login page
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // If the user is authenticated and is trying to access a login/register page,
-  // redirect them to the admin dashboard.
-  if (isAuthenticated && isAuthRoute) {
+  if (isAuthRoute && isAuthenticated) {
+    // Redirect authenticated users from login/register to the admin dashboard
     return NextResponse.redirect(new URL('/admin', request.url));
   }
 
-  // Allow the request to proceed if none of the above conditions are met.
   return NextResponse.next();
 }
 
