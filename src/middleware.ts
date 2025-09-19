@@ -15,6 +15,7 @@ async function verifyJwt(token: string) {
     const { payload } = await jwtVerify(token, getJwtSecret());
     return payload;
   } catch (error) {
+    console.error('JWT Verification failed:', error);
     return null;
   }
 }
@@ -22,33 +23,29 @@ async function verifyJwt(token: string) {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
-  // Routes that are for authentication
-  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register');
-  
-  // Public routes that don't require authentication
-  const isPublicRoute = pathname === '/'; // Add any other public routes here
-
-  // Protected routes that require authentication
-  const isProtectedRoute = pathname.startsWith('/admin') || pathname.startsWith('/super-admin');
-
   const sessionCookie = request.cookies.get('auth_session')?.value;
   const decodedToken = sessionCookie ? await verifyJwt(sessionCookie) : null;
   const isAuthenticated = !!decodedToken;
 
+  const isProtectedRoute = pathname.startsWith('/admin') || pathname.startsWith('/super-admin');
+  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register');
+
   if (isProtectedRoute && !isAuthenticated) {
-    // Redirect unauthenticated users from protected routes to the login page
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
   if (isAuthRoute && isAuthenticated) {
-    // Redirect authenticated users from login/register to the admin dashboard
+    // Redirect authenticated users to the appropriate dashboard
+    const userRole = decodedToken?.role;
+    if (userRole === 'SUPER_ADMIN') {
+        return NextResponse.redirect(new URL('/super-admin', request.url));
+    }
     return NextResponse.redirect(new URL('/admin', request.url));
   }
 
   return NextResponse.next();
 }
 
-// Configure the middleware to run on specific paths.
 export const config = {
   matcher: ['/admin/:path*', '/super-admin/:path*', '/login', '/register'],
 };
