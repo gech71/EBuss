@@ -35,9 +35,13 @@ export function useAuthRedirect(options: AuthRedirectOptions = {}) {
             return;
         }
 
-
         if (requiredRole === 'super-admin' && !isSuperAdmin) {
              router.replace('/admin'); // Or a dedicated access-denied page
+             return;
+        }
+        
+        if (requiredRole === 'admin' && isSuperAdmin) {
+             router.replace('/super-admin');
              return;
         }
 
