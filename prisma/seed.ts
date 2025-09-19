@@ -1,5 +1,5 @@
 
-import { PrismaClient, SeatStatus, SeatType, CommissionType } from '@prisma/client';
+import { PrismaClient, SeatStatus, SeatType, CommissionType, Role } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -27,13 +27,14 @@ async function main() {
 
   // 1. Clear previous data
   console.log('Clearing existing data...');
+  await prisma.bookedSeat.deleteMany();
   await prisma.booking.deleteMany();
   await prisma.discountTier.deleteMany();
   await prisma.route.deleteMany();
   await prisma.discount.deleteMany();
   await prisma.seat.deleteMany();
-  await prisma.seatLayout.deleteMany();
   await prisma.bus.deleteMany();
+  await prisma.seatLayout.deleteMany();
   await prisma.commissionTier.deleteMany();
   await prisma.user.deleteMany();
   await prisma.busOwner.deleteMany();
@@ -72,7 +73,7 @@ async function main() {
       name: 'Super Admin',
       email: 'super@example.com',
       password: 'password', // In a real app, hash this!
-      role: 'SUPER_ADMIN',
+      role: Role.SUPER_ADMIN,
     },
   });
 
@@ -81,7 +82,7 @@ async function main() {
       name: 'Admin User',
       email: 'admin@example.com',
       password: 'password', // In a real app, hash this!
-      role: 'ADMIN',
+      role: Role.ADMIN,
       ownerId: owner1.id,
     },
   });
@@ -90,7 +91,7 @@ async function main() {
       name: 'RoadRunner Admin',
       email: 'runner@example.com',
       password: 'password', // In a real app, hash this!
-      role: 'ADMIN',
+      role: Role.ADMIN,
       ownerId: owner2.id,
     },
   });
