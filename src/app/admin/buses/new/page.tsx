@@ -21,7 +21,7 @@ const generateSeats = (rows: number, cols: number, aisleCols: number[], lastRowF
       const isAisle = aisleCols.includes(c) && !(lastRowFull && isLastRow);
       
       seats.push({
-        seatNumber: `${String.fromCharCode(65 + r)}${c + 1}`,
+        seatNumber: `${c + 1}${String.fromCharCode(65 + r)}`,
         status: 'AVAILABLE',
         type: isAisle ? 'AISLE' : 'SEAT',
       });
@@ -44,22 +44,20 @@ export default function NewBusPage() {
     const [lastRowFull, setLastRowFull] = useState(false);
     
     const parsedAisleCols = useMemo(() => {
-        return aisleCols.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+        return aisleCols.split(',').map(s => parseInt(s.trim(), 10) - 1).filter(n => !isNaN(n));
     }, [aisleCols]);
 
     const capacity = useMemo(() => {
         if (cols <= 0 || rows <= 0) return 0;
         
         const baseCapacity = rows * cols;
-        const aisleSeats = rows * parsedAisleCols.length;
+        let aisleSeats = rows * parsedAisleCols.length;
         
-        let finalCapacity = baseCapacity - aisleSeats;
-        
-        if (lastRowFull) {
-            finalCapacity += parsedAisleCols.length;
+        if (lastRowFull && rows > 0) {
+            aisleSeats -= parsedAisleCols.length;
         }
         
-        return finalCapacity;
+        return baseCapacity - aisleSeats;
     }, [rows, cols, parsedAisleCols, lastRowFull]);
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -122,8 +120,8 @@ export default function NewBusPage() {
                                 </div>
                             </div>
                              <div className="space-y-2 mt-4">
-                                <Label htmlFor="aisleCols">Aisle Columns (0-indexed, comma-separated)</Label>
-                                <Input id="aisleCols" type="text" placeholder="e.g., 2" required value={aisleCols} onChange={e => setAisleCols(e.target.value)} />
+                                <Label htmlFor="aisleCols">Aisle Columns (1-indexed, comma-separated)</Label>
+                                <Input id="aisleCols" type="text" placeholder="e.g., 3" required value={aisleCols} onChange={e => setAisleCols(e.target.value)} />
                             </div>
                             <div className="flex items-center space-x-2 mt-4">
                                 <Checkbox id="last-row-full" checked={lastRowFull} onCheckedChange={(checked) => setLastRowFull(Boolean(checked))} />

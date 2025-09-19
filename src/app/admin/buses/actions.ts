@@ -52,7 +52,11 @@ export async function createBusAction(formData: FormData) {
             data: {
                 name,
                 capacity,
-                ownerId: user.busOwnerId,
+                owner: {
+                    connect: {
+                        id: user.busOwnerId
+                    }
+                },
                 layout: {
                     create: {
                         rows,
