@@ -4,9 +4,8 @@ import { redirect } from 'next/navigation';
 import prisma from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import { Argon2id } from 'oslo/password';
-import { lucia } from '@/app/lib/auth';
+import { lucia, validateRequest } from '@/app/lib/auth';
 import type { ActionResult } from 'next/dist/server/app-render/types';
-import { validateRequest } from './auth';
 import { SignJWT } from 'jose';
 
 const getJwtSecret = () => {
