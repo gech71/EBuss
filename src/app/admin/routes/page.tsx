@@ -1,29 +1,18 @@
 
-"use client";
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useData } from "@/lib/store";
-import { PlusCircle, MoreHorizontal } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { PlusCircle } from "lucide-react";
 import Link from 'next/link';
-import { useToast } from "@/hooks/use-toast";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import prisma from "@/lib/prisma";
+import { RouteActions } from "@/components/admin/RouteActions";
 
-
-export default function AdminRoutesPage() {
-  const { routes, deleteRoute } = useData();
-  const { toast } = useToast();
-
-  const handleDelete = (routeId: string) => {
-    // In a real app, you might check if there are active bookings first.
-    deleteRoute(routeId);
-    toast({
-        title: "Success",
-        description: "Route has been deleted."
-    });
-  }
+export default async function AdminRoutesPage() {
+  const routes = await prisma.route.findMany({
+    orderBy: {
+      departureTime: 'asc'
+    }
+  });
 
   return (
     <Card>
@@ -59,44 +48,17 @@ export default function AdminRoutesPage() {
                 <TableCell>{new Date(route.departureTime).toLocaleString()}</TableCell>
                 <TableCell className="text-right">${route.price.toFixed(2)}</TableCell>
                 <TableCell>
-                  <AlertDialog>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button aria-haspopup="true" size="icon" variant="ghost">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Toggle menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem asChild>
-                           <Link href={`/admin/routes/${route.id}/edit`}>Edit</Link>
-                        </DropdownMenuItem>
-                        <AlertDialogTrigger asChild>
-                          <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(e) => e.preventDefault()}>
-                            Delete
-                          </DropdownMenuItem>
-                        </AlertDialogTrigger>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This action cannot be undone. This will permanently delete the route.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(route.id)} className="bg-destructive hover:bg-destructive/90">
-                          Yes, delete it
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  <RouteActions routeId={route.id} />
                 </TableCell>
               </TableRow>
             ))}
+             {routes.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center h-24">
+                  No routes found.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </CardContent>
