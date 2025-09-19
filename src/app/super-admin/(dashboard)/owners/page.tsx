@@ -11,6 +11,7 @@ import { OwnerActions } from '@/components/super-admin/OwnerActions';
 export default async function SuperAdminOwnersPage() {
   const owners = await prisma.busOwner.findMany({
     include: {
+      commissionTiers: true, // Fetch the actual commission tiers
       _count: {
         select: { buses: true, admins: true }
       }
@@ -57,7 +58,7 @@ export default async function SuperAdminOwnersPage() {
                     <Badge variant="secondary">{owner._count.admins}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{(owner.commissionTiers as any[]).length} Tiers</Badge>
+                    <Badge variant="outline">{owner.commissionTiers.length} Tiers</Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <OwnerActions owner={owner} />
