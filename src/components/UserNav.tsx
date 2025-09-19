@@ -15,6 +15,7 @@ import { useData } from "@/lib/store";
 import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { useSidebar } from "./ui/sidebar";
+import { cn } from "@/lib/utils";
 
 export function UserNav() {
   const { loggedInUser, logout, owners } = useData();
@@ -70,7 +71,7 @@ export function UserNav() {
   return (
     <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="w-full justify-start h-fit px-2">
+          <Button variant="ghost" className={cn("w-full justify-start h-fit px-2 py-2 rounded-md", "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground")}>
             <div className="flex items-center gap-2">
                 <Avatar className="h-8 w-8">
                     <AvatarFallback>{userInitial}</AvatarFallback>
