@@ -303,7 +303,9 @@ export function useDataProvider(): DataStore {
     }, [allData.bookings, routeIdsForCurrentUser, isSuperAdmin, loggedInUserId]);
 
     const discounts = useMemo(() => {
-        if (isSuperAdmin || !loggedInUserId || loggedInUserId.startsWith('user-')) return allData.discounts;
+        if (isSuperAdmin || !loggedInUserId || loggedInUserId.startsWith('user-')) {
+            return allData.discounts;
+        }
         return allData.discounts.filter(d => d.ownerId === loggedInUserId);
     }, [allData.discounts, loggedInUserId, isSuperAdmin]);
     
