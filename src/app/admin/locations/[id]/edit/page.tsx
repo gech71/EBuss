@@ -1,80 +1,44 @@
 
-"use client";
-
-import { Button } from "@/components/ui/button";
+import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
-import { useData } from "@/lib/store";
-import { useRouter, useParams, notFound } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import Link from 'next/link';
+import { updateLocationAction } from "@/app/admin/locations/actions";
+import { SubmitButton } from "@/components/SubmitButton";
 
-export default function EditLocationPage() {
-    const { toast } = useToast();
-    const router = useRouter();
-    const params = useParams();
-    const { locations, updateLocation } = useData();
+interface EditLocationPageProps {
+    params: { id: string };
+}
 
-    const id = params.id ? decodeURIComponent(params.id as string) : '';
-    const [locationName, setLocationName] = useState('');
-    const [initialLocationFound, setInitialLocationFound] = useState(false);
+export default async function EditLocationPage({ params }: EditLocationPageProps) {
+    const locationName = decodeURIComponent(params.id);
 
-    useEffect(() => {
-        if (id && locations.includes(id)) {
-            setLocationName(id);
-            setInitialLocationFound(true);
-        } else if (!initialLocationFound) {
-            // Only call notFound on initial load if location doesn't exist
-            // This prevents a 404 after a successful update
-        }
-    }, [id, locations, initialLocationFound]);
-
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        if (locationName && locationName !== id) {
-             if (locations.some(loc => loc.toLowerCase() === locationName.toLowerCase() && loc !== id)) {
-                toast({ title: "Error", description: "A location with this name already exists.", variant: "destructive" });
-                return;
-            }
-            updateLocation(id, locationName);
-            toast({
-                title: "Success!",
-                description: `Location has been updated to "${locationName}".`,
-            });
-            router.push("/admin/locations");
-        } else {
-            router.push("/admin/locations");
-        }
-    };
-
-    // We check `initialLocationFound` which is set on the first successful load.
-    // If the component is still mounted and the URL param `id` is no longer in `locations`,
-    // it's because we just updated it, so we don't call notFound().
-    if (!id || (!initialLocationFound && !locations.includes(id))) {
-        // A check to see if the component is just loading
-        const isStillLoading = !locations.length;
-        if (!isStillLoading) {
-            notFound();
-        }
+    // In a real app with a dedicated `locations` table, you would fetch by ID.
+    // Here, we just use the name from the URL.
+    if (!locationName) {
+        notFound();
     }
 
-
     return (
-        <form onSubmit={handleSubmit}>
+        <form action={updateLocationAction}>
+            <input type="hidden" name="oldName" value={locationName} />
             <Card className="max-w-xl mx-auto">
                 <CardHeader>
                     <CardTitle>Edit Location</CardTitle>
-                    <CardDescription>Update the details for this location.</CardDescription>
+                    <CardDescription>
+                        Update the name for "{locationName}". This will update all routes that use this location.
+                    </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="name">Location Name</Label>
+                            <Label htmlFor="newName">New Location Name</Label>
                             <Input 
-                                id="name" 
-                                value={locationName}
-                                onChange={(e) => setLocationName(e.target.value)}
+                                id="newName" 
+                                name="newName"
+                                defaultValue={locationName}
                                 placeholder="e.g., New York, NY" 
                                 required 
                             />
@@ -82,10 +46,13 @@ export default function EditLocationPage() {
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => router.push('/admin/locations')}>Cancel</Button>
-                    <Button type="submit">Save Changes</Button>
+                     <Button type="button" variant="outline" asChild>
+                      <Link href="/admin/locations">Cancel</Link>
+                    </Button>
+                    <SubmitButton>Save Changes</SubmitButton>
                 </CardFooter>
             </Card>
         </form>
     );
 }
+
