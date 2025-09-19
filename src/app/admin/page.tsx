@@ -1,20 +1,29 @@
 
-"use client";
-
 import { RecentBookings } from "@/components/admin/RecentBookings";
 import { Analytics } from "@/components/admin/Analytics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useData } from "@/lib/store";
 import { DollarSign, Route as RouteIcon, Bus } from "lucide-react";
+import prisma from "@/lib/prisma";
 
-export default function AdminDashboard() {
-  const { routes, buses, bookings } = useData();
+export default async function AdminDashboard() {
+  const bookings = await prisma.booking.findMany({
+    include: {
+      bookedSeats: true,
+    },
+    orderBy: {
+      bookingTime: 'desc',
+    },
+  });
+  
+  const routes = await prisma.route.findMany();
+  const buses = await prisma.bus.findMany();
+  
   const totalRevenue = bookings.reduce((acc, booking) => acc + booking.totalPrice, 0);
 
   return (
     <div className="space-y-8">
 
-      <Analytics />
+      <Analytics bookings={bookings} routes={routes} buses={buses} />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
@@ -58,7 +67,7 @@ export default function AdminDashboard() {
       </div>
 
       <div>
-        <RecentBookings />
+        <RecentBookings bookings={bookings} routes={routes} />
       </div>
     </div>
   );
