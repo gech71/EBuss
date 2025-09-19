@@ -1,58 +1,77 @@
 'use server';
 
+import { redirect } from 'next/navigation';
 import prisma from '@/lib/prisma';
-import { User } from '@/lib/types';
+import { lucia } from '@/app/lib/auth';
+import { cookies } from 'next/headers';
+import { ActionResult } from 'next/dist/server/app-render/types';
+import { Argon2id } from 'oslo/password';
 
 export async function authenticate(
   prevState: string | undefined,
-  formData: FormData,
-) {
-    try {
-        const email = formData.get('email') as string;
-        const password = formData.get('password') as string;
+  formData: FormData
+): Promise<string | undefined> {
+  try {
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
 
-        if (!email || !password) {
-            return 'Please provide all fields.';
-        }
-
-        const user = await prisma.user.findUnique({
-            where: {
-                email,
-            },
-        });
-
-        if (!user) {
-            return 'Invalid email or password.';
-        }
-
-        // IMPORTANT: In a real application, you should hash passwords and compare the hash.
-        // For this project, we are comparing plain text passwords as stored in the seed data.
-        const passwordsMatch = user.password === password;
-
-        if (!passwordsMatch) {
-            return 'Invalid email or password.';
-        }
-        
-        // This is a simplified "token" creation for demonstration purposes.
-        // In a real app, use a library like 'jsonwebtoken' and manage sessions securely.
-        const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-        const payload = btoa(JSON.stringify({ sub: user.id, name: user.name, role: user.role, ownerId: user.busOwnerId, iat: Date.now() }));
-        const signature = 'mock-signature'; // In a real app, this would be a secret-signed signature.
-        const token = `${header}.${payload}.${signature}`;
-
-        const userRoleDetails = {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            ownerId: user.busOwnerId,
-            token: token
-        }
-
-        return JSON.stringify(userRoleDetails);
-
-    } catch (error) {
-        console.error(error);
-        return 'An unexpected error occurred.';
+    if (!email || !password) {
+      return 'Please provide all fields.';
     }
+
+    const existingUser = await prisma.user.findUnique({
+      where: {
+        email: email.toLowerCase(),
+      },
+    });
+
+    if (!existingUser) {
+      return 'Invalid email or password.';
+    }
+
+    const validPassword = await new Argon2id().verify(
+      existingUser.hashed_password,
+      password
+    );
+    if (!validPassword) {
+      return 'Invalid email or password.';
+    }
+
+    const session = await lucia.createSession(existingUser.id, {});
+    const sessionCookie = lucia.createSessionCookie(session.id);
+    cookies().set(
+      sessionCookie.name,
+      sessionCookie.value,
+      sessionCookie.attributes
+    );
+
+    if (existingUser.role === 'SUPER_ADMIN') {
+      return redirect('/super-admin');
+    } else if (existingUser.role === 'ADMIN') {
+      return redirect('/admin');
+    } else {
+      return redirect('/');
+    }
+  } catch (error) {
+    console.error(error);
+    if (error instanceof Error && error.message.includes('redirect')) {
+      throw error;
+    }
+    return 'An unexpected error occurred.';
+  }
+}
+
+export async function logout(): Promise<ActionResult> {
+	const { session } = await validateRequest();
+	if (!session) {
+		return {
+			error: "Unauthorized"
+		};
+	}
+
+	await lucia.invalidateSession(session.id);
+
+	const sessionCookie = lucia.createBlankSessionCookie();
+	cookies().set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
+	return redirect("/login");
 }

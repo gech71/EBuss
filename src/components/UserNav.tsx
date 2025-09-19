@@ -1,5 +1,4 @@
-
-"use client";
+'use client';
 
 import {
   DropdownMenu,
@@ -8,108 +7,125 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
-import { useData } from "@/lib/store";
-import { useRouter } from "next/navigation";
-import { Avatar, AvatarFallback } from "./ui/avatar";
-import { useSidebar } from "./ui/sidebar";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { LogOut } from 'lucide-react';
+import { useData } from '@/lib/store';
+import { useRouter } from 'next/navigation';
+import { Avatar, AvatarFallback } from './ui/avatar';
+import { useSidebar } from './ui/sidebar';
+import { cn } from '@/lib/utils';
+import type { User } from 'lucia';
+import { logout } from '@/app/lib/actions';
 
-export function UserNav() {
-  const { loggedInUser, logout, owners } = useData();
-  const router = useRouter();
+interface UserNavProps {
+  user: User | null;
+}
+
+export function UserNav({ user }: UserNavProps) {
+  const { owners } = useData();
   const { state: sidebarState } = useSidebar();
 
-  const handleLogout = () => {
-    logout();
-    window.location.href = '/';
-  }
-
-  if (!loggedInUser) {
+  if (!user) {
     return null;
   }
-  
-  const owner = owners.find(o => o.id === loggedInUser.ownerId);
-  const userInitial = loggedInUser.name.charAt(0).toUpperCase();
+
+  const owner = owners.find((o) => o.id === user.busOwnerId);
+  const userInitial = user.name.charAt(0).toUpperCase();
 
   if (sidebarState === 'collapsed') {
     return (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                     <Avatar className="h-8 w-8">
-                        <AvatarFallback>{userInitial}</AvatarFallback>
-                    </Avatar>
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" forceMount>
-            <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{loggedInUser.name}</p>
-                <p className="text-xs leading-none text-muted-foreground">
-                    {loggedInUser.email}
-                </p>
-                 {owner && owner.id !== 'super-admin' && (
-                    <p className="text-xs leading-none text-muted-foreground pt-1">
-                        {owner.name}
-                    </p>
-                )}
-                </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
-            </DropdownMenuItem>
-            </DropdownMenuContent>
-      </DropdownMenu>
-    )
-  }
-
-  return (
-    <DropdownMenu>
+      <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className={cn("w-full justify-start h-fit px-2 py-2 rounded-md", "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground")}>
-            <div className="flex items-center gap-2">
-                <Avatar className="h-8 w-8">
-                    <AvatarFallback>{userInitial}</AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col items-start text-left">
-                    <p className="text-sm font-medium leading-none">{loggedInUser.name}</p>
-                    <p className="text-xs leading-none text-muted-foreground truncate">
-                        {loggedInUser.email}
-                    </p>
-                    {owner && owner.id !== 'super-admin' && (
-                        <p className="text-xs leading-none text-muted-foreground pt-1 truncate">
-                            {owner.name}
-                        </p>
-                    )}
-                </div>
-            </div>
+          <Button
+            variant="ghost"
+            className="relative h-10 w-10 rounded-full"
+          >
+            <Avatar className="h-8 w-8">
+              <AvatarFallback>{userInitial}</AvatarFallback>
+            </Avatar>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="end" forceMount>
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">{loggedInUser.name}</p>
+              <p className="text-sm font-medium leading-none">{user.name}</p>
               <p className="text-xs leading-none text-muted-foreground">
-                {loggedInUser.email}
+                {user.email}
               </p>
-               {owner && owner.id !== 'super-admin' && (
-                    <p className="text-xs leading-none text-muted-foreground pt-1">
-                       {owner.name}
-                    </p>
-                )}
+              {owner && owner.id !== 'super-admin' && (
+                <p className="text-xs leading-none text-muted-foreground pt-1">
+                  {owner.name}
+                </p>
+              )}
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleLogout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            <span>Log out</span>
-          </DropdownMenuItem>
+          <form action={logout}>
+            <button type="submit" className="w-full">
+              <DropdownMenuItem className="w-full cursor-pointer">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </button>
+          </form>
         </DropdownMenuContent>
       </DropdownMenu>
+    );
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          className={cn(
+            'w-full justify-start h-fit px-2 py-2 rounded-md',
+            'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+          )}
+        >
+          <div className="flex items-center gap-2">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback>{userInitial}</AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col items-start text-left">
+              <p className="text-sm font-medium leading-none">{user.name}</p>
+              <p className="text-xs leading-none text-muted-foreground truncate">
+                {user.email}
+              </p>
+              {owner && owner.id !== 'super-admin' && (
+                <p className="text-xs leading-none text-muted-foreground pt-1 truncate">
+                  {owner.name}
+                </p>
+              )}
+            </div>
+          </div>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-56" align="end" forceMount>
+        <DropdownMenuLabel className="font-normal">
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium leading-none">{user.name}</p>
+            <p className="text-xs leading-none text-muted-foreground">
+              {user.email}
+            </p>
+            {owner && owner.id !== 'super-admin' && (
+              <p className="text-xs leading-none text-muted-foreground pt-1">
+                {owner.name}
+              </p>
+            )}
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <form action={logout}>
+            <button type="submit" className="w-full">
+              <DropdownMenuItem className="w-full cursor-pointer">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </button>
+          </form>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

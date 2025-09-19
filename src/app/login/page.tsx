@@ -1,11 +1,7 @@
-
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import { useToast } from "@/hooks/use-toast";
 import { authenticate } from "@/app/lib/actions";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,35 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 
 export default function LoginPage() {
-  const [result, dispatch] = useActionState(authenticate, undefined);
-  const router = useRouter();
-  const { toast } = useToast();
-
-  useEffect(() => {
-    if (result) {
-      try {
-        const data = JSON.parse(result);
-        if (data.token) {
-          toast({
-            title: "Login Successful",
-            description: `Welcome back, ${data.name}!`,
-          });
-          
-          localStorage.setItem('authToken', data.token);
-          
-          if (data.role === 'SUPER_ADMIN') {
-              router.push("/super-admin");
-          } else if (data.role === 'ADMIN') {
-              router.push("/admin");
-          } else {
-              router.push("/");
-          }
-        }
-      } catch (e) {
-        // This means the result is an error string, which will be handled by the alert below.
-      }
-    }
-  }, [result, router, toast]);
+  const [errorMessage, formAction] = useActionState(authenticate, undefined);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
@@ -58,7 +26,7 @@ export default function LoginPage() {
           <CardTitle>Welcome Back</CardTitle>
           <CardDescription>Enter your credentials to access your account.</CardDescription>
         </CardHeader>
-        <form action={dispatch}>
+        <form action={formAction}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -81,11 +49,11 @@ export default function LoginPage() {
                 defaultValue="password"
               />
             </div>
-            {result && !result.startsWith('{') && (
+            {errorMessage && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  {result}
+                  {errorMessage}
                 </AlertDescription>
               </Alert>
             )}

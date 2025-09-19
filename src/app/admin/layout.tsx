@@ -1,28 +1,28 @@
-
-'use client';
-
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "@/components/ui/sidebar";
 import { LayoutDashboard, Route as RouteIcon, Bus, QrCode, MapPin, Percent } from "lucide-react";
-import { useAuthRedirect } from "@/hooks/use-auth-redirect";
 import { UserNav } from "@/components/UserNav";
+import { validateRequest } from "@/app/lib/auth";
+import { redirect } from "next/navigation";
 
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { loading } = useAuthRedirect({ requiredRole: 'admin' });
-
-  if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  const { user } = await validateRequest();
+  if (!user) {
+    return redirect('/login');
+  }
+  if (user.role !== 'ADMIN') {
+    return redirect('/unauthorized');
   }
   
   return (
     <SidebarProvider>
       <div className="flex flex-col min-h-screen">
-        <Header />
+        <Header user={user} />
         <div className="flex flex-1">
           <Sidebar>
             <SidebarContent>
@@ -78,7 +78,7 @@ export default function AdminLayout({
               </SidebarMenu>
             </SidebarContent>
             <SidebarFooter>
-                <UserNav />
+                <UserNav user={user} />
             </SidebarFooter>
           </Sidebar>
           <main className="flex-1 container mx-auto p-4 md:p-6">

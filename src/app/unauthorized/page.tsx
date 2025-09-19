@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -9,14 +8,6 @@ import { useData } from "@/lib/store";
 import { useRouter } from "next/navigation";
 
 export default function UnauthorizedPage() {
-    const { loggedInUser, isSuperAdmin } = useData();
-    const router = useRouter();
-
-    const getHomePage = () => {
-        if (isSuperAdmin) return "/super-admin";
-        if (loggedInUser && loggedInUser.ownerId !== 'customer') return "/admin";
-        return "/";
-    }
     
     return (
         <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
@@ -37,7 +28,7 @@ export default function UnauthorizedPage() {
                 </CardContent>
                 <CardFooter>
                     <Button asChild className="w-full">
-                        <Link href={getHomePage()}>
+                        <Link href="/">
                             Go to Homepage
                         </Link>
                     </Button>

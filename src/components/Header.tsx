@@ -1,4 +1,3 @@
-
 'use client';
 import Link from 'next/link';
 import { Logo } from './Logo';
@@ -6,13 +5,14 @@ import { Button } from './ui/button';
 import { usePathname } from 'next/navigation';
 import { Shield, Gem, LogIn } from 'lucide-react';
 import { SidebarTrigger } from './ui/sidebar';
-import { useData } from '@/lib/store';
+import type { User } from 'lucia';
 
-export function Header() {
+interface HeaderProps {
+    user: User | null;
+}
+
+export function Header({ user }: HeaderProps) {
   const pathname = usePathname();
-  const { isSuperAdmin, loggedInUserId, loggedInUser } = useData();
-  
-  const isAdmin = loggedInUserId && !isSuperAdmin && !loggedInUserId.startsWith('user-');
   
   const isAdminPage = pathname.startsWith('/admin') && !pathname.startsWith('/super-admin');
   const isSuperAdminPage = pathname.startsWith('/super-admin');
@@ -34,7 +34,7 @@ export function Header() {
         </div>
         
         <nav className="flex items-center gap-4">
-          {!loggedInUser && (
+          {!user && (
              <Button asChild variant="outline" size="sm">
                 <Link href="/login">
                   <LogIn className="mr-2 h-4 w-4" />
@@ -43,7 +43,7 @@ export function Header() {
               </Button>
           )}
           
-          {isAdmin && (
+          {user?.role === 'ADMIN' && (
             <Button asChild variant={isAdminPage ? 'secondary' : 'ghost'} size="sm">
               <Link href="/admin">
                 <Shield className="mr-2 h-4 w-4" />
@@ -52,7 +52,7 @@ export function Header() {
             </Button>
           )}
           
-          {isSuperAdmin && (
+          {user?.role === 'SUPER_ADMIN' && (
             <Button asChild variant={isSuperAdminPage ? 'secondary' : 'ghost'} size="sm">
               <Link href="/super-admin">
                 <Gem className="mr-2 h-4 w-4" />

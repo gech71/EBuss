@@ -1,28 +1,29 @@
-
-'use client';
-
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "@/components/ui/sidebar";
 import { LayoutDashboard, Users, Gem } from "lucide-react";
-import { useAuthRedirect } from "@/hooks/use-auth-redirect";
 import { UserNav } from "@/components/UserNav";
+import { validateRequest } from "@/app/lib/auth";
+import { redirect } from "next/navigation";
 
-export default function SuperAdminLayout({
+
+export default async function SuperAdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { loading } = useAuthRedirect({ requiredRole: 'super-admin', loginPath: '/super-admin/login' });
-
-  if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  const { user } = await validateRequest();
+  if (!user) {
+    return redirect('/super-admin/login');
+  }
+   if (user.role !== 'SUPER_ADMIN') {
+    return redirect('/unauthorized');
   }
   
   return (
     <SidebarProvider>
       <div className="flex flex-col min-h-screen">
-        <Header />
+        <Header user={user} />
         <div className="flex flex-1">
           <Sidebar>
             <SidebarContent>
@@ -54,7 +55,7 @@ export default function SuperAdminLayout({
               </SidebarMenu>
             </SidebarContent>
             <SidebarFooter>
-              <UserNav />
+              <UserNav user={user} />
             </SidebarFooter>
           </Sidebar>
           <main className="flex-1 container mx-auto p-4 md:p-6">

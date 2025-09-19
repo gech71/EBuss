@@ -1,5 +1,3 @@
-
-
 export interface Seat {
   id: string; // e.g., "1A", "1B"
   status: 'available' | 'occupied' | 'selected';
@@ -25,7 +23,8 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  ownerId: string;
+  ownerId: string | null;
+  role: string;
   password?: string;
 }
 

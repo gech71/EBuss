@@ -16,8 +16,8 @@ const SUPER_ADMIN_USER: BusOwner = {
 const CUSTOMER_ID = 'customer';
 
 const initialUsers: User[] = [
-    { id: 'user-super', name: 'Super Admin', email: 'super@example.com', ownerId: SUPER_ADMIN_ID, password: 'password' },
-    { id: 'user-admin-1', name: 'Admin User', email: 'admin@example.com', ownerId: 'owner-01', password: 'password' }
+    { id: 'user-super', name: 'Super Admin', email: 'super@example.com', ownerId: SUPER_ADMIN_ID, role: 'SUPER_ADMIN', password: 'password' },
+    { id: 'user-admin-1', name: 'Admin User', email: 'admin@example.com', ownerId: 'owner-01', role: 'ADMIN', password: 'password' }
 ];
 // --- END SIMULATED AUTH ---
 
@@ -113,13 +113,6 @@ interface AllData {
 
 interface DataStore extends AllData {
     loading: boolean;
-    isSuperAdmin: boolean;
-    loggedInUserId: string | null;
-    loggedInUser: User | null;
-    setLoggedInUserId: (id: string | null) => void;
-    login: (email: string, password: string) => { user: User; token: string } | null;
-    logout: () => void;
-    register: (details: Omit<User, 'id' | 'ownerId'>) => { success: boolean, message?: string };
     getBusById: (busId: string) => Bus | undefined;
     getOwnerById: (ownerId: string) => BusOwner | undefined;
     addRoute: (route: Omit<Route, 'id'>) => void;
@@ -168,8 +161,6 @@ export function useDataProvider(): DataStore {
         discounts: []
     });
     
-    const [loggedInUserId, setLoggedInUserIdState] = useState<string | null>(null);
-
     // Effect to load data from localStorage or initialize it
     useEffect(() => {
         try {
@@ -204,12 +195,6 @@ export function useDataProvider(): DataStore {
                 setAllData(initialData);
                 localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(initialData));
             }
-
-            const token = localStorage.getItem('authToken');
-            if (token) {
-                const decoded = JSON.parse(atob(token.split('.')[1]));
-                setLoggedInUserIdState(decoded.sub);
-            }
         } catch (error) {
             console.error("Failed to load or initialize data:", error);
             // Handle potential errors (e.g., corrupted data) by resetting to default
@@ -227,88 +212,6 @@ export function useDataProvider(): DataStore {
         });
     };
 
-    const setLoggedInUserId = (id: string | null) => {
-        setLoggedInUserIdState(id);
-    };
-    
-    const login = (email: string, password: string): { user: User; token: string } | null => {
-        const user = allData.users.find(u => u.email === email && u.password === password);
-        if (user) {
-            const isCustomer = user.ownerId === CUSTOMER_ID;
-            // Admins are identified by their ownerId, customers by their own userId.
-            const subject = (isCustomer || !user.ownerId || user.ownerId === SUPER_ADMIN_ID) ? user.id : user.ownerId;
-            setLoggedInUserIdState(subject);
-            const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-            const payload = btoa(JSON.stringify({ sub: subject, name: user.name, iat: Date.now() }));
-            const signature = 'mock-signature'; 
-            const token = `${header}.${payload}.${signature}`;
-            return { user, token };
-        }
-        return null;
-    };
-
-    const logout = () => {
-        setLoggedInUserIdState(null);
-        localStorage.removeItem('authToken');
-    };
-
-    const register = (details: Omit<User, 'id' | 'ownerId'>): { success: boolean, message?: string } => {
-        if (allData.users.some(u => u.email === details.email)) {
-            return { success: false, message: 'A user with this email already exists.' };
-        }
-        const newUser: User = {
-            id: `user-${Date.now()}`,
-            name: details.name,
-            email: details.email,
-            password: details.password,
-            ownerId: CUSTOMER_ID,
-        };
-        updateAndPersistData(data => ({ ...data, users: [...data.users, newUser] }));
-        return { success: true };
-    };
-
-    // --- Scoped State (based on logged-in user) ---
-    const isSuperAdmin = loggedInUserId === allData.users.find(u => u.ownerId === SUPER_ADMIN_ID)?.id;
-    
-    const loggedInUser = useMemo(() => {
-        if (!loggedInUserId) return null;
-        // Check if loggedInUserId is a user's own ID first
-        const userById = allData.users.find(u => u.id === loggedInUserId);
-        if (userById) return userById;
-        // If not, it might be an ownerId, so find the admin user for that owner
-        const userByOwnerId = allData.users.find(u => u.ownerId === loggedInUserId);
-        return userByOwnerId || null;
-    }, [allData.users, loggedInUserId]);
-
-
-    const buses = useMemo(() => {
-        if (!loggedInUserId || loggedInUserId.startsWith('user-')) return allData.buses;
-        if (isSuperAdmin) return allData.buses;
-        return allData.buses.filter(bus => bus.ownerId === loggedInUserId);
-    }, [allData.buses, loggedInUserId, isSuperAdmin]);
-
-    const busIdsForCurrentUser = useMemo(() => new Set(buses.map(b => b.id)), [buses]);
-
-    const routes = useMemo(() => {
-        if (isSuperAdmin || !loggedInUserId || loggedInUserId.startsWith('user-')) return allData.routes;
-        return allData.routes.filter(route => busIdsForCurrentUser.has(route.busId));
-    }, [allData.routes, busIdsForCurrentUser, isSuperAdmin, loggedInUserId]);
-
-    const routeIdsForCurrentUser = useMemo(() => new Set(routes.map(r => r.id)), [routes]);
-
-    const bookings = useMemo(() => {
-        if (!loggedInUserId || loggedInUserId.startsWith('user-')) return [];
-        if (isSuperAdmin) return allData.bookings;
-        return allData.bookings.filter(booking => routeIdsForCurrentUser.has(booking.routeId));
-    }, [allData.bookings, routeIdsForCurrentUser, isSuperAdmin, loggedInUserId]);
-
-    const discounts = useMemo(() => {
-        if (isSuperAdmin || !loggedInUserId || loggedInUserId.startsWith('user-')) {
-            return allData.discounts;
-        }
-        return allData.discounts.filter(d => d.ownerId === loggedInUserId);
-    }, [allData.discounts, loggedInUserId, isSuperAdmin]);
-    
     const getBusById = (busId: string) => {
         return allData.buses.find(b => b.id === busId);
     };
@@ -334,14 +237,12 @@ export function useDataProvider(): DataStore {
     };
 
     const addBus = (bus: Omit<Bus, 'id' | 'ownerId'> & { layout?: Bus['layout'] }) => {
-        if (loggedInUserId === CUSTOMER_ID || isSuperAdmin || !loggedInUserId) return;
-        
         const newBus: Bus = { 
             ...bus,
             name: bus.name,
             capacity: bus.capacity,
             id: `bus-${Date.now()}`,
-            ownerId: loggedInUserId,
+            ownerId: 'temp-owner', // This will need to be set properly in a real app
             layout: bus.layout || {
                 rows: Math.ceil(bus.capacity / 4),
                 cols: 5,
@@ -352,14 +253,10 @@ export function useDataProvider(): DataStore {
     };
     
     const updateBus = (updatedBus: Bus) => {
-        if (updatedBus.ownerId !== loggedInUserId && !isSuperAdmin) return;
         updateAndPersistData(data => ({ ...data, buses: data.buses.map(b => b.id === updatedBus.id ? updatedBus : b) }));
     };
     
     const deleteBus = (id: string) => {
-        const busToDelete = allData.buses.find(b => b.id === id);
-        if (!busToDelete) return;
-        if (busToDelete.ownerId !== loggedInUserId && !isSuperAdmin) return;
         updateAndPersistData(data => ({ ...data, buses: data.buses.filter(b => b.id !== id) }));
     };
 
@@ -387,24 +284,19 @@ export function useDataProvider(): DataStore {
     };
 
     const addDiscount = (discount: Omit<Discount, 'id' | 'ownerId'>) => {
-        if (loggedInUserId === CUSTOMER_ID || isSuperAdmin || !loggedInUserId) return;
         const newDiscount: Discount = {
             ...discount,
             id: `discount-${Date.now()}`,
-            ownerId: loggedInUserId,
+            ownerId: 'temp-owner', // This needs to be dynamic based on logged-in user
         };
         updateAndPersistData(data => ({ ...data, discounts: [...data.discounts, newDiscount] }));
     };
 
     const updateDiscount = (updatedDiscount: Discount) => {
-        if (updatedDiscount.ownerId !== loggedInUserId && !isSuperAdmin) return;
         updateAndPersistData(data => ({ ...data, discounts: data.discounts.map(d => d.id === updatedDiscount.id ? updatedDiscount : d) }));
     };
 
     const deleteDiscount = (id: string) => {
-        const discountToDelete = allData.discounts.find(d => d.id === id);
-        if (!discountToDelete) return;
-        if (discountToDelete.ownerId !== loggedInUserId && !isSuperAdmin) return;
         updateAndPersistData(data => ({ ...data, discounts: data.discounts.filter(d => d.id !== id) }));
     };
 
@@ -484,22 +376,15 @@ export function useDataProvider(): DataStore {
         updateAndPersistData(data => ({ ...data, owners: data.owners.filter(owner => owner.id !== id) }));
     };
 
-    const addUser = (user: Omit<User, 'id' | 'password'>, password = 'password') => {
-        const newUser: User = { ...user, id: `user-${Date.now()}`, password };
+    const addUser = (user: Omit<User, 'id' | 'password' | 'role'>, password = 'password') => {
+        const newUser: User = { ...user, id: `user-${Date.now()}`, password, role: 'ADMIN' };
         updateAndPersistData(data => ({ ...data, users: [...data.users, newUser] }));
     };
 
 
     return {
+        ...allData,
         loading,
-        routes, 
-        buses, 
-        locations: allData.locations, 
-        discounts, 
-        bookings, 
-        owners: allData.owners, 
-        users: allData.users, 
-        isSuperAdmin, loggedInUserId, loggedInUser, setLoggedInUserId, login, logout, register,
         getBusById, getOwnerById,
         addRoute, updateRoute, deleteRoute,
         addBus, updateBus, deleteBus,
