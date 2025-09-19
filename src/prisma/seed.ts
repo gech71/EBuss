@@ -1,3 +1,4 @@
+
 import { PrismaClient, SeatStatus, SeatType, CommissionType, Role } from '@prisma/client';
 import { Argon2id } from 'oslo/password';
 

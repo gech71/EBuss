@@ -1,27 +1,15 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { jwtVerify } from 'jose';
+import { lucia } from '@/app/lib/auth';
 
-// This function can be marked `async` if using `await` inside
 export async function middleware(request: NextRequest) {
-  const sessionCookie = request.cookies.get('auth_session');
+  const sessionId = request.cookies.get(lucia.sessionCookieName)?.value ?? null;
   const { pathname } = request.nextUrl;
 
   const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register');
   const isProtectedRoute = pathname.startsWith('/admin') || pathname.startsWith('/super-admin');
-
-  let isAuthenticated = false;
-
-  if (sessionCookie) {
-    try {
-      const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-      await jwtVerify(sessionCookie.value, secret);
-      isAuthenticated = true;
-    } catch (error) {
-      // Token verification failed (e.g., expired, invalid signature)
-      isAuthenticated = false;
-    }
-  }
+  
+  let isAuthenticated = !!sessionId;
 
   // If the user is not authenticated and is trying to access a protected route,
   // redirect them to the login page.
