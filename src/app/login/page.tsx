@@ -3,7 +3,8 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { useToast } from "@/hooks/use-toast";
 import { authenticate } from "@/app/lib/actions";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +18,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 
 export default function LoginPage() {
-  const [result, dispatch] = useFormState(authenticate, undefined);
+  const [result, dispatch] = useActionState(authenticate, undefined);
   const router = useRouter();
   const { toast } = useToast();
 
