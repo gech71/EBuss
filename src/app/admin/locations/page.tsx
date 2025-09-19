@@ -7,20 +7,12 @@ import { PlusCircle } from "lucide-react";
 import prisma from '@/lib/prisma';
 import { LocationActions } from '@/components/admin/LocationActions';
 
-async function getUniqueLocations() {
-    const routes = await prisma.route.findMany({
-        select: { origin: true, destination: true },
-    });
-    const locationSet = new Set<string>();
-    routes.forEach(route => {
-        locationSet.add(route.origin);
-        locationSet.add(route.destination);
-    });
-    return Array.from(locationSet).sort();
-}
-
 export default async function AdminLocationsPage() {
-  const locations = await getUniqueLocations();
+  const locations = await prisma.location.findMany({
+    orderBy: {
+      name: 'asc'
+    }
+  });
 
   return (
       <Card>
@@ -47,10 +39,10 @@ export default async function AdminLocationsPage() {
             </TableHeader>
             <TableBody>
               {locations.map((location) => (
-                <TableRow key={location}>
-                  <TableCell className="font-medium">{location}</TableCell>
+                <TableRow key={location.id}>
+                  <TableCell className="font-medium">{location.name}</TableCell>
                   <TableCell className="text-right">
-                    <LocationActions locationName={location} />
+                    <LocationActions locationId={location.id} locationName={location.name} />
                   </TableCell>
                 </TableRow>
               ))}

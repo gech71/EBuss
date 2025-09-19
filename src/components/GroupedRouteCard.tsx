@@ -1,20 +1,19 @@
 
 "use client";
 
-import type { Route } from '@/lib/types';
+import type { Route, Bus } from '@prisma/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowRight, Clock, Ticket } from 'lucide-react';
-import { useData } from '@/lib/store';
+import { ArrowRight, Clock } from 'lucide-react';
 import { Separator } from './ui/separator';
 
 interface GroupedRouteCardProps {
   routes: Route[];
+  buses: Bus[];
 }
 
-export function GroupedRouteCard({ routes }: GroupedRouteCardProps) {
-  const { buses } = useData();
+export function GroupedRouteCard({ routes, buses }: GroupedRouteCardProps) {
   const firstRoute = routes[0];
 
   return (

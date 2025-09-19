@@ -15,7 +15,7 @@ export default async function NewLocationPage() {
             <Card className="max-w-xl mx-auto">
                 <CardHeader>
                     <CardTitle>Add New Location</CardTitle>
-                    <CardDescription>Enter the details for the new location. Note: this adds the location to the list of available places but does not create a route.</CardDescription>
+                    <CardDescription>Enter the name for the new bus stop or city.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">

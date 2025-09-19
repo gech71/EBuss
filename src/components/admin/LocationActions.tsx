@@ -12,22 +12,23 @@ import { deleteLocationAction } from "@/app/admin/locations/actions";
 
 
 interface LocationActionsProps {
+  locationId: string;
   locationName: string;
 }
 
-export function LocationActions({ locationName }: LocationActionsProps) {
+export function LocationActions({ locationId, locationName }: LocationActionsProps) {
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async () => {
     setIsDeleting(true);
-    const result = await deleteLocationAction(locationName);
+    const result = await deleteLocationAction(locationId);
     setIsDeleting(false);
 
     if (result.success) {
       toast({
         title: "Location Deleted",
-        description: result.message,
+        description: `"${locationName}" has been deleted.`,
       });
     } else {
       toast({
@@ -50,7 +51,7 @@ export function LocationActions({ locationName }: LocationActionsProps) {
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
           <DropdownMenuItem asChild>
-            <Link href={`/admin/locations/${encodeURIComponent(locationName)}/edit`}>Edit</Link>
+            <Link href={`/admin/locations/${locationId}/edit`}>Edit</Link>
           </DropdownMenuItem>
           <AlertDialogTrigger asChild>
             <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(e) => e.preventDefault()}>

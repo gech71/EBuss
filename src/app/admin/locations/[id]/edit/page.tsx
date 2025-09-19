@@ -1,5 +1,6 @@
 
 import { notFound } from "next/navigation";
+import prisma from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -13,32 +14,32 @@ interface EditLocationPageProps {
 }
 
 export default async function EditLocationPage({ params }: EditLocationPageProps) {
-    const locationName = decodeURIComponent(params.id);
+    const location = await prisma.location.findUnique({
+        where: { id: params.id }
+    });
 
-    // In a real app with a dedicated `locations` table, you would fetch by ID.
-    // Here, we just use the name from the URL.
-    if (!locationName) {
+    if (!location) {
         notFound();
     }
 
     return (
         <form action={updateLocationAction}>
-            <input type="hidden" name="oldName" value={locationName} />
+            <input type="hidden" name="id" value={location.id} />
             <Card className="max-w-xl mx-auto">
                 <CardHeader>
                     <CardTitle>Edit Location</CardTitle>
                     <CardDescription>
-                        Update the name for "{locationName}". This will update all routes that use this location.
+                        Update the name for "{location.name}".
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="newName">New Location Name</Label>
+                            <Label htmlFor="name">New Location Name</Label>
                             <Input 
-                                id="newName" 
-                                name="newName"
-                                defaultValue={locationName}
+                                id="name" 
+                                name="name"
+                                defaultValue={location.name}
                                 placeholder="e.g., New York, NY" 
                                 required 
                             />
@@ -55,4 +56,3 @@ export default async function EditLocationPage({ params }: EditLocationPageProps
         </form>
     );
 }
-

@@ -40,9 +40,27 @@ async function main() {
   await prisma.commissionTier.deleteMany();
   await prisma.user.deleteMany();
   await prisma.busOwner.deleteMany();
+  await prisma.location.deleteMany(); // Clear locations
   console.log('Existing data cleared.');
 
-  // 2. Create Bus Owners
+  // 2. Create Locations
+  const locations = await prisma.location.createManyAndReturn({
+    data: [
+      { name: 'New York, NY' },
+      { name: 'Boston, MA' },
+      { name: 'Los Angeles, CA' },
+      { name: 'San Francisco, CA' },
+      { name: 'Chicago, IL' },
+      { name: 'Detroit, MI' },
+      { name: 'Miami, FL' },
+      { name: 'Orlando, FL' },
+    ],
+  });
+  const locationMap = new Map(locations.map(l => [l.name, l.id]));
+  console.log('Created locations.');
+
+
+  // 3. Create Bus Owners
   const owner1 = await prisma.busOwner.create({
     data: {
       name: 'FleetFirst Inc.',
@@ -69,8 +87,8 @@ async function main() {
 
   console.log(`Created owners: ${owner1.name}, ${owner2.name}`);
 
-  // 3. Create Users
-  const superAdmin = await prisma.user.create({
+  // 4. Create Users
+  await prisma.user.create({
     data: {
       name: 'Super Admin',
       email: 'super@example.com',
@@ -79,7 +97,7 @@ async function main() {
     },
   });
 
-  const admin1 = await prisma.user.create({
+  await prisma.user.create({
     data: {
       name: 'Admin User',
       email: 'admin@example.com',
@@ -91,7 +109,7 @@ async function main() {
     },
   });
 
-   const admin2 = await prisma.user.create({
+   await prisma.user.create({
     data: {
       name: 'RoadRunner Admin',
       email: 'runner@example.com',
@@ -106,7 +124,7 @@ async function main() {
   console.log('Created users.');
 
 
-  // 4. Create Buses and their SeatLayouts
+  // 5. Create Buses and their SeatLayouts
   const bus1 = await prisma.bus.create({
     data: {
       name: 'Standard Cruiser',
@@ -166,7 +184,7 @@ async function main() {
 
   console.log(`Created buses: ${bus1.name}, ${bus2.name}, ${bus3.name}`);
   
-  // 5. Create Discounts
+  // 6. Create Discounts
   const summerDiscount = await prisma.discount.create({
     data: {
         name: 'Summer Group Offer',
@@ -202,15 +220,15 @@ async function main() {
 
   console.log(`Created discounts: ${summerDiscount.name}, ${weekendDiscount.name}`);
 
-  // 6. Create Routes
+  // 7. Create Routes
   const tomorrow = new Date('2025-09-19T00:00:00.000Z');
   const dayAfterTomorrow = new Date('2025-09-20T00:00:00.000Z');
 
 
   const route1 = await prisma.route.create({
     data: {
-      origin: 'New York, NY',
-      destination: 'Boston, MA',
+      originId: locationMap.get('New York, NY')!,
+      destinationId: locationMap.get('Boston, MA')!,
       departureTime: new Date(new Date(tomorrow).setHours(9, 0, 0, 0)),
       arrivalTime: new Date(new Date(tomorrow).setHours(13, 30, 0, 0)),
       price: 45.00,
@@ -221,8 +239,8 @@ async function main() {
 
   const route2 = await prisma.route.create({
     data: {
-        origin: 'Los Angeles, CA',
-        destination: 'San Francisco, CA',
+        originId: locationMap.get('Los Angeles, CA')!,
+        destinationId: locationMap.get('San Francisco, CA')!,
         departureTime: new Date(new Date(tomorrow).setHours(11, 0, 0, 0)),
         arrivalTime: new Date(new Date(tomorrow).setHours(18, 0, 0, 0)),
         price: 60.00,
@@ -233,8 +251,8 @@ async function main() {
 
    const route3 = await prisma.route.create({
     data: {
-        origin: 'Chicago, IL',
-        destination: 'Detroit, MI',
+        originId: locationMap.get('Chicago, IL')!,
+        destinationId: locationMap.get('Detroit, MI')!,
         departureTime: new Date(new Date(dayAfterTomorrow).setHours(8, 30, 0, 0)),
         arrivalTime: new Date(new Date(dayAfterTomorrow).setHours(14, 0, 0, 0)),
         price: 35.00,
@@ -244,8 +262,8 @@ async function main() {
 
   const route4 = await prisma.route.create({
     data: {
-        origin: 'Miami, FL',
-        destination: 'Orlando, FL',
+        originId: locationMap.get('Miami, FL')!,
+        destinationId: locationMap.get('Orlando, FL')!,
         departureTime: new Date(new Date(dayAfterTomorrow).setHours(14, 0, 0, 0)),
         arrivalTime: new Date(new Date(dayAfterTomorrow).setHours(18, 0, 0, 0)),
         price: 25.00,
@@ -255,8 +273,8 @@ async function main() {
 
   const route5 = await prisma.route.create({
     data: {
-        origin: 'New York, NY',
-        destination: 'Boston, MA',
+        originId: locationMap.get('New York, NY')!,
+        destinationId: locationMap.get('Boston, MA')!,
         departureTime: new Date(new Date(tomorrow).setHours(9, 0, 0, 0)),
         arrivalTime: new Date(new Date(tomorrow).setHours(13, 30, 0, 0)),
         price: 55.00,
@@ -267,7 +285,7 @@ async function main() {
 
   console.log('Created 5 routes.');
 
-  // 7. Create some sample Bookings
+  // 8. Create some sample Bookings
   const booking1 = await prisma.booking.create({
     data: {
       passengerName: 'Alice Johnson',

@@ -1,19 +1,18 @@
 
 "use client";
 
-import type { Route } from '@/lib/types';
+import type { Route, Bus } from '@prisma/client';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ArrowRight, Clock, Ticket } from 'lucide-react';
-import { useData } from '@/lib/store';
 
 interface RouteCardProps {
   route: Route;
+  buses: Bus[];
 }
 
-export function RouteCard({ route }: RouteCardProps) {
-  const { buses } = useData();
+export function RouteCard({ route, buses }: RouteCardProps) {
   const bus = buses.find(b => b.id === route.busId);
 
   return (

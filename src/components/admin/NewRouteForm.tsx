@@ -15,11 +15,11 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useState, useTransition, useRef } from "react";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import type { Bus, Discount } from "@prisma/client";
+import type { Bus, Discount, Location } from "@prisma/client";
 import { createRouteAction } from "@/app/admin/routes/actions";
 
 interface NewRouteFormProps {
-    locations: string[];
+    locations: Location[];
     buses: Bus[];
     discounts: Discount[];
 }
@@ -30,8 +30,8 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
     const [isPending, startTransition] = useTransition();
     const formRef = useRef<HTMLFormElement>(null);
     
-    const [origin, setOrigin] = useState<string>('');
-    const [destination, setDestination] = useState<string>('');
+    const [originId, setOriginId] = useState<string>('');
+    const [destinationId, setDestinationId] = useState<string>('');
     const [departureDate, setDepartureDate] = useState<Date>();
     const [departureTime, setDepartureTime] = useState('12:00');
     const [arrivalDate, setArrivalDate] = useState<Date>();
@@ -43,17 +43,17 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
     const [openBuses, setOpenBuses] = useState(false);
     
     const handleSubmit = (formData: FormData) => {
-        if (!origin || !destination || !departureDate || !arrivalDate || selectedBusIds.length === 0) {
+        if (!originId || !destinationId || !departureDate || !arrivalDate || selectedBusIds.length === 0) {
             toast({ title: "Error", description: "Please fill out all fields, including selecting at least one bus.", variant: "destructive" });
             return;
         }
-         if (origin === destination) {
+         if (originId === destinationId) {
             toast({ title: "Error", description: "Origin and destination cannot be the same.", variant: "destructive" });
             return;
         }
 
-        formData.append('origin', origin);
-        formData.append('destination', destination);
+        formData.append('originId', originId);
+        formData.append('destinationId', destinationId);
         formData.append('departureDate', format(departureDate, 'yyyy-MM-dd'));
         formData.append('departureTime', departureTime);
         formData.append('arrivalDate', format(arrivalDate, 'yyyy-MM-dd'));
@@ -93,71 +93,33 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="origin">Origin</Label>
-                                 <Popover open={openOrigin} onOpenChange={setOpenOrigin}>
-                                    <PopoverTrigger asChild>
-                                        <Button variant="outline" role="combobox" aria-expanded={openOrigin} className="w-full justify-between">
-                                            {origin ? locations.find((l) => l === origin) : "Select origin..."}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Search location..." />
-                                            <CommandList>
-                                                <CommandEmpty>No location found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {locations.map((location) => (
-                                                        <CommandItem
-                                                            key={location}
-                                                            value={location}
-                                                            onSelect={(currentValue) => {
-                                                                setOrigin(currentValue === origin ? "" : currentValue)
-                                                                setOpenOrigin(false)
-                                                            }}
-                                                        >
-                                                            <Check className={cn("mr-2 h-4 w-4", origin === location ? "opacity-100" : "opacity-0")} />
-                                                            {location}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
+                                 <Select name="originId" required value={originId} onValueChange={setOriginId}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select an origin..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {locations.map((location) => (
+                                            <SelectItem key={location.id} value={location.id}>
+                                                {location.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="destination">Destination</Label>
-                                <Popover open={openDestination} onOpenChange={setOpenDestination}>
-                                    <PopoverTrigger asChild>
-                                        <Button variant="outline" role="combobox" aria-expanded={openDestination} className="w-full justify-between">
-                                            {destination ? locations.find((l) => l === destination) : "Select destination..."}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Search location..." />
-                                            <CommandList>
-                                                <CommandEmpty>No location found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {locations.map((location) => (
-                                                        <CommandItem
-                                                            key={location}
-                                                            value={location}
-                                                            onSelect={(currentValue) => {
-                                                                setDestination(currentValue === destination ? "" : currentValue)
-                                                                setOpenDestination(false)
-                                                            }}
-                                                        >
-                                                            <Check className={cn("mr-2 h-4 w-4", destination === location ? "opacity-100" : "opacity-0")} />
-                                                            {location}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
+                                <Select name="destinationId" required value={destinationId} onValueChange={setDestinationId}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a destination..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {locations.map((location) => (
+                                            <SelectItem key={location.id} value={location.id}>
+                                                {location.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">

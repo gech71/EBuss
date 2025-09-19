@@ -9,6 +9,10 @@ import { RouteActions } from "@/components/admin/RouteActions";
 
 export default async function AdminRoutesPage() {
   const routes = await prisma.route.findMany({
+    include: {
+      origin: true,
+      destination: true,
+    },
     orderBy: {
       departureTime: 'asc'
     }
@@ -43,8 +47,8 @@ export default async function AdminRoutesPage() {
           <TableBody>
             {routes.map((route) => (
               <TableRow key={route.id}>
-                <TableCell className="font-medium">{route.origin}</TableCell>
-                <TableCell>{route.destination}</TableCell>
+                <TableCell className="font-medium">{route.origin.name}</TableCell>
+                <TableCell>{route.destination.name}</TableCell>
                 <TableCell>{new Date(route.departureTime).toLocaleString()}</TableCell>
                 <TableCell className="text-right">${route.price.toFixed(2)}</TableCell>
                 <TableCell>

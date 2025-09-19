@@ -66,7 +66,7 @@ export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
 
         return { potentialRevenue, actualRevenue, effectiveness };
 
-    }, [routes, bookings, getBusById]);
+    }, [routes, bookings]);
 
     const routeStats = useMemo(() => {
         const stats: Record<string, RouteStat> = {};
@@ -106,7 +106,7 @@ export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
 
         return Object.values(stats).sort((a, b) => b.revenue - a.revenue);
 
-    }, [bookings, routes, dateRange, getBusById]);
+    }, [bookings, routes, dateRange]);
 
     const { totalRevenue, totalPotentialRevenue } = useMemo(() => {
         return routeStats.reduce(

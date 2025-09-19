@@ -7,8 +7,8 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
 const routeSchema = z.object({
-  origin: z.string().min(1, 'Origin is required.'),
-  destination: z.string().min(1, 'Destination is required.'),
+  originId: z.string().min(1, 'Origin is required.'),
+  destinationId: z.string().min(1, 'Destination is required.'),
   departureDate: z.string().min(1, 'Departure date is required.'),
   departureTime: z.string().min(1, 'Departure time is required.'),
   arrivalDate: z.string().min(1, 'Arrival date is required.'),
@@ -28,8 +28,8 @@ const combineDateTime = (dateStr: string, timeStr: string): Date => {
 
 export async function createRouteAction(formData: FormData) {
     const rawData = {
-        origin: formData.get('origin'),
-        destination: formData.get('destination'),
+        originId: formData.get('originId'),
+        destinationId: formData.get('destinationId'),
         departureDate: formData.get('departureDate'),
         departureTime: formData.get('departureTime'),
         arrivalDate: formData.get('arrivalDate'),
@@ -48,7 +48,7 @@ export async function createRouteAction(formData: FormData) {
         };
     }
 
-    const { origin, destination, departureDate, departureTime, arrivalDate, arrivalTime, price, busIds, discountId } = validatedData.data;
+    const { originId, destinationId, departureDate, departureTime, arrivalDate, arrivalTime, price, busIds, discountId } = validatedData.data;
 
     const fullDepartureTime = combineDateTime(departureDate, departureTime);
     const fullArrivalTime = combineDateTime(arrivalDate, arrivalTime);
@@ -59,8 +59,8 @@ export async function createRouteAction(formData: FormData) {
 
     try {
         const routesToCreate = busIds.map(busId => ({
-            origin,
-            destination,
+            originId,
+            destinationId,
             departureTime: fullDepartureTime,
             arrivalTime: fullArrivalTime,
             price,
@@ -85,8 +85,8 @@ export async function createRouteAction(formData: FormData) {
 export async function updateRouteAction(formData: FormData) {
     const routeId = formData.get('routeId') as string;
     const rawData = {
-        origin: formData.get('origin'),
-        destination: formData.get('destination'),
+        originId: formData.get('originId'),
+        destinationId: formData.get('destinationId'),
         departureDate: formData.get('departureDate'),
         departureTime: formData.get('departureTime'),
         arrivalDate: formData.get('arrivalDate'),
@@ -108,7 +108,7 @@ export async function updateRouteAction(formData: FormData) {
         };
     }
 
-    const { origin, destination, departureDate, departureTime, arrivalDate, arrivalTime, price, busIds, discountId } = validatedData.data;
+    const { originId, destinationId, departureDate, departureTime, arrivalDate, arrivalTime, price, busIds, discountId } = validatedData.data;
 
     const fullDepartureTime = combineDateTime(departureDate, departureTime);
     const fullArrivalTime = combineDateTime(arrivalDate, arrivalTime);
@@ -121,8 +121,8 @@ export async function updateRouteAction(formData: FormData) {
        await prisma.route.update({
            where: { id: routeId },
            data: {
-                origin,
-                destination,
+                originId,
+                destinationId,
                 departureTime: fullDepartureTime,
                 arrivalTime: fullArrivalTime,
                 price,

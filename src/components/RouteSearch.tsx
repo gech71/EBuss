@@ -2,44 +2,40 @@
 "use client";
 
 import { useState, useMemo } from 'react';
-import type { Route } from '@/lib/types';
-import { useData } from '@/lib/store';
+import type { Route, Bus } from '@prisma/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar as CalendarIcon, Search, Bus, Check, ChevronsUpDown, ArrowLeft } from 'lucide-react';
+import { Calendar as CalendarIcon, Search, Bus as BusIcon, ArrowLeft } from 'lucide-react';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { format } from 'date-fns';
 import { RouteCard } from './RouteCard';
-import { cn } from '@/lib/utils';
 import { GroupedRouteCard } from './GroupedRouteCard';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 interface GroupedRoutes {
   [key: string]: Route[];
 }
 
-export function RouteSearch() {
-  const { routes } = useData();
+interface RouteSearchProps {
+    routes: Route[];
+    buses: Bus[];
+    locations: string[];
+}
+
+export function RouteSearch({ routes, buses, locations }: RouteSearchProps) {
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [date, setDate] = useState<Date | undefined>();
   const [searchResults, setSearchResults] = useState<Route[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   
-  const [openOrigin, setOpenOrigin] = useState(false)
-  const [openDestination, setOpenDestination] = useState(false)
   const [openDate, setOpenDate] = useState(false);
-
-
-  const uniqueOrigins = useMemo(() => [...new Set(routes.map(route => route.origin))], [routes]);
-  const uniqueDestinations = useMemo(() => [...new Set(routes.map(route => route.destination))], [routes]);
-
 
   const handleSearch = () => {
     const results = routes.filter(route => {
-      const isOriginMatch = !origin || route.origin.toLowerCase() === origin.toLowerCase();
-      const isDestinationMatch = !destination || route.destination.toLowerCase() === destination.toLowerCase();
+      const isOriginMatch = !origin || route.origin === origin;
+      const isDestinationMatch = !destination || route.destination === destination;
       const isDateMatch = !date || format(new Date(route.departureTime), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
       return isOriginMatch && isDestinationMatch && isDateMatch;
     });
@@ -75,95 +71,33 @@ export function RouteSearch() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-muted-foreground">Origin</label>
-                            <Popover open={openOrigin} onOpenChange={setOpenOrigin}>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                    variant="outline"
-                                    role="combobox"
-                                    aria-expanded={openOrigin}
-                                    className="w-full justify-between"
-                                    >
-                                    {origin
-                                        ? uniqueOrigins.find((o) => o.toLowerCase() === origin.toLowerCase())
-                                        : "Select origin..."}
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[200px] p-0">
-                                    <Command>
-                                    <CommandInput placeholder="Search origin..." />
-                                    <CommandList>
-                                    <CommandEmpty>No origin found.</CommandEmpty>
-                                    <CommandGroup>
-                                        {uniqueOrigins.map((o) => (
-                                        <CommandItem
-                                            key={o}
-                                            value={o}
-                                            onSelect={(currentValue) => {
-                                            setOrigin(currentValue === origin ? "" : currentValue)
-                                            setOpenOrigin(false)
-                                            }}
-                                        >
-                                            <Check
-                                            className={cn(
-                                                "mr-2 h-4 w-4",
-                                                origin === o ? "opacity-100" : "opacity-0"
-                                            )}
-                                            />
-                                            {o}
-                                        </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                    </CommandList>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
+                            <Select value={origin} onValueChange={setOrigin}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select origin..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {locations.map((loc) => (
+                                        <SelectItem key={loc} value={loc}>
+                                            {loc}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-muted-foreground">Destination</label>
-                            <Popover open={openDestination} onOpenChange={setOpenDestination}>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                    variant="outline"
-                                    role="combobox"
-                                    aria-expanded={openDestination}
-                                    className="w-full justify-between"
-                                    >
-                                    {destination
-                                        ? uniqueDestinations.find((d) => d.toLowerCase() === destination.toLowerCase())
-                                        : "Select destination..."}
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[200px] p-0">
-                                    <Command>
-                                    <CommandInput placeholder="Search destination..." />
-                                    <CommandList>
-                                    <CommandEmpty>No destination found.</CommandEmpty>
-                                    <CommandGroup>
-                                        {uniqueDestinations.map((d) => (
-                                        <CommandItem
-                                            key={d}
-                                            value={d}
-                                            onSelect={(currentValue) => {
-                                            setDestination(currentValue === destination ? "" : currentValue)
-                                            setOpenDestination(false)
-                                            }}
-                                        >
-                                            <Check
-                                            className={cn(
-                                                "mr-2 h-4 w-4",
-                                                destination === d ? "opacity-100" : "opacity-0"
-                                            )}
-                                            />
-                                            {d}
-                                        </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                    </CommandList>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
+                            <Select value={destination} onValueChange={setDestination}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select destination..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {locations.map((loc) => (
+                                        <SelectItem key={loc} value={loc}>
+                                            {loc}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-muted-foreground">Date</label>
@@ -212,15 +146,15 @@ export function RouteSearch() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {Object.values(groupedSearchResults).map((routeGroup, index) => {
                 if (routeGroup.length > 1) {
-                  return <GroupedRouteCard key={index} routes={routeGroup} />;
+                  return <GroupedRouteCard key={index} routes={routeGroup} buses={buses} />;
                 }
-                return <RouteCard key={routeGroup[0].id} route={routeGroup[0]} />;
+                return <RouteCard key={routeGroup[0].id} route={routeGroup[0]} buses={buses}/>;
               })}
             </div>
           ) : (
             <Card className="col-span-full">
                <CardContent className="p-10 flex flex-col items-center justify-center text-center">
-                  <Bus className="w-16 h-16 text-muted-foreground mb-4" />
+                  <BusIcon className="w-16 h-16 text-muted-foreground mb-4" />
                   <h3 className="font-headline text-2xl font-semibold mb-2">No Routes Found</h3>
                   <p className="text-muted-foreground">Your search did not match any available routes. Try broadening your search criteria.</p>
               </CardContent>

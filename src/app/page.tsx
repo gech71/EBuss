@@ -1,9 +1,25 @@
+
 import { Header } from "@/components/Header";
 import { RouteSearch } from "@/components/RouteSearch";
 import { validateRequest } from "@/app/lib/auth";
+import prisma from "@/lib/prisma";
 
 export default async function Home() {
   const { user } = await validateRequest();
+  const routes = await prisma.route.findMany({
+    orderBy: {
+      departureTime: 'asc',
+    },
+  });
+  const buses = await prisma.bus.findMany();
+  const locations = (await prisma.route.findMany({
+    select: {
+      origin: true,
+      destination: true,
+    }
+  })).flatMap(r => [r.origin, r.destination])
+    .filter((v, i, a) => a.indexOf(v) === i)
+    .sort();
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -19,7 +35,7 @@ export default async function Home() {
         </section>
 
         <div className="mt-2.5">
-          <RouteSearch />
+          <RouteSearch routes={routes} buses={buses} locations={locations} />
         </div>
         
       </main>
