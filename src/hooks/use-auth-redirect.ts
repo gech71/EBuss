@@ -24,35 +24,35 @@ export function useAuthRedirect(options: AuthRedirectOptions = {}) {
         }
 
         const isAdmin = loggedInUserId && !isSuperAdmin;
-        let shouldRedirect = false;
-
-        // Scenario 1: User is not logged in
-        if (!loggedInUserId) {
-            if (requiredRole) {
-                router.replace(loginPath);
-                shouldRedirect = true;
-            }
-        } else {
-            // Scenario 2: User is logged in, check roles
-            if (requiredRole === 'admin' && !isAdmin) {
-                // Accessing admin page, but user is not an admin
-                router.replace('/unauthorized');
-                shouldRedirect = true;
-            } else if (requiredRole === 'super-admin' && !isSuperAdmin) {
-                // Accessing super-admin page, but user is not a super-admin
-                router.replace('/unauthorized');
-                shouldRedirect = true;
-            }
-        }
         
-        // If no redirect is needed, we can stop showing the loading screen.
-        if (!shouldRedirect) {
-            setLoading(false);
+        // Scenario 1: User is not logged in but should be
+        if (!loggedInUserId && requiredRole) {
+            router.replace(loginPath);
+            // After triggering the redirect, we stop further execution for this render.
+            // The loading state will be handled below.
+        } 
+        // Scenario 2: User is logged in, check roles
+        else if (loggedInUserId) {
+            if (requiredRole === 'admin') {
+                if (isSuperAdmin) {
+                    // Super admin trying to access admin page
+                    router.replace('/super-admin'); 
+                } else if (!isAdmin) {
+                    // Non-admin trying to access admin page
+                    router.replace('/unauthorized');
+                }
+            } else if (requiredRole === 'super-admin' && !isSuperAdmin) {
+                // Non-super-admin trying to access super-admin page
+                router.replace('/unauthorized');
+            }
         }
-        // If a redirect is triggered, the component will unmount, so we don't need to setLoading(false).
+
+        // Always set loading to false after the checks and potential redirects have been handled.
+        // This prevents the infinite loading state.
+        setLoading(false);
 
     }, [loggedInUserId, isSuperAdmin, requiredRole, router, dataLoading, loginPath]);
 
-    // The loading state of the hook is dependent on the data loading from the store.
+    // The hook's loading state is true if either the initial data is loading or the redirect logic is running.
     return { loading: dataLoading || loading };
 }
