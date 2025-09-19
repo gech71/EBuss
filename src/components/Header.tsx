@@ -12,8 +12,8 @@ export function Header() {
   const pathname = usePathname();
   const { isSuperAdmin, loggedInUserId, loggedInUser } = useData();
   
-  const isAdminOrSuper = loggedInUserId && !loggedInUserId.startsWith('user-');
-
+  const isAdmin = loggedInUserId && !isSuperAdmin && !loggedInUserId.startsWith('user-');
+  
   const isAdminPage = pathname.startsWith('/admin') && !pathname.startsWith('/super-admin');
   const isSuperAdminPage = pathname.startsWith('/super-admin');
 
@@ -43,23 +43,22 @@ export function Header() {
               </Button>
           )}
           
-          {isAdminOrSuper && (
-            <>
-               <Button asChild variant={isAdminPage ? 'secondary' : 'ghost'} size="sm">
-                <Link href="/admin">
-                  <Shield className="mr-2 h-4 w-4" />
-                  Admin
-                </Link>
-              </Button>
-              {isSuperAdmin && (
-                <Button asChild variant={isSuperAdminPage ? 'secondary' : 'ghost'} size="sm">
-                    <Link href="/super-admin">
-                    <Gem className="mr-2 h-4 w-4" />
-                    Super Admin
-                    </Link>
-                </Button>
-              )}
-            </>
+          {isAdmin && (
+            <Button asChild variant={isAdminPage ? 'secondary' : 'ghost'} size="sm">
+              <Link href="/admin">
+                <Shield className="mr-2 h-4 w-4" />
+                Admin
+              </Link>
+            </Button>
+          )}
+          
+          {isSuperAdmin && (
+            <Button asChild variant={isSuperAdminPage ? 'secondary' : 'ghost'} size="sm">
+              <Link href="/super-admin">
+                <Gem className="mr-2 h-4 w-4" />
+                Super Admin
+              </Link>
+            </Button>
           )}
 
         </nav>
