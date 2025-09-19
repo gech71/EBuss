@@ -21,42 +21,33 @@ export function useAuthRedirect(options: AuthRedirectOptions = {}) {
             return; // Wait for data to be loaded, including auth state from localStorage
         }
 
-        const isCustomer = !loggedInUserId;
-        const isAdmin = loggedInUserId && !isCustomer && !isSuperAdmin;
-
         let shouldRedirect = false;
+        const isAdmin = loggedInUserId && !isSuperAdmin;
 
         if (!loggedInUserId) {
-            // If any role is required and user is not logged in, redirect.
             if (requiredRole) {
                 router.replace(loginPath);
                 shouldRedirect = true;
             }
         } else {
-            // A specific role is required
             if (requiredRole === 'admin') {
-                if (isSuperAdmin) {
-                    router.replace('/super-admin'); // Super admin should not see admin page
+                if (!isAdmin) {
+                    router.replace('/unauthorized');
                     shouldRedirect = true;
-                } else if (!isAdmin) {
-                    router.replace('/unauthorized'); // Not an admin, redirect
+                }
+            } else if (requiredRole === 'super-admin') {
+                if (!isSuperAdmin) {
+                    router.replace('/unauthorized');
                     shouldRedirect = true;
                 }
             }
-
-            if (requiredRole === 'super-admin' && !isSuperAdmin) {
-                router.replace('/unauthorized'); // Non-super-admin trying to access super-admin page
-                shouldRedirect = true;
-            }
         }
-
+        
+        // Only set loading to false if we are not about to redirect.
+        // The component will unmount on redirect anyway.
         if (!shouldRedirect) {
             setLoading(false);
         }
-        // If a redirect is happening, we don't need to setLoading(false)
-        // because the component will unmount and a new one will load.
-        // However, in some fast-refresh scenarios or edge cases, not setting it can cause a flicker.
-        // The most robust solution is to let it remain loading until unmount.
 
     }, [loggedInUserId, isSuperAdmin, requiredRole, router, dataLoading, loginPath]);
 
