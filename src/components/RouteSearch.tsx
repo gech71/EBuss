@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo } from 'react';
-import type { Route, Bus } from '@prisma/client';
+import type { Route, Bus, Location } from '@prisma/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar as CalendarIcon, Search, Bus as BusIcon, ArrowLeft } from 'lucide-react';
@@ -20,7 +20,7 @@ interface GroupedRoutes {
 interface RouteSearchProps {
     routes: Route[];
     buses: Bus[];
-    locations: string[];
+    locations: Location[];
 }
 
 export function RouteSearch({ routes, buses, locations }: RouteSearchProps) {
@@ -31,11 +31,14 @@ export function RouteSearch({ routes, buses, locations }: RouteSearchProps) {
   const [hasSearched, setHasSearched] = useState(false);
   
   const [openDate, setOpenDate] = useState(false);
-
+  
   const handleSearch = () => {
     const results = routes.filter(route => {
-      const isOriginMatch = !origin || route.origin === origin;
-      const isDestinationMatch = !destination || route.destination === destination;
+      const originLocation = locations.find(l => l.id === route.originId);
+      const destinationLocation = locations.find(l => l.id === route.destinationId);
+
+      const isOriginMatch = !origin || originLocation?.name === origin;
+      const isDestinationMatch = !destination || destinationLocation?.name === destination;
       const isDateMatch = !date || format(new Date(route.departureTime), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
       return isOriginMatch && isDestinationMatch && isDateMatch;
     });
@@ -50,14 +53,16 @@ export function RouteSearch({ routes, buses, locations }: RouteSearchProps) {
 
   const groupedSearchResults = useMemo(() => {
     return searchResults.reduce((acc: GroupedRoutes, route) => {
-      const key = `${route.origin}-${route.destination}-${route.departureTime.toISOString()}`;
+      const originLocation = locations.find(l => l.id === route.originId);
+      const destinationLocation = locations.find(l => l.id === route.destinationId);
+      const key = `${originLocation?.name}-${destinationLocation?.name}-${route.departureTime.toISOString()}`;
       if (!acc[key]) {
         acc[key] = [];
       }
       acc[key].push(route);
       return acc;
     }, {});
-  }, [searchResults]);
+  }, [searchResults, locations]);
 
 
   return (
@@ -77,8 +82,8 @@ export function RouteSearch({ routes, buses, locations }: RouteSearchProps) {
                                 </SelectTrigger>
                                 <SelectContent>
                                     {locations.map((loc) => (
-                                        <SelectItem key={loc} value={loc}>
-                                            {loc}
+                                        <SelectItem key={loc.id} value={loc.name}>
+                                            {loc.name}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -92,8 +97,8 @@ export function RouteSearch({ routes, buses, locations }: RouteSearchProps) {
                                 </SelectTrigger>
                                 <SelectContent>
                                     {locations.map((loc) => (
-                                        <SelectItem key={loc} value={loc}>
-                                            {loc}
+                                        <SelectItem key={loc.id} value={loc.name}>
+                                            {loc.name}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -145,10 +150,13 @@ export function RouteSearch({ routes, buses, locations }: RouteSearchProps) {
           {Object.keys(groupedSearchResults).length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {Object.values(groupedSearchResults).map((routeGroup, index) => {
+                 const firstRoute = routeGroup[0];
+                 const origin = locations.find(l => l.id === firstRoute.originId);
+                 const destination = locations.find(l => l.id === firstRoute.destinationId);
                 if (routeGroup.length > 1) {
-                  return <GroupedRouteCard key={index} routes={routeGroup} buses={buses} />;
+                  return <GroupedRouteCard key={index} routes={routeGroup} buses={buses} origin={origin} destination={destination} />;
                 }
-                return <RouteCard key={routeGroup[0].id} route={routeGroup[0]} buses={buses}/>;
+                return <RouteCard key={routeGroup[0].id} route={routeGroup[0]} buses={buses} origin={origin} destination={destination}/>;
               })}
             </div>
           ) : (

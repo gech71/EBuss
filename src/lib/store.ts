@@ -3,7 +3,7 @@
 "use client";
 
 import React, { createContext, useContext } from 'react';
-import type { Route, Bus, Discount, Booking, Seat, BusOwner, CommissionTier, User } from './types';
+import type { Route, Bus, Discount, Booking, Seat, BusOwner, CommissionTier, User, Location } from './types';
 
 // This is a placeholder for the data store shape. The actual implementation is in DataProvider.tsx
 interface DataStore {
@@ -12,7 +12,7 @@ interface DataStore {
     bookings: Booking[];
     owners: BusOwner[];
     users: User[];
-    locations: string[];
+    locations: Location[];
     discounts: Discount[];
     loading: boolean;
     getBusById: (busId: string) => Bus | undefined;
@@ -23,9 +23,9 @@ interface DataStore {
     addBus: (bus: Omit<Bus, 'id' | 'ownerId'> & { layout?: Bus['layout'] }) => void;
     updateBus: (bus: Bus) => void;
     deleteBus: (id: string) => void;
-    addLocation: (location: string) => void;
-    updateLocation: (oldName: string, newName: string) => void;
-    deleteLocation: (name: string) => void;
+    addLocation: (name: string) => void;
+    updateLocation: (id: string, newName: string) => void;
+    deleteLocation: (id: string) => void;
     addDiscount: (discount: Omit<Discount, 'id' | 'ownerId'>) => void;
     updateDiscount: (discount: Discount) => void;
     deleteDiscount: (id: string) => void;

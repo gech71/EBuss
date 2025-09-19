@@ -42,13 +42,18 @@ export interface Bus {
 
 export interface Route {
   id: string;
-  origin: string;
-  destination: string;
+  originId: string;
+  destinationId: string;
   departureTime: Date;
   arrivalTime: Date;
   price: number;
   busId: string;
   discountId?: string;
+}
+
+export interface Location {
+    id: string;
+    name: string;
 }
 
 export interface Booking {

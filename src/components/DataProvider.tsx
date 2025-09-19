@@ -3,8 +3,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { DataContext } from '@/lib/store';
-import type { Route, Bus, Discount, Booking, Seat, BusOwner, CommissionTier, User } from '@/lib/types';
-import { allRoutes as initialGlobalRoutes, allBuses as initialGlobalBuses, allOwners as initialAllOwnersData, allDiscounts as initialGlobalDiscounts, generateSeats } from '@/lib/data';
+import type { Route, Bus, Discount, Booking, Seat, BusOwner, CommissionTier, User, Location } from '@/lib/types';
+import { allRoutes as initialGlobalRoutes, allBuses as initialGlobalBuses, allOwners as initialAllOwnersData, allDiscounts as initialGlobalDiscounts, generateSeats, allLocations as initialAllLocations } from '@/lib/data';
 
 // --- SIMULATED AUTH ---
 const SUPER_ADMIN_ID = 'super-admin';
@@ -21,16 +21,6 @@ const initialUsers: User[] = [
 ];
 // --- END SIMULATED AUTH ---
 
-
-// Derive initial locations from routes
-const getInitialLocations = (routes: Route[]): string[] => {
-    const locationSet = new Set<string>();
-    routes.forEach(route => {
-        locationSet.add(route.origin);
-        locationSet.add(route.destination);
-    });
-    return Array.from(locationSet).sort();
-};
 
 const getInitialBookings = (routes: Route[], buses: Bus[]): { bookings: Booking[], updatedBuses: Bus[] } => {
     const sampleBookings: Booking[] = [];
@@ -107,7 +97,7 @@ interface AllData {
     bookings: Booking[];
     owners: BusOwner[];
     users: User[];
-    locations: string[];
+    locations: Location[];
     discounts: Discount[];
 }
 
@@ -157,7 +147,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                     bookings: initialBookings,
                     owners: [SUPER_ADMIN_USER, ...initialAllOwnersData],
                     users: initialUsers,
-                    locations: getInitialLocations(initialGlobalRoutes),
+                    locations: initialAllLocations,
                     discounts: initialGlobalDiscounts,
                 };
                 setAllData(initialData);
@@ -228,27 +218,22 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         updateAndPersistData(data => ({ ...data, buses: data.buses.filter(b => b.id !== id) }));
     };
 
-    const addLocation = (location: string) => {
-        if (!allData.locations.includes(location)) {
-            updateAndPersistData(data => ({ ...data, locations: [...data.locations, location].sort() }));
+    const addLocation = (name: string) => {
+        if (!allData.locations.find(l => l.name === name)) {
+            const newLocation = { id: `loc-${Date.now()}`, name };
+            updateAndPersistData(data => ({ ...data, locations: [...data.locations, newLocation].sort((a,b) => a.name.localeCompare(b.name)) }));
         }
     };
     
-    const updateLocation = (oldName: string, newName: string) => {
+    const updateLocation = (id: string, newName: string) => {
         updateAndPersistData(data => {
-            const newLocations = data.locations.map(loc => loc === oldName ? newName : loc);
-            const newRoutes = data.routes.map(route => {
-                let newRoute = {...route};
-                if(route.origin === oldName) newRoute.origin = newName;
-                if(route.destination === oldName) newRoute.destination = newName;
-                return newRoute;
-            });
-            return { ...data, locations: newLocations, routes: newRoutes };
+            const newLocations = data.locations.map(loc => loc.id === id ? { ...loc, name: newName } : loc);
+            return { ...data, locations: newLocations };
         });
     };
     
-    const deleteLocation = (name: string) => {
-        updateAndPersistData(data => ({ ...data, locations: data.locations.filter(loc => loc !== name) }));
+    const deleteLocation = (id: string) => {
+        updateAndPersistData(data => ({ ...data, locations: data.locations.filter(loc => loc.id !== id) }));
     };
 
     const addDiscount = (discount: Omit<Discount, 'id' | 'ownerId'>) => {

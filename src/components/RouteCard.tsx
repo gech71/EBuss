@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Route, Bus } from '@prisma/client';
+import type { Route, Bus, Location } from '@prisma/client';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -10,9 +10,11 @@ import { ArrowRight, Clock, Ticket } from 'lucide-react';
 interface RouteCardProps {
   route: Route;
   buses: Bus[];
+  origin?: Location;
+  destination?: Location;
 }
 
-export function RouteCard({ route, buses }: RouteCardProps) {
+export function RouteCard({ route, buses, origin, destination }: RouteCardProps) {
   const bus = buses.find(b => b.id === route.busId);
 
   return (
@@ -21,9 +23,9 @@ export function RouteCard({ route, buses }: RouteCardProps) {
         <div className="flex justify-between items-start">
             <div>
                 <CardTitle className="font-headline text-xl flex items-center">
-                <span>{route.destination}</span>
+                <span>{destination?.name || 'Unknown'}</span>
                 </CardTitle>
-                <CardDescription>From {route.origin}</CardDescription>
+                <CardDescription>From {origin?.name || 'Unknown'}</CardDescription>
             </div>
             <div className="text-2xl font-bold text-primary">${route.price.toFixed(2)}</div>
         </div>

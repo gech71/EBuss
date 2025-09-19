@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Route, Bus } from '@prisma/client';
+import type { Route, Bus, Location } from '@prisma/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -11,18 +11,20 @@ import { Separator } from './ui/separator';
 interface GroupedRouteCardProps {
   routes: Route[];
   buses: Bus[];
+  origin?: Location;
+  destination?: Location;
 }
 
-export function GroupedRouteCard({ routes, buses }: GroupedRouteCardProps) {
+export function GroupedRouteCard({ routes, buses, origin, destination }: GroupedRouteCardProps) {
   const firstRoute = routes[0];
 
   return (
     <Card className="flex flex-col hover:shadow-lg transition-shadow duration-300">
       <CardHeader className="p-4">
         <CardTitle className="font-headline text-xl flex items-center">
-          <span>{firstRoute.destination}</span>
+          <span>{destination?.name || 'Unknown'}</span>
         </CardTitle>
-        <CardDescription>From {firstRoute.origin}</CardDescription>
+        <CardDescription>From {origin?.name || 'Unknown'}</CardDescription>
         <div className="flex items-center text-sm text-muted-foreground pt-1">
           <Clock className="w-4 h-4 mr-2 text-primary/70" />
           <span>{new Date(firstRoute.departureTime).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })} at {new Date(firstRoute.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>

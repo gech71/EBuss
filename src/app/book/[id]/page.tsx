@@ -8,6 +8,7 @@ import type {
   DiscountTier,
   Route,
   Bus,
+  Location,
 } from '@/lib/types';
 import { useData } from '@/lib/store';
 import { useToast } from '@/hooks/use-toast';
@@ -45,10 +46,11 @@ import {
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import type { User } from 'lucia';
+import { allLocations } from '@/lib/data';
 
 export default function BookPage() {
   const params = useParams();
-  const { routes, buses, discounts, addBooking, getBusById } = useData();
+  const { routes, buses, discounts, addBooking, getBusById, locations } = useData();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -73,8 +75,8 @@ export default function BookPage() {
     if (!route) return [];
     return routes.filter(
       (r) =>
-        r.origin === route.origin &&
-        r.destination === route.destination &&
+        r.originId === route.originId &&
+        r.destinationId === route.destinationId &&
         r.departureTime.getTime() === route.departureTime.getTime()
     );
   }, [route, routes]);
@@ -111,6 +113,9 @@ export default function BookPage() {
     }
     return <p>Loading...</p>;
   }
+  
+  const origin = locations.find(l => l.id === route.originId);
+  const destination = locations.find(l => l.id === route.destinationId);
 
   const handleBusChange = (newRouteId: string) => {
     if (newRouteId !== route.id) {
@@ -203,9 +208,9 @@ export default function BookPage() {
                 {/* Trip Summary */}
                 <div className="p-4 rounded-lg border bg-background space-y-4">
                   <div className="flex items-center font-semibold text-xl">
-                    <span>{route.origin}</span>
+                    <span>{origin?.name}</span>
                     <ArrowRight className="mx-4 h-5 w-5 text-primary" />
-                    <span>{route.destination}</span>
+                    <span>{destination?.name}</span>
                   </div>
                   <div className="text-sm text-muted-foreground space-y-1">
                     <p className="flex items-center">

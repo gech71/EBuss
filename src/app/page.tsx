@@ -12,14 +12,11 @@ export default async function Home() {
     },
   });
   const buses = await prisma.bus.findMany();
-  const locations = (await prisma.route.findMany({
-    select: {
-      origin: true,
-      destination: true,
+  const locations = await prisma.location.findMany({
+    orderBy: {
+      name: 'asc'
     }
-  })).flatMap(r => [r.origin, r.destination])
-    .filter((v, i, a) => a.indexOf(v) === i)
-    .sort();
+  });
 
   return (
     <div className="flex flex-col min-h-screen bg-background">

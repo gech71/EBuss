@@ -1,5 +1,5 @@
 
-import type { Bus, Route, Seat, BusOwner, Discount } from './types';
+import type { Bus, Route, Seat, BusOwner, Discount, Location } from './types';
 
 export const generateSeats = (rows: number, cols: number, aisleCols: number[], lastRowFull: boolean = false): Seat[] => {
   const seats: Seat[] = [];
@@ -23,6 +23,17 @@ export const generateSeats = (rows: number, cols: number, aisleCols: number[], l
   }
   return seats;
 };
+
+export const allLocations: Location[] = [
+    { id: 'loc-1', name: 'New York, NY' },
+    { id: 'loc-2', name: 'Boston, MA' },
+    { id: 'loc-3', name: 'Los Angeles, CA' },
+    { id: 'loc-4', name: 'San Francisco, CA' },
+    { id: 'loc-5', name: 'Chicago, IL' },
+    { id: 'loc-6', name: 'Detroit, MI' },
+    { id: 'loc-7', name: 'Miami, FL' },
+    { id: 'loc-8', name: 'Orlando, FL' },
+];
 
 export const allOwners: BusOwner[] = [
   { 
@@ -87,8 +98,8 @@ const dayAfterTomorrow = new Date('2025-09-20T00:00:00.000Z');
 export const allRoutes: Route[] = [
   {
     id: 'route-01',
-    origin: 'New York, NY',
-    destination: 'Boston, MA',
+    originId: 'loc-1',
+    destinationId: 'loc-2',
     departureTime: new Date(new Date(tomorrow).setHours(9, 0, 0, 0)),
     arrivalTime: new Date(new Date(tomorrow).setHours(13, 30, 0, 0)),
     price: 45.00,
@@ -97,8 +108,8 @@ export const allRoutes: Route[] = [
   },
   {
     id: 'route-02',
-    origin: 'Los Angeles, CA',
-    destination: 'San Francisco, CA',
+    originId: 'loc-3',
+    destinationId: 'loc-4',
     departureTime: new Date(new Date(tomorrow).setHours(11, 0, 0, 0)),
     arrivalTime: new Date(new Date(tomorrow).setHours(18, 0, 0, 0)),
     price: 60.00,
@@ -106,8 +117,8 @@ export const allRoutes: Route[] = [
   },
   {
     id: 'route-03',
-    origin: 'Chicago, IL',
-    destination: 'Detroit, MI',
+    originId: 'loc-5',
+    destinationId: 'loc-6',
     departureTime: new Date(new Date(dayAfterTomorrow).setHours(8, 30, 0, 0)),
     arrivalTime: new Date(new Date(dayAfterTomorrow).setHours(14, 0, 0, 0)),
     price: 35.00,
@@ -115,8 +126,8 @@ export const allRoutes: Route[] = [
   },
   {
     id: 'route-04',
-    origin: 'Miami, FL',
-    destination: 'Orlando, FL',
+    originId: 'loc-7',
+    destinationId: 'loc-8',
     departureTime: new Date(new Date(dayAfterTomorrow).setHours(14, 0, 0, 0)),
     arrivalTime: new Date(new Date(dayAfterTomorrow).setHours(18, 0, 0, 0)),
     price: 25.00,
@@ -124,8 +135,8 @@ export const allRoutes: Route[] = [
   },
   {
     id: 'route-05',
-    origin: 'New York, NY',
-    destination: 'Boston, MA',
+    originId: 'loc-1',
+    destinationId: 'loc-2',
     departureTime: new Date(new Date(tomorrow).setHours(9, 0, 0, 0)),
     arrivalTime: new Date(new Date(tomorrow).setHours(13, 30, 0, 0)),
     price: 55.00,
