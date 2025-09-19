@@ -1,8 +1,9 @@
+
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, MoreHorizontal } from "lucide-react";
+import { PlusCircle } from "lucide-react";
 import { Badge } from '@/components/ui/badge';
 import prisma from '@/lib/prisma';
 import { OwnerActions } from '@/components/super-admin/OwnerActions';
@@ -11,7 +12,7 @@ export default async function SuperAdminOwnersPage() {
   const owners = await prisma.busOwner.findMany({
     include: {
       _count: {
-        select: { buses: true, users: true }
+        select: { buses: true, admins: true }
       }
     },
     orderBy: {
@@ -53,7 +54,7 @@ export default async function SuperAdminOwnersPage() {
                     <Badge variant="secondary">{owner._count.buses}</Badge>
                   </TableCell>
                    <TableCell>
-                    <Badge variant="secondary">{owner._count.users}</Badge>
+                    <Badge variant="secondary">{owner._count.admins}</Badge>
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">{owner.commissionTiers.length} Tiers</Badge>
