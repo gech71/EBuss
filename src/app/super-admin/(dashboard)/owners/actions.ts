@@ -16,12 +16,59 @@ const tierSchema = z.object({
   value: z.number().positive("Value must be positive")
 });
 
-const ownerSchema = z.object({
+const createOwnerSchema = z.object({
+  name: z.string().min(1, "Owner name cannot be empty."),
+  commissionTiers: z.array(tierSchema)
+});
+
+const updateOwnerSchema = z.object({
   id: z.string(),
   name: z.string().min(1, "Owner name cannot be empty."),
   commissionTiers: z.array(tierSchema)
 });
 
+
+export async function createOwnerAction(formData: FormData) {
+    const rawData = {
+        name: formData.get('name'),
+        commissionTiers: JSON.parse(formData.get('commissionTiers') as string)
+    };
+
+    const validatedData = createOwnerSchema.safeParse(rawData);
+
+    if (!validatedData.success) {
+        return {
+            success: false,
+            message: validatedData.error.errors.map(e => e.message).join(', ')
+        };
+    }
+
+    const { name, commissionTiers } = validatedData.data;
+
+    try {
+        await prisma.busOwner.create({
+            data: {
+                name,
+                commissionTiers: {
+                    create: commissionTiers.map(tier => ({
+                        minSales: tier.minSales,
+                        maxSales: tier.maxSales,
+                        type: tier.type,
+                        value: tier.value,
+                    }))
+                }
+            }
+        });
+
+        revalidatePath('/super-admin/owners');
+    
+    } catch (error) {
+        console.error("Error creating owner:", error);
+        return { success: false, message: 'An unexpected error occurred while creating the owner.' };
+    }
+
+    redirect('/super-admin/owners');
+}
 
 export async function updateOwnerAction(formData: FormData) {
     const rawData = {
@@ -30,7 +77,7 @@ export async function updateOwnerAction(formData: FormData) {
         commissionTiers: JSON.parse(formData.get('commissionTiers') as string)
     };
 
-    const validatedData = ownerSchema.safeParse(rawData);
+    const validatedData = updateOwnerSchema.safeParse(rawData);
 
     if (!validatedData.success) {
         return {
@@ -121,4 +168,3 @@ export async function deleteOwnerAction(ownerId: string): Promise<{ success: boo
     return { success: false, message: 'An unexpected error occurred.' };
   }
 }
-
