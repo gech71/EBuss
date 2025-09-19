@@ -15,7 +15,8 @@ const SUPER_ADMIN_USER: BusOwner = {
 const CUSTOMER_ID = 'customer';
 
 const initialUsers: User[] = [
-    { id: 'user-super', name: 'Super Admin', email: 'super@example.com', ownerId: SUPER_ADMIN_ID, password: 'password' }
+    { id: 'user-super', name: 'Super Admin', email: 'super@example.com', ownerId: SUPER_ADMIN_ID, password: 'password' },
+    { id: 'user-admin-1', name: 'Admin User', email: 'admin@example.com', ownerId: 'owner-01', password: 'password' }
 ];
 // --- END SIMULATED AUTH ---
 
@@ -438,3 +439,5 @@ export function useDataProvider(): DataStore {
         addUser
     };
 }
+
+    
