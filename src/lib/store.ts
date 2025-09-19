@@ -133,7 +133,7 @@ interface DataStore extends AllData {
     addDiscount: (discount: Omit<Discount, 'id'>) => void;
     updateDiscount: (discount: Discount) => void;
     deleteDiscount: (id: string) => void;
-    addBooking: (booking: Omit<Booking, 'id'>) => boolean;
+    addBooking: (booking: Booking) => boolean;
     addOwner: (name: string, commissionTiers: Omit<CommissionTier, 'id'>[]) => void;
     updateOwner: (owner: BusOwner) => void;
     deleteOwner: (id: string) => void;
@@ -391,9 +391,8 @@ export function useDataProvider(): DataStore {
         updateAndPersistData(data => ({ ...data, discounts: data.discounts.filter(d => d.id !== id) }));
     };
 
-    const addBooking = (booking: Omit<Booking, 'id'>): boolean => {
+    const addBooking = (booking: Booking): boolean => {
         let success = true;
-        let newBooking: Booking | null = null;
         
         updateAndPersistData(data => {
             const relevantRoute = data.routes.find(r => r.id === booking.routeId);
@@ -415,8 +414,6 @@ export function useDataProvider(): DataStore {
             if (!success) {
                 return data;
             }
-            
-            newBooking = { ...booking, id: `ticket-${Date.now()}` };
 
             const newBuses = data.buses.map(bus => {
                 if (bus.id === relevantRoute?.busId) {
@@ -431,8 +428,8 @@ export function useDataProvider(): DataStore {
                 return bus;
             });
             
-            if (success && newBooking) {
-                return { ...data, buses: newBuses, bookings: [...data.bookings, newBooking] };
+            if (success) {
+                return { ...data, buses: newBuses, bookings: [...data.bookings, booking] };
             }
             
             return data;
