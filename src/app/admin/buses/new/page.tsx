@@ -6,17 +6,37 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { useData } from "@/lib/store";
-import { generateSeats } from "@/lib/data";
 import { useRouter } from "next/navigation";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useTransition, useRef } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
+import { createBusAction } from "@/app/admin/buses/actions";
+
+// Helper function to generate seat layouts, adapted from the original data file.
+const generateSeats = (rows: number, cols: number, aisleCols: number[], lastRowFull: boolean = false) => {
+  const seats = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const isLastRow = r === rows - 1;
+      const isAisle = aisleCols.includes(c) && !(lastRowFull && isLastRow);
+      
+      seats.push({
+        seatNumber: `${String.fromCharCode(65 + r)}${c + 1}`,
+        status: 'AVAILABLE',
+        type: isAisle ? 'AISLE' : 'SEAT',
+      });
+    }
+  }
+  return seats;
+};
+
 
 export default function NewBusPage() {
     const { toast } = useToast();
     const router = useRouter();
-    const { addBus } = useData();
+    const [isPending, startTransition] = useTransition();
+    const formRef = useRef<HTMLFormElement>(null);
+
     const [name, setName] = useState('');
     const [rows, setRows] = useState(12);
     const [cols, setCols] = useState(5);
@@ -30,14 +50,16 @@ export default function NewBusPage() {
     const capacity = useMemo(() => {
         if (cols <= 0 || rows <= 0) return 0;
         
-        const baseCapacity = rows * (cols - parsedAisleCols.length);
+        const baseCapacity = rows * cols;
+        const aisleSeats = rows * parsedAisleCols.length;
         
-        // If the last row is a full bench, add back a seat for each aisle.
+        let finalCapacity = baseCapacity - aisleSeats;
+        
         if (lastRowFull) {
-            return baseCapacity + parsedAisleCols.length;
+            finalCapacity += parsedAisleCols.length;
         }
         
-        return baseCapacity;
+        return finalCapacity;
     }, [rows, cols, parsedAisleCols, lastRowFull]);
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -52,27 +74,27 @@ export default function NewBusPage() {
             return;
         }
 
-        const newBus = {
-            name,
-            capacity,
-            layout: {
-                rows,
-                cols,
-                seats: generateSeats(rows, cols, parsedAisleCols, lastRowFull),
-            }
-        };
-
-        addBus(newBus);
+        const seats = generateSeats(rows, cols, parsedAisleCols, lastRowFull);
         
-        toast({
-            title: "Success!",
-            description: "New bus has been added.",
+        const formData = new FormData(event.currentTarget);
+        formData.append('capacity', capacity.toString());
+        formData.append('rows', rows.toString());
+        formData.append('cols', cols.toString());
+        formData.append('seats', JSON.stringify(seats));
+        
+        startTransition(async () => {
+            const result = await createBusAction(formData);
+             if (result?.success === false) {
+                 toast({ title: "Creation Failed", description: result.message, variant: "destructive" });
+            } else {
+                 toast({ title: "Success!", description: "New bus has been added."});
+                 formRef.current?.reset();
+            }
         });
-        router.push("/admin/buses");
     };
 
     return (
-        <form onSubmit={handleSubmit}>
+        <form ref={formRef} onSubmit={handleSubmit}>
             <Card className="max-w-xl mx-auto">
                 <CardHeader>
                     <CardTitle>Add New Bus</CardTitle>
@@ -82,7 +104,7 @@ export default function NewBusPage() {
                     <div className="space-y-6">
                          <div className="space-y-2">
                             <Label htmlFor="name">Bus Name</Label>
-                            <Input id="name" placeholder="e.g., Standard Cruiser" required value={name} onChange={e => setName(e.target.value)} />
+                            <Input id="name" name="name" placeholder="e.g., Standard Cruiser" required value={name} onChange={e => setName(e.target.value)} />
                         </div>
                         
                         <Separator />
@@ -119,7 +141,7 @@ export default function NewBusPage() {
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-                    <Button type="submit">Save Bus</Button>
+                    <Button type="submit" disabled={isPending}>{isPending ? "Saving..." : "Save Bus"}</Button>
                 </CardFooter>
             </Card>
         </form>

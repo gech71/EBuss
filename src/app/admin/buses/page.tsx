@@ -1,27 +1,28 @@
 
-"use client";
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useData } from "@/lib/store";
-import { PlusCircle, MoreHorizontal } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { PlusCircle } from "lucide-react";
 import Link from 'next/link';
-import { useToast } from "@/hooks/use-toast";
+import prisma from "@/lib/prisma";
+import { validateRequest } from "@/app/lib/auth";
+import { redirect } from "next/navigation";
+import { BusActions } from "@/components/admin/BusActions";
 
-export default function AdminBusesPage() {
-  const { buses, deleteBus } = useData();
-  const { toast } = useToast();
-
-  const handleDelete = (busId: string) => {
-    // In a real app, check for dependencies (e.g., active routes) before deleting.
-    deleteBus(busId);
-    toast({
-        title: "Success",
-        description: "Bus has been deleted."
-    })
+export default async function AdminBusesPage() {
+  const { user } = await validateRequest();
+  if (!user || !user.busOwnerId) {
+    return redirect('/login');
   }
+
+  const buses = await prisma.bus.findMany({
+    where: {
+      ownerId: user.busOwnerId
+    },
+    orderBy: {
+      name: 'asc'
+    }
+  });
 
   return (
     <Card>
@@ -52,23 +53,18 @@ export default function AdminBusesPage() {
               <TableRow key={bus.id}>
                 <TableCell className="font-medium">{bus.name}</TableCell>
                 <TableCell>{bus.capacity}</TableCell>
-                <TableCell>
-                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button aria-haspopup="true" size="icon" variant="ghost">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Toggle menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem disabled>Edit</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleDelete(bus.id)}>Delete</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                <TableCell className="text-right">
+                  <BusActions busId={bus.id} />
                 </TableCell>
               </TableRow>
             ))}
+             {buses.length === 0 && (
+                <TableRow>
+                    <TableCell colSpan={3} className="h-24 text-center">
+                        No buses found. Add one to get started.
+                    </TableCell>
+                </TableRow>
+             )}
           </TableBody>
         </Table>
       </CardContent>
