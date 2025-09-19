@@ -1,7 +1,7 @@
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
-import { DataContext, useDataProvider } from '@/lib/store';
 import React from 'react';
+import { DataProvider } from '@/components/DataProvider';
 
 // Note: Metadata is commented out but kept here to show it would be in a server component.
 /*
@@ -11,12 +11,6 @@ export const metadata: Metadata = {
   description: 'The easiest way to book your bus tickets.',
 };
 */
-
-function DataProvider({ children }: { children: React.ReactNode }) {
-    const data = useDataProvider();
-    return <DataContext.Provider value={data}>{children}</DataContext.Provider>;
-}
-
 
 export default function RootLayout({
   children,
