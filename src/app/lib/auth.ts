@@ -52,15 +52,20 @@ export const validateRequest = cache(
 		}
 
 		const result = await lucia.validateSession(sessionId);
-		// next.js throws when you attempt to set cookie when rendering page
-		if (result.session && result.session.fresh) {
-			const sessionCookie = lucia.createSessionCookie(result.session.id);
-			cookies().set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
+		
+		try {
+			if (result.session && result.session.fresh) {
+				const sessionCookie = lucia.createSessionCookie(result.session.id);
+				cookies().set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
+			}
+			if (!result.session) {
+				const sessionCookie = lucia.createBlankSessionCookie();
+				cookies().set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
+			}
+		} catch {
+			// Next.js throws error when attempting to set cookies when rendering page
 		}
-		if (!result.session) {
-			const sessionCookie = lucia.createBlankSessionCookie();
-			cookies().set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
-		}
+		
 		return result;
 	}
 );
