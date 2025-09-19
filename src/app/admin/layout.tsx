@@ -13,7 +13,7 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { loading } = useAuthRedirect();
+  const { loading } = useAuthRedirect({ requiredRole: 'admin' });
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;

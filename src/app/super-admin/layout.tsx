@@ -13,7 +13,7 @@ export default function SuperAdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { loading } = useAuthRedirect({ requiredRole: 'super-admin' });
+  const { loading } = useAuthRedirect({ requiredRole: 'super-admin', loginPath: '/super-admin/login' });
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
