@@ -23,7 +23,7 @@ export function UserNav() {
 
   const handleLogout = () => {
     logout();
-    router.push('/login');
+    window.location.href = '/';
   }
 
   if (!loggedInUser) {
