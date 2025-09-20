@@ -3,13 +3,12 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
-import { QrCode, CheckCircle, XCircle, AlertTriangle, VideoOff, RotateCw } from "lucide-react";
+import { QrCode, CheckCircle, XCircle, VideoOff, RotateCw } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter } from "@/components/ui/alert-dialog";
-import { Card, CardContent } from '../ui/card';
+import { Card } from '../ui/card';
 import { useToast } from '@/hooks/use-toast';
 import jsQR from "jsqr";
 import type { Booking, Route, Bus, Location, BookedSeat } from "@prisma/client";
-import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 
 type ScanStatus = "idle" | "scanning" | "valid" | "invalid";
 type ScannedData = Booking & { route: Route & { origin: Location, destination: Location }, bookedSeats: BookedSeat[] };
@@ -24,6 +23,7 @@ export function QRScanner() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameId = useRef<number>();
+  const streamRef = useRef<MediaStream | null>(null);
 
   const resetScanner = () => {
     setStatus("idle");
@@ -86,6 +86,7 @@ export function QRScanner() {
     const getCameraPermission = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        streamRef.current = stream;
         setHasCameraPermission(true);
 
         if (videoRef.current) {
@@ -105,10 +106,9 @@ export function QRScanner() {
     getCameraPermission();
     
     return () => {
-      // Cleanup: stop video stream and animation frame
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
+      // Cleanup: stop video stream and animation frame when the component unmounts
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
       }
       if (animationFrameId.current) {
         cancelAnimationFrame(animationFrameId.current);
