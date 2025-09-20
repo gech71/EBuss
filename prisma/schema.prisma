@@ -1,3 +1,4 @@
+
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
@@ -12,16 +13,14 @@ datasource db {
 }
 
 model User {
-  id              String     @id @default(cuid())
+  id              String      @id @default(cuid())
   name            String
-  email           String     @unique
+  email           String      @unique
   hashed_password String?
-  role            Role       @default(CUSTOMER)
+  role            Role
   sessions        Session[]
   busOwnerId      String?
-  busOwner        BusOwner?  @relation("OwnerUsers", fields: [busOwnerId], references: [id])
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  busOwner        BusOwner?   @relation("BusOwnerAdmins", fields: [busOwnerId], references: [id])
 }
 
 model Session {
@@ -31,68 +30,22 @@ model Session {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-enum Role {
-  CUSTOMER
-  ADMIN
-  SUPER_ADMIN
-}
-
 model BusOwner {
-  id               String           @id @default(cuid())
-  name             String           @unique
-  buses            Bus[]
-  admins           User[]           @relation("OwnerUsers")
-  commissionTiers  CommissionTier[]
-  discounts        Discount[]
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-}
-
-model CommissionTier {
-  id        String          @id @default(cuid())
-  minSales  Float
-  maxSales  Float
-  type      CommissionType
-  value     Float
-  owner     BusOwner        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  ownerId   String
-}
-
-enum CommissionType {
-  FIXED
-  PERCENTAGE
-}
-
-model Location {
-  id           String  @id @default(cuid())
-  name         String  @unique
-  originRoutes Route[] @relation("OriginRoutes")
-  destRoutes   Route[] @relation("DestinationRoutes")
-}
-
-model Route {
-  id            String    @id @default(cuid())
-  origin        Location  @relation("OriginRoutes", fields: [originId], references: [id])
-  originId      String
-  destination   Location  @relation("DestinationRoutes", fields: [destinationId], references: [id])
-  destinationId String
-  departureTime DateTime
-  arrivalTime   DateTime
-  price         Float
-  bus           Bus       @relation(fields: [busId], references: [id])
-  busId         String
-  bookings      Booking[]
-  discount      Discount? @relation(fields: [discountId], references: [id])
-  discountId    String?
+  id              String           @id @default(cuid())
+  name            String           @unique
+  buses           Bus[]
+  admins          User[]           @relation("BusOwnerAdmins")
+  discounts       Discount[]
+  commissionTiers CommissionTier[]
 }
 
 model Bus {
   id       String      @id @default(cuid())
   name     String
   capacity Int
-  layout   SeatLayout  @relation(fields: [seatLayoutId], references: [id])
-  owner    BusOwner    @relation(fields: [ownerId], references: [id])
   ownerId  String
+  owner    BusOwner    @relation(fields: [ownerId], references: [id])
+  layout   SeatLayout  @relation(fields: [seatLayoutId], references: [id], onDelete: Cascade)
   routes   Route[]
   seatLayoutId String @unique
 }
@@ -108,40 +61,33 @@ model SeatLayout {
 model Seat {
   id          String     @id @default(cuid())
   seatNumber  String
-  status      SeatStatus @default(AVAILABLE)
-  type        SeatType   @default(SEAT)
-  layout      SeatLayout @relation(fields: [layoutId], references: [id], onDelete: Cascade)
+  status      SeatStatus
+  type        SeatType
   layoutId    String
+  layout      SeatLayout @relation(fields: [layoutId], references: [id], onDelete: Cascade)
 }
 
-enum SeatStatus {
-  AVAILABLE
-  OCCUPIED
+model Location {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  originFor   Route[] @relation("OriginRoutes")
+  destFor     Route[] @relation("DestinationRoutes")
 }
 
-enum SeatType {
-  SEAT
-  AISLE
-}
-
-model Discount {
-  id        String         @id @default(cuid())
-  name      String
-  startDate DateTime
-  endDate   DateTime
-  tiers     DiscountTier[]
-  owner     BusOwner       @relation(fields: [ownerId], references: [id])
-  ownerId   String
-  routes    Route[]
-}
-
-model DiscountTier {
-  id         String   @id @default(cuid())
-  minTickets Int
-  maxTickets Int
-  percentage Float
-  discount   Discount @relation(fields: [discountId], references: [id], onDelete: Cascade)
-  discountId String
+model Route {
+  id            String    @id @default(cuid())
+  originId      String
+  origin        Location  @relation("OriginRoutes", fields: [originId], references: [id])
+  destinationId String
+  destination   Location  @relation("DestinationRoutes", fields: [destinationId], references: [id])
+  departureTime DateTime
+  arrivalTime   DateTime
+  price         Float
+  busId         String
+  bus           Bus       @relation(fields: [busId], references: [id])
+  bookings      Booking[]
+  discountId    String?
+  discount      Discount? @relation(fields: [discountId], references: [id], onUpdate: NoAction, onDelete: SetNull)
 }
 
 model Booking {
@@ -149,15 +95,68 @@ model Booking {
   passengerName  String
   passengerEmail String
   totalPrice     Float
-  route          Route        @relation(fields: [routeId], references: [id])
-  routeId        String
-  bookedSeats    BookedSeat[]
   bookingTime    DateTime     @default(now())
+  routeId        String
+  route          Route        @relation(fields: [routeId], references: [id])
+  bookedSeats    BookedSeat[]
 }
 
 model BookedSeat {
   id          String  @id @default(cuid())
-  booking     Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   bookingId   String
-  seatNumber  String // e.g. "1A", "4C"
+  booking     Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  seatNumber  String
+}
+
+model Discount {
+  id        String         @id @default(cuid())
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  ownerId   String
+  owner     BusOwner       @relation(fields: [ownerId], references: [id])
+  tiers     DiscountTier[]
+  routes    Route[]
+}
+
+model DiscountTier {
+  id          String   @id @default(cuid())
+  minTickets  Int
+  maxTickets  Int
+  percentage  Float
+  discountId  String
+  discount    Discount @relation(fields: [discountId], references: [id], onDelete: Cascade)
+}
+
+model CommissionTier {
+  id       String         @id @default(cuid())
+  minSales Int
+  maxSales Int
+  type     CommissionType
+  value    Float
+  ownerId  String
+  owner    BusOwner       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum SeatStatus {
+  AVAILABLE
+  OCCUPIED
+  BLOCKED
+}
+
+enum SeatType {
+  SEAT
+  AISLE
+  DRIVER
+}
+
+enum CommissionType {
+  PERCENTAGE
+  FIXED
 }

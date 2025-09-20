@@ -1,28 +1,33 @@
 
-"use client";
-
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, MoreHorizontal, Percent, ArrowRight } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useToast } from "@/hooks/use-toast";
-import { useData } from '@/lib/store';
+import { PlusCircle, ArrowRight, Percent } from "lucide-react";
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
+import prisma from '@/lib/prisma';
+import { validateRequest } from '@/app/lib/auth';
+import { redirect } from 'next/navigation';
+import { DiscountActions } from '@/components/admin/DiscountActions';
 
-export default function AdminDiscountsPage() {
-  const { toast } = useToast();
-  const { discounts, deleteDiscount } = useData();
+export default async function AdminDiscountsPage() {
+  const { user } = await validateRequest();
+  if (!user || !user.busOwnerId) {
+    return redirect('/login');
+  }
 
-  const handleDelete = (id: string) => {
-    deleteDiscount(id);
-    toast({
-      title: "Discount Deleted",
-      description: "The discount has been removed.",
-    });
-  };
+  const discounts = await prisma.discount.findMany({
+    where: {
+      ownerId: user.busOwnerId,
+    },
+    include: {
+      tiers: true,
+    },
+    orderBy: {
+      name: 'asc'
+    }
+  });
 
   const getStatus = (startDate: Date, endDate: Date) => {
     const now = new Date();
@@ -67,32 +72,19 @@ export default function AdminDiscountsPage() {
                   <TableCell>{format(discount.startDate, "PPP")} <ArrowRight className="inline h-4 w-4 mx-1" /> {format(discount.endDate, "PPP")}</TableCell>
                   <TableCell>{getStatus(discount.startDate, discount.endDate)}</TableCell>
                   <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button aria-haspopup="true" size="icon" variant="ghost">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem asChild>
-                            <Link href={`/admin/discounts/${discount.id}/edit`}>Edit</Link>
-                          </DropdownMenuItem>
-                           <DropdownMenuItem onClick={() => handleDelete(discount.id)} className="text-destructive focus:text-destructive">Delete</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                    <DiscountActions discountId={discount.id} />
                   </TableCell>
                 </TableRow>
               ))}
+              {discounts.length === 0 && (
+                <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                        No discounts have been created yet.
+                    </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
-           {discounts.length === 0 && (
-              <div className="text-center p-8 text-muted-foreground">
-                <Percent className="mx-auto h-12 w-12" />
-                <p className="mt-4">No discounts have been created yet.</p>
-              </div>
-            )}
         </CardContent>
       </Card>
   );
