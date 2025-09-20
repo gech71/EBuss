@@ -178,6 +178,12 @@ export function BookingForm({ route: initialRoute, alternativeRoutes }: BookingF
                     <span className="text-muted-foreground flex items-center gap-2"><Users />Tickets</span>
                     <span>{ticketCount} x ${selectedRoute.price.toFixed(2)}</span>
                 </div>
+                {ticketCount > 0 && (
+                  <div className="flex justify-between items-start text-sm">
+                      <span className="text-muted-foreground flex items-center gap-2 pt-1"><Armchair />Selected Seats</span>
+                      <span className="font-semibold text-right max-w-[50%]">{selectedSeats.map(s => s.seatNumber).join(', ')}</span>
+                  </div>
+                )}
                  <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
                     <span>${subtotal.toFixed(2)}</span>
