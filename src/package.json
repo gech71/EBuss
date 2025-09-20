@@ -9,7 +9,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "postinstall": "rm -rf node_modules/.prisma/client && prisma generate"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.14.1",

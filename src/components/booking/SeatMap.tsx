@@ -1,46 +1,44 @@
 
 "use client";
 
-import { useState } from 'react';
-import type { Bus, Route, Seat as SeatType } from '@/lib/types';
+import type { Bus, Seat as SeatType } from "@prisma/client";
 import { cn } from '@/lib/utils';
 import { Armchair, CarFront } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface SeatProps {
   seat: SeatType;
-  onSelect: (id: string) => void;
+  onSelect: (seatNumber: string) => void;
 }
 
 function Seat({ seat, onSelect }: SeatProps) {
-  const isSelectable = seat.type === 'seat' && (seat.status === 'available' || seat.status === 'selected');
-  const isSelected = seat.status === 'selected';
+  const isSelectable = seat.type === 'SEAT' && (seat.status === 'AVAILABLE' || seat.status === 'SELECTED');
 
   const seatClasses = cn(
     'flex items-center justify-center w-10 h-10 rounded-md font-semibold text-xs transition-all duration-200',
-    seat.type === 'seat' && 'border-2',
-    seat.status === 'available' && seat.type === 'seat' && 'bg-green-100 border-green-400 text-green-800 hover:bg-green-200 hover:border-green-600 cursor-pointer dark:bg-green-900/50 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900',
-    seat.status === 'occupied' && 'bg-muted border-muted-foreground/30 text-muted-foreground cursor-not-allowed opacity-70',
-    seat.status === 'selected' && 'bg-accent border-accent-foreground text-accent-foreground cursor-pointer shadow-lg scale-110',
-    seat.type === 'aisle' && 'bg-transparent',
-    seat.type === 'driver' && 'bg-muted'
+    seat.type === 'SEAT' && 'border-2',
+    seat.status === 'AVAILABLE' && seat.type === 'SEAT' && 'bg-green-100 border-green-400 text-green-800 hover:bg-green-200 hover:border-green-600 cursor-pointer dark:bg-green-900/50 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900',
+    seat.status === 'OCCUPIED' && 'bg-muted border-muted-foreground/30 text-muted-foreground cursor-not-allowed opacity-70',
+    seat.status === 'SELECTED' && 'bg-accent border-accent-foreground text-accent-foreground cursor-pointer shadow-lg scale-110',
+    seat.type === 'AISLE' && 'bg-transparent',
+    seat.type === 'DRIVER' && 'bg-muted'
   );
 
   return (
     <div
       className={seatClasses}
-      onClick={() => isSelectable && onSelect(seat.id)}
-      title={seat.type === 'seat' ? `Seat ${seat.id} - ${seat.status}` : ''}
+      onClick={() => isSelectable && onSelect(seat.seatNumber)}
+      title={seat.type === 'SEAT' ? `Seat ${seat.seatNumber} - ${seat.status}` : ''}
     >
-      {seat.type === 'seat' && <Armchair className="w-5 h-5" />}
-      {seat.type === 'driver' && <CarFront className="w-5 h-5" />}
+      {seat.type === 'SEAT' && <Armchair className="w-5 h-5" />}
+      {seat.type === 'DRIVER' && <CarFront className="w-5 h-5" />}
     </div>
   );
 }
 
+
 interface SeatMapProps {
-  bus: Bus;
-  route: Route;
+  bus: Bus & { layout: { seats: SeatType[], cols: number } };
   seats: SeatType[];
   setSeats: React.Dispatch<React.SetStateAction<SeatType[]>>;
 }
@@ -48,18 +46,16 @@ interface SeatMapProps {
 export function SeatMap({ bus, seats, setSeats }: SeatMapProps) {
   const { toast } = useToast();
 
-  const handleSelectSeat = (id: string) => {
+  const handleSelectSeat = (seatNumber: string) => {
     setSeats(currentSeats => {
-      const seat = currentSeats.find(s => s.id === id);
+      const seat = currentSeats.find(s => s.seatNumber === seatNumber);
       
-      // If the clicked seat is already selected, deselect it.
-      if (seat?.status === 'selected') {
-        return currentSeats.map(s => s.id === id ? { ...s, status: 'available' } : s);
+      if (seat?.status === 'SELECTED') {
+        return currentSeats.map(s => s.seatNumber === seatNumber ? { ...s, status: 'AVAILABLE' } : s);
       }
 
-      // If it's not selected, proceed with selection logic.
-      const selectedSeatsCount = currentSeats.filter(s => s.status === 'selected').length;
-      if (selectedSeatsCount >= 10) { // Limit selection
+      const selectedSeatsCount = currentSeats.filter(s => s.status === 'SELECTED').length;
+      if (selectedSeatsCount >= 10) { 
         toast({
             title: 'Selection Limit',
             description: 'You can select a maximum of 10 seats per booking.',
@@ -68,7 +64,7 @@ export function SeatMap({ bus, seats, setSeats }: SeatMapProps) {
         return currentSeats;
       }
 
-      return currentSeats.map(s => s.id === id ? { ...s, status: 'selected' } : s);
+      return currentSeats.map(s => s.seatNumber === seatNumber ? { ...s, status: 'SELECTED' } : s);
     });
   };
   
