@@ -35,11 +35,10 @@ export function BookingForm({ route: initialRoute, alternativeRoutes }: BookingF
   const [isPending, startTransition] = useTransition();
 
   const [selectedRoute, setSelectedRoute] = useState<RouteWithDetails>(initialRoute);
-  const [seats, setSeats] = useState<Seat[]>(initialRoute.bus.layout.seats);
+  const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
   const [passengerName, setPassengerName] = useState("");
   const [passengerEmail, setPassengerEmail] = useState("");
 
-  const selectedSeats = useMemo(() => seats.filter(s => s.status === 'selected'), [seats]);
   const ticketCount = selectedSeats.length;
 
   const { subtotal, discountAmount, finalPrice, appliedTier } = useMemo(() => {
@@ -70,7 +69,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes }: BookingF
     const newRouteDetails: RouteWithDetails = await response.json();
 
     setSelectedRoute(newRouteDetails);
-    setSeats(newRouteDetails.bus.layout.seats);
+    setSelectedSeats([]); // Reset seat selection when route changes
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -99,6 +98,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes }: BookingF
         router.push(`/ticket/${result.bookingId}`);
       } else {
         toast({ title: "Booking Failed", description: result.message, variant: "destructive" });
+        // Optionally, refetch route data to show which seats are gone
       }
     });
   };
@@ -144,7 +144,11 @@ export function BookingForm({ route: initialRoute, alternativeRoutes }: BookingF
           {/* Seat Map */}
           <div>
             <h3 className="font-semibold text-lg flex items-center gap-2 mb-2"><Armchair /> Select Your Seats</h3>
-            <SeatMap bus={selectedRoute.bus} seats={seats} setSeats={setSeats} />
+            <SeatMap 
+              key={selectedRoute.id} // Add key to force re-render on route change
+              bus={selectedRoute.bus} 
+              onSelectionChange={setSelectedSeats} 
+            />
           </div>
 
           <Separator />
@@ -201,5 +205,3 @@ export function BookingForm({ route: initialRoute, alternativeRoutes }: BookingF
     </form>
   );
 }
-
-    

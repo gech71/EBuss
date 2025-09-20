@@ -1,13 +1,17 @@
 
 "use client";
 
-import type { Bus, Seat as SeatType } from "@prisma/client";
+import { useState, useEffect } from 'react';
+import type { Bus, Seat as SeatType, SeatStatus } from "@prisma/client";
 import { cn } from '@/lib/utils';
 import { Armchair, CarFront } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+// Define a client-side seat type that includes the 'SELECTED' status
+type ClientSeat = SeatType & { status: SeatStatus | 'SELECTED' };
+
 interface SeatProps {
-  seat: SeatType;
+  seat: ClientSeat;
   onSelect: (seatNumber: string) => void;
 }
 
@@ -17,7 +21,7 @@ function Seat({ seat, onSelect }: SeatProps) {
   const seatClasses = cn(
     'flex items-center justify-center w-10 h-10 rounded-md font-semibold text-xs transition-all duration-200',
     seat.type === 'SEAT' && 'border-2',
-    seat.status === 'AVAILABLE' && seat.type === 'SEAT' && 'bg-green-100 border-green-400 text-green-800 hover:bg-green-200 hover:border-green-600 cursor-pointer dark:bg-green-900/50 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900',
+    seat.status === 'AVAILABLE' && 'bg-green-100 border-green-400 text-green-800 hover:bg-green-200 hover:border-green-600 cursor-pointer dark:bg-green-900/50 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900',
     seat.status === 'OCCUPIED' && 'bg-muted border-muted-foreground/30 text-muted-foreground cursor-not-allowed opacity-70',
     seat.status === 'SELECTED' && 'bg-accent border-accent-foreground text-accent-foreground cursor-pointer shadow-lg scale-110',
     seat.type === 'AISLE' && 'bg-transparent',
@@ -36,21 +40,29 @@ function Seat({ seat, onSelect }: SeatProps) {
   );
 }
 
-
 interface SeatMapProps {
   bus: Bus & { layout: { seats: SeatType[], cols: number } };
-  seats: SeatType[];
-  setSeats: React.Dispatch<React.SetStateAction<SeatType[]>>;
+  onSelectionChange: (selectedSeats: SeatType[]) => void;
 }
 
-export function SeatMap({ bus, seats, setSeats }: SeatMapProps) {
+export function SeatMap({ bus, onSelectionChange }: SeatMapProps) {
   const { toast } = useToast();
+  // Initialize internal state with the bus's seats
+  const [seats, setSeats] = useState<ClientSeat[]>(() => 
+    bus.layout.seats.map(s => ({ ...s }))
+  );
+
+  useEffect(() => {
+    const selected = seats.filter(s => s.status === 'SELECTED');
+    onSelectionChange(selected);
+  }, [seats, onSelectionChange]);
 
   const handleSelectSeat = (seatNumber: string) => {
     setSeats(currentSeats => {
       const seat = currentSeats.find(s => s.seatNumber === seatNumber);
       
       if (seat?.status === 'SELECTED') {
+        // Deselect the seat
         return currentSeats.map(s => s.seatNumber === seatNumber ? { ...s, status: 'AVAILABLE' } : s);
       }
 
@@ -64,6 +76,7 @@ export function SeatMap({ bus, seats, setSeats }: SeatMapProps) {
         return currentSeats;
       }
 
+      // Select the seat
       return currentSeats.map(s => s.seatNumber === seatNumber ? { ...s, status: 'SELECTED' } : s);
     });
   };
