@@ -2,37 +2,42 @@
 "use client";
 
 import { useRef } from "react";
+import type { Booking, Route, Bus, Location, BookedSeat } from "@prisma/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { useData } from "@/lib/store";
-import { ArrowRight, Bus, Clock, MapPin, User, Ticket as TicketIcon, Download, Send, MessageCircle } from "lucide-react";
+import { ArrowRight, Bus as BusIcon, Clock, MapPin, User, Ticket as TicketIcon, Download, Send, MessageCircle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
 import html2canvas from "html2canvas";
 import { Button } from "../ui/button";
 
+type BookingWithDetails = Booking & {
+  bookedSeats: BookedSeat[];
+  route: Route & {
+    origin: Location;
+    destination: Location;
+    bus: Bus;
+  };
+};
+
 interface TicketDisplayProps {
-  ticketId: string;
+  booking: BookingWithDetails | null;
 }
 
-export function TicketDisplay({ ticketId }: TicketDisplayProps) {
-  const { routes, bookings, buses } = useData();
+export function TicketDisplay({ booking }: TicketDisplayProps) {
   const ticketRef = useRef<HTMLDivElement>(null);
-  const booking = bookings.find((b) => b.id === ticketId);
-  const route = booking ? routes.find((r) => r.id === booking.routeId) : undefined;
-  const bus = route ? buses.find(b => b.id === route.busId) : undefined;
 
   const handleDownload = () => {
     if (ticketRef.current) {
       html2canvas(ticketRef.current, { useCORS: true }).then((canvas) => {
         const link = document.createElement("a");
-        link.download = `EZBus-Ticket-${ticketId}.png`;
+        link.download = `EZBus-Ticket-${booking?.id}.png`;
         link.href = canvas.toDataURL("image/png");
         link.click();
       });
     }
   };
 
-  if (!booking || !route || !bus) {
+  if (!booking) {
     return (
       <Card className="w-full max-w-md">
         <CardHeader>
@@ -44,12 +49,14 @@ export function TicketDisplay({ ticketId }: TicketDisplayProps) {
       </Card>
     );
   }
-
-  const qrCodeData = encodeURIComponent(JSON.stringify({ ticketId, routeId: booking.routeId, passenger: booking.passengerName }));
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${qrCodeData}&bgcolor=F0F8FF`;
-  const seatIds = booking.seats.map(s => s.id).join(', ');
   
-  const shareText = `Check out my bus ticket from ${route.origin} to ${route.destination} on ${new Date(route.departureTime).toLocaleDateString()}!`;
+  const { route, bus } = booking.route;
+
+  const qrCodeData = encodeURIComponent(JSON.stringify({ ticketId: booking.id, routeId: booking.routeId, passenger: booking.passengerName }));
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${qrCodeData}&bgcolor=F0F8FF`;
+  const seatNumbers = booking.bookedSeats.map(s => s.seatNumber).join(', ');
+  
+  const shareText = `Check out my bus ticket from ${route.origin.name} to ${route.destination.name} on ${new Date(route.departureTime).toLocaleDateString()}!`;
   const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
 
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`;
@@ -77,12 +84,12 @@ export function TicketDisplay({ ticketId }: TicketDisplayProps) {
                 <div className="flex items-center justify-between text-lg font-semibold">
                 <div className="flex items-center gap-2">
                     <MapPin className="h-5 w-5 text-primary"/>
-                    <span>{route.origin}</span>
+                    <span>{route.origin.name}</span>
                 </div>
                 <ArrowRight className="h-6 w-6 text-muted-foreground" />
                 <div className="flex items-center gap-2">
                     <MapPin className="h-5 w-5 text-primary"/>
-                    <span>{route.destination}</span>
+                    <span>{route.destination.name}</span>
                 </div>
                 </div>
                 <Separator />
@@ -93,7 +100,7 @@ export function TicketDisplay({ ticketId }: TicketDisplayProps) {
                     </div>
                     <div className="space-y-1">
                         <p className="text-muted-foreground">Seat(s)</p>
-                        <p className="font-semibold flex items-center gap-2"><TicketIcon className="h-4 w-4"/>{seatIds}</p>
+                        <p className="font-semibold flex items-center gap-2"><TicketIcon className="h-4 w-4"/>{seatNumbers}</p>
                     </div>
                     <div className="space-y-1">
                         <p className="text-muted-foreground">Departure</p>
@@ -101,7 +108,7 @@ export function TicketDisplay({ ticketId }: TicketDisplayProps) {
                     </div>
                     <div className="space-y-1">
                         <p className="text-muted-foreground">Bus</p>
-                        <p className="font-semibold flex items-center gap-2"><Bus className="h-4 w-4"/>{bus.name}</p>
+                        <p className="font-semibold flex items-center gap-2"><BusIcon className="h-4 w-4"/>{bus.name}</p>
                     </div>
                 </div>
             </CardContent>
