@@ -12,11 +12,11 @@ import { Button } from "../ui/button";
 
 type BookingWithDetails = Booking & {
   bookedSeats: BookedSeat[];
-  route: Route & {
+  route: (Route & {
     origin: Location;
     destination: Location;
     bus: Bus;
-  };
+  }) | null; // Route can be null
 };
 
 interface TicketDisplayProps {
@@ -37,20 +37,21 @@ export function TicketDisplay({ booking }: TicketDisplayProps) {
     }
   };
 
-  if (!booking) {
+  if (!booking || !booking.route) {
     return (
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Ticket Not Found</CardTitle>
         </CardHeader>
         <CardContent>
-          <p>The requested ticket could not be found. It may have expired or the booking was not completed.</p>
+          <p>The requested ticket could not be found. The associated route may no longer exist, or the booking was not completed.</p>
         </CardContent>
       </Card>
     );
   }
   
-  const { route, bus } = booking.route;
+  const { route } = booking;
+  const { bus } = route;
 
   const qrCodeData = encodeURIComponent(JSON.stringify({ ticketId: booking.id, routeId: booking.routeId, passenger: booking.passengerName }));
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${qrCodeData}&bgcolor=F0F8FF`;
