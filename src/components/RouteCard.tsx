@@ -8,14 +8,11 @@ import Link from 'next/link';
 import { ArrowRight, Clock, Ticket } from 'lucide-react';
 
 interface RouteCardProps {
-  route: Route;
-  buses: Bus[];
-  origin?: Location;
-  destination?: Location;
+  route: Route & { origin: Location, destination: Location, bus: Bus };
 }
 
-export function RouteCard({ route, buses, origin, destination }: RouteCardProps) {
-  const bus = buses.find(b => b.id === route.busId);
+export function RouteCard({ route }: RouteCardProps) {
+  const { origin, destination, bus } = route;
 
   return (
     <Card className="flex flex-col hover:shadow-lg transition-shadow duration-300">

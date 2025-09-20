@@ -9,14 +9,12 @@ import { ArrowRight, Clock } from 'lucide-react';
 import { Separator } from './ui/separator';
 
 interface GroupedRouteCardProps {
-  routes: Route[];
-  buses: Bus[];
-  origin?: Location;
-  destination?: Location;
+  routes: (Route & { bus: Bus, origin: Location, destination: Location })[];
 }
 
-export function GroupedRouteCard({ routes, buses, origin, destination }: GroupedRouteCardProps) {
+export function GroupedRouteCard({ routes }: GroupedRouteCardProps) {
   const firstRoute = routes[0];
+  const { origin, destination } = firstRoute;
 
   return (
     <Card className="flex flex-col hover:shadow-lg transition-shadow duration-300">
@@ -34,7 +32,7 @@ export function GroupedRouteCard({ routes, buses, origin, destination }: Grouped
         <p className="text-sm font-medium">Select your bus type:</p>
         <div className='space-y-3'>
             {routes.map((route, index) => {
-                const bus = buses.find(b => b.id === route.busId);
+                const bus = route.bus;
                 return (
                     <div key={route.id}>
                         {index > 0 && <Separator className="mb-3" />}
