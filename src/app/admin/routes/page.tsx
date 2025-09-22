@@ -6,9 +6,21 @@ import { PlusCircle } from "lucide-react";
 import Link from 'next/link';
 import prisma from "@/lib/prisma";
 import { RouteActions } from "@/components/admin/RouteActions";
+import { validateRequest } from "@/app/lib/auth";
+import { redirect } from "next/navigation";
 
 export default async function AdminRoutesPage() {
+  const { user } = await validateRequest();
+  if (!user || !user.busOwnerId) {
+    return redirect('/login');
+  }
+
   const routes = await prisma.route.findMany({
+    where: {
+      bus: {
+        ownerId: user.busOwnerId
+      }
+    },
     include: {
       origin: true,
       destination: true,
