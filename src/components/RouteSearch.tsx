@@ -2,15 +2,17 @@
 "use client";
 
 import { useState, useMemo } from 'react';
-import type { Route, Bus, Location } from '@prisma/client';
+import type { Route, Bus, Location, BusOwner } from '@prisma/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar as CalendarIcon, Search, Bus as BusIcon, ArrowLeft } from 'lucide-react';
+import { Calendar as CalendarIcon, Search, Bus as BusIcon, ArrowLeft, Check, ChevronsUpDown } from 'lucide-react';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { format } from 'date-fns';
 import { GroupedRouteCard } from './GroupedRouteCard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
+import { cn } from '@/lib/utils';
 
 interface GroupedRoutes {
   [key: string]: (Route & { bus: Bus, origin: Location, destination: Location })[];
@@ -19,23 +21,27 @@ interface GroupedRoutes {
 interface RouteSearchProps {
     routes: (Route & { bus: Bus, origin: Location, destination: Location })[];
     locations: Location[];
+    owners: BusOwner[];
 }
 
-export function RouteSearch({ routes, locations }: RouteSearchProps) {
+export function RouteSearch({ routes, locations, owners }: RouteSearchProps) {
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [date, setDate] = useState<Date | undefined>();
   const [searchResults, setSearchResults] = useState<(Route & { bus: Bus, origin: Location, destination: Location })[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
-  
+  const [selectedOwnerIds, setSelectedOwnerIds] = useState<string[]>(owners.map(o => o.id));
+
   const [openDate, setOpenDate] = useState(false);
-  
+  const [openOwners, setOpenOwners] = useState(false);
+
   const handleSearch = () => {
     const results = routes.filter(route => {
+      const isOwnerMatch = selectedOwnerIds.length === 0 || selectedOwnerIds.includes(route.bus.ownerId);
       const isOriginMatch = !origin || route.origin.name === origin;
       const isDestinationMatch = !destination || route.destination.name === destination;
       const isDateMatch = !date || format(new Date(route.departureTime), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
-      return isOriginMatch && isDestinationMatch && isDateMatch;
+      return isOwnerMatch && isOriginMatch && isDestinationMatch && isDateMatch;
     });
     setSearchResults(results);
     setHasSearched(true);
@@ -45,6 +51,28 @@ export function RouteSearch({ routes, locations }: RouteSearchProps) {
     setHasSearched(false);
     setSearchResults([]);
   };
+
+  const toggleOwnerSelection = (ownerId: string) => {
+    setSelectedOwnerIds(prev =>
+      prev.includes(ownerId)
+        ? prev.filter(id => id !== ownerId)
+        : [...prev, ownerId]
+    );
+  };
+
+  const filteredLocations = useMemo(() => {
+    if (selectedOwnerIds.length === 0 || selectedOwnerIds.length === owners.length) {
+      return locations;
+    }
+    return locations.filter(location =>
+      routes.some(route =>
+        (route.originId === location.id || route.destinationId === location.id) &&
+        selectedOwnerIds.includes(route.bus.ownerId)
+      )
+    );
+  }, [selectedOwnerIds, locations, routes, owners.length]);
+
+  const selectedOwners = owners.filter(o => selectedOwnerIds.includes(o.id));
 
   const groupedSearchResults = useMemo(() => {
     return searchResults.reduce((acc: GroupedRoutes, route) => {
@@ -57,7 +85,6 @@ export function RouteSearch({ routes, locations }: RouteSearchProps) {
     }, {});
   }, [searchResults]);
 
-
   return (
     <section>
         {!hasSearched && (
@@ -66,7 +93,50 @@ export function RouteSearch({ routes, locations }: RouteSearchProps) {
                     <CardTitle className="font-headline text-2xl text-primary">Search for Routes</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                        <div className="space-y-2 lg:col-span-2">
+                            <label className="text-sm font-medium text-muted-foreground">Bus Companies</label>
+                            <Popover open={openOwners} onOpenChange={setOpenOwners}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={openOwners}
+                                    className="w-full justify-between font-normal"
+                                    >
+                                    <span className="truncate">
+                                        {selectedOwners.length > 0 ? selectedOwners.map(b => b.name).join(', ') : "Select companies..."}
+                                    </span>
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                    <Command>
+                                        <CommandInput placeholder="Search companies..." />
+                                        <CommandList>
+                                            <CommandEmpty>No companies found.</CommandEmpty>
+                                            <CommandGroup>
+                                                {owners.map((owner) => (
+                                                <CommandItem
+                                                    key={owner.id}
+                                                    value={owner.name}
+                                                    onSelect={() => toggleOwnerSelection(owner.id)}
+                                                >
+                                                    <Check
+                                                    className={cn(
+                                                        "mr-2 h-4 w-4",
+                                                        selectedOwnerIds.includes(owner.id) ? "opacity-100" : "opacity-0"
+                                                    )}
+                                                    />
+                                                    {owner.name}
+                                                </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                        </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-muted-foreground">Origin</label>
                             <Select value={origin} onValueChange={setOrigin}>
@@ -74,7 +144,7 @@ export function RouteSearch({ routes, locations }: RouteSearchProps) {
                                     <SelectValue placeholder="Select origin..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {locations.map((loc) => (
+                                    {filteredLocations.map((loc) => (
                                         <SelectItem key={loc.id} value={loc.name}>
                                             {loc.name}
                                         </SelectItem>
@@ -89,7 +159,7 @@ export function RouteSearch({ routes, locations }: RouteSearchProps) {
                                     <SelectValue placeholder="Select destination..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {locations.map((loc) => (
+                                    {filteredLocations.map((loc) => (
                                         <SelectItem key={loc.id} value={loc.name}>
                                             {loc.name}
                                         </SelectItem>
@@ -97,7 +167,7 @@ export function RouteSearch({ routes, locations }: RouteSearchProps) {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-2 md:col-span-2 lg:col-span-3">
                             <label className="text-sm font-medium text-muted-foreground">Date</label>
                             <Popover open={openDate} onOpenChange={setOpenDate}>
                                 <PopoverTrigger asChild>
@@ -122,7 +192,7 @@ export function RouteSearch({ routes, locations }: RouteSearchProps) {
                                 </PopoverContent>
                             </Popover>
                         </div>
-                        <Button onClick={handleSearch} className="md:col-span-full lg:col-span-3">
+                        <Button onClick={handleSearch} className="lg:col-span-1">
                             <Search className="mr-2 h-4 w-4" /> Search
                         </Button>
                     </div>

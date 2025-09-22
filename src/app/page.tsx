@@ -30,6 +30,12 @@ export default async function Home() {
     }
   });
 
+  const owners = await prisma.busOwner.findMany({
+    orderBy: {
+      name: 'asc'
+    }
+  });
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header user={user} />
@@ -44,7 +50,7 @@ export default async function Home() {
         </section>
 
         <div className="mt-2.5">
-          <RouteSearch routes={routes} locations={locations} />
+          <RouteSearch routes={routes} locations={locations} owners={owners} />
         </div>
         
       </main>

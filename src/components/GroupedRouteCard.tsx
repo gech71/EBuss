@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ArrowRight, Clock } from 'lucide-react';
 import { Separator } from './ui/separator';
+import { Badge } from './ui/badge';
 
 interface GroupedRouteCardProps {
   routes: (Route & { bus: Bus, origin: Location, destination: Location })[];
@@ -15,9 +16,11 @@ interface GroupedRouteCardProps {
 export function GroupedRouteCard({ routes }: GroupedRouteCardProps) {
   const firstRoute = routes[0];
   const { origin, destination } = firstRoute;
+  const isExpired = new Date(firstRoute.departureTime) < new Date();
 
   return (
-    <Card className="flex flex-col hover:shadow-lg transition-shadow duration-300">
+    <Card className="flex flex-col hover:shadow-lg transition-shadow duration-300 relative">
+       {isExpired && <Badge variant="destructive" className="absolute top-2 right-2 z-10">Expired</Badge>}
       <CardHeader className="p-4">
         <CardTitle className="font-headline text-xl flex items-center">
           <span>{destination?.name || 'Unknown'}</span>
@@ -43,9 +46,9 @@ export function GroupedRouteCard({ routes }: GroupedRouteCardProps) {
                                 </div>
                                  <div className="text-lg font-bold text-primary">${route.price.toFixed(2)}</div>
                            </div>
-                            <Button asChild className="bg-accent hover:bg-accent/90 text-accent-foreground" size="sm">
-                                <Link href={`/book/${route.id}`}>
-                                    Book <ArrowRight className="ml-2 h-4 w-4" />
+                            <Button asChild className="bg-accent hover:bg-accent/90 text-accent-foreground" size="sm" disabled={isExpired}>
+                                <Link href={!isExpired ? `/book/${route.id}` : '#'}>
+                                    {isExpired ? 'Expired' : 'Book'} <ArrowRight className="ml-2 h-4 w-4" />
                                 </Link>
                             </Button>
                         </div>
