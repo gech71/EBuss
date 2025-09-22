@@ -1,5 +1,7 @@
+
 import prisma from "@/lib/prisma";
 import { CreateUserForm } from "@/components/super-admin/CreateUserForm";
+import { ChangePasswordForm } from "@/components/ChangePasswordForm";
 import {
   Card,
   CardContent,
@@ -16,6 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Users } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 export default async function SuperAdminSettingsPage() {
   const owners = await prisma.busOwner.findMany({
@@ -40,6 +43,20 @@ export default async function SuperAdminSettingsPage() {
 
   return (
     <div className="space-y-6">
+       <Card>
+        <CardHeader>
+          <CardTitle>Account Settings</CardTitle>
+          <CardDescription>
+            Manage your super admin account password.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+           <ChangePasswordForm />
+        </CardContent>
+      </Card>
+      
+      <Separator />
+
       <CreateUserForm owners={owners} existingEmails={existingEmails} />
 
       <Card>

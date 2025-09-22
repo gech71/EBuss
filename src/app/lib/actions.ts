@@ -1,3 +1,4 @@
+
 'use server';
 
 import { redirect } from 'next/navigation';
@@ -7,6 +8,7 @@ import { Argon2id } from 'oslo/password';
 import { lucia, validateRequest } from '@/app/lib/auth';
 import type { ActionResult } from 'next/dist/server/app-render/types';
 import { SignJWT } from 'jose';
+import { z } from 'zod';
 
 const getJwtSecret = () => {
   const secret = process.env.JWT_SECRET;
@@ -105,4 +107,72 @@ export async function logout(): Promise<ActionResult> {
   cookies().set('auth_session', '', { expires: new Date(0), path: '/' });
 	
   return redirect("/login");
+}
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required.'),
+  newPassword: z.string().min(6, 'New password must be at least 6 characters.'),
+  confirmPassword: z.string().min(6, 'Please confirm your new password.'),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'New passwords do not match.',
+    path: ['confirmPassword'],
+});
+
+
+export async function changePasswordAction(formData: FormData) {
+    const { user, session } = await validateRequest();
+    if (!user || !session) {
+        return { success: false, message: 'Unauthorized' };
+    }
+
+    const validatedData = changePasswordSchema.safeParse(Object.fromEntries(formData.entries()));
+
+    if (!validatedData.success) {
+        return {
+            success: false,
+            message: validatedData.error.errors.map(e => e.message).join(', ')
+        };
+    }
+
+    const { currentPassword, newPassword } = validatedData.data;
+
+    try {
+        const dbUser = await prisma.user.findUnique({
+            where: { id: user.id }
+        });
+
+        if (!dbUser || !dbUser.hashed_password) {
+             return { success: false, message: 'User not found.' };
+        }
+        
+        const validPassword = await new Argon2id().verify(
+            dbUser.hashed_password,
+            currentPassword
+        );
+
+        if (!validPassword) {
+            return { success: false, message: 'Incorrect current password.' };
+        }
+
+        const newHashedPassword = await new Argon2id().hash(newPassword);
+        
+        // Invalidate all other sessions for security
+        await lucia.invalidateUserSessions(user.id);
+
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { hashed_password: newHashedPassword }
+        });
+        
+        // Create a new session after password change
+        const newSession = await lucia.createSession(user.id, {});
+        const sessionCookie = lucia.createSessionCookie(newSession.id);
+        cookies().set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
+
+        return { success: true, message: 'Password updated successfully. You have been logged out of other devices.' };
+
+    } catch (error) {
+        console.error("Error changing password:", error);
+        return { success: false, message: 'An unexpected error occurred.' };
+    }
 }

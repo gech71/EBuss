@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "@/components/ui/sidebar";
-import { LayoutDashboard, Route as RouteIcon, Bus, QrCode, MapPin, Percent } from "lucide-react";
+import { LayoutDashboard, Route as RouteIcon, Bus, QrCode, MapPin, Percent, Settings } from "lucide-react";
 import { UserNav } from "@/components/UserNav";
 import { validateRequest } from "@/app/lib/auth";
 import { redirect } from "next/navigation";
@@ -72,6 +72,14 @@ export default async function AdminLayout({
                     <Link href="/admin/scan">
                       <QrCode />
                       <span>Scan Ticket</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                 <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Settings">
+                    <Link href="/admin/settings">
+                      <Settings />
+                      <span>Settings</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
