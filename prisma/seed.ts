@@ -296,6 +296,7 @@ async function main() {
       passengerEmail: 'alice@example.com',
       totalPrice: 45.00,
       routeId: route1.id,
+      status: 'VALID',
       bookedSeats: {
         create: [
           { seatNumber: 'A1' },
@@ -310,6 +311,7 @@ async function main() {
       passengerEmail: 'bob@example.com',
       totalPrice: 120.00,
       routeId: route2.id,
+      status: 'VALID',
       bookedSeats: {
         create: [
           { seatNumber: 'B2' },
@@ -332,3 +334,5 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+
+    
