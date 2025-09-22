@@ -21,7 +21,7 @@ export default async function Home() {
   // Sanitize Decimal fields for client components
   const routes = routesData.map(route => ({
     ...route,
-    price: route.price,
+    price: Number(route.price),
   }));
   
   const locations = await prisma.location.findMany({
