@@ -60,7 +60,8 @@ export async function authenticate(
       .sign(getJwtSecret());
 
     // Set JWT in 'auth_session' cookie for the middleware
-    cookies().set('auth_session', token, {
+    const cookieStore = await cookies();
+    cookieStore.set('auth_session', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
@@ -71,7 +72,7 @@ export async function authenticate(
     // 2. Create Lucia session for server components
     const session = await lucia.createSession(existingUser.id, {});
     const sessionCookie = lucia.createSessionCookie(session.id);
-    cookies().set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
+    cookieStore.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
 
     // 3. Redirect after setting cookies
     if (existingUser.role === 'SUPER_ADMIN') {
@@ -99,12 +100,12 @@ export async function logout(): Promise<ActionResult> {
 	}
 
 	await lucia.invalidateSession(session.id);
-
+  const cookieStore = await cookies();
 	const sessionCookie = lucia.createBlankSessionCookie();
-	cookies().set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
+	cookieStore.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
   
   // Also clear the JWT cookie
-  cookies().set('auth_session', '', { expires: new Date(0), path: '/' });
+  cookieStore.set('auth_session', '', { expires: new Date(0), path: '/' });
 	
   return redirect("/login");
 }
@@ -167,7 +168,7 @@ export async function changePasswordAction(formData: FormData) {
         // Create a new session after password change
         const newSession = await lucia.createSession(user.id, {});
         const sessionCookie = lucia.createSessionCookie(newSession.id);
-        cookies().set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
+        cookieStore.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
 
         return { success: true, message: 'Password updated successfully. You have been logged out of other devices.' };
 
