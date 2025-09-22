@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useActionState } from "react";
@@ -61,6 +62,9 @@ export default function LoginPage() {
           <CardFooter className="flex-col gap-4">
             <LoginButton />
             <Separator className="my-2" />
+             <Button variant="outline" asChild className="w-full">
+                <Link href="/">Continue as a customer</Link>
+            </Button>
             <div className="text-center text-sm text-muted-foreground">
               Don't have an account?{' '}
               <Button variant="link" asChild className="p-0 h-auto">
