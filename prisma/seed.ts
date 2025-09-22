@@ -35,8 +35,8 @@ async function main() {
   await prisma.route.deleteMany();
   await prisma.discount.deleteMany();
   await prisma.seat.deleteMany();
-  await prisma.seatLayout.deleteMany();
   await prisma.bus.deleteMany();
+  await prisma.seatLayout.deleteMany();
   await prisma.commissionTier.deleteMany();
   await prisma.location.deleteMany();
   await prisma.user.deleteMany();
