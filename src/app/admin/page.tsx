@@ -4,9 +4,39 @@ import { Analytics } from "@/components/admin/Analytics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, Route as RouteIcon, Bus } from "lucide-react";
 import prisma from "@/lib/prisma";
+import { validateRequest } from "@/app/lib/auth";
+import { redirect } from "next/navigation";
 
 export default async function AdminDashboard() {
+  const { user } = await validateRequest();
+  if (!user || !user.busOwnerId) {
+    return redirect('/login');
+  }
+
+  const buses = await prisma.bus.findMany({
+    where: { ownerId: user.busOwnerId },
+  });
+
+  const routes = await prisma.route.findMany({
+    where: {
+      bus: {
+        ownerId: user.busOwnerId,
+      },
+    },
+    include: {
+        origin: true,
+        destination: true,
+    }
+  });
+
+  const routeIds = routes.map(r => r.id);
+
   const bookings = await prisma.booking.findMany({
+    where: {
+      routeId: {
+        in: routeIds,
+      },
+    },
     include: {
       bookedSeats: true,
     },
@@ -14,16 +44,21 @@ export default async function AdminDashboard() {
       bookingTime: 'desc',
     },
   });
-  
-  const routes = await prisma.route.findMany();
-  const buses = await prisma.bus.findMany();
-  
+
   const totalRevenue = bookings.reduce((acc, booking) => acc + booking.totalPrice, 0);
+  
+  // To pass to client components, we need to make sure complex types are simplified
+  const sanitizedRoutes = routes.map(r => ({
+      ...r,
+      origin: r.origin.name,
+      destination: r.destination.name
+  }));
+
 
   return (
     <div className="space-y-8">
 
-      <Analytics bookings={bookings} routes={routes} buses={buses} />
+      <Analytics bookings={bookings} routes={sanitizedRoutes} buses={buses} />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
@@ -36,7 +71,7 @@ export default async function AdminDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">${totalRevenue.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              Based on all completed bookings
+              Based on your company's bookings
             </p>
           </CardContent>
         </Card>
@@ -48,7 +83,7 @@ export default async function AdminDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{routes.length}</div>
             <p className="text-xs text-muted-foreground">
-              Total routes available for booking
+              Total routes your company operates
             </p>
           </CardContent>
         </Card>
@@ -60,14 +95,14 @@ export default async function AdminDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{buses.length}</div>
             <p className="text-xs text-muted-foreground">
-              Total buses configured
+              Total buses in your fleet
             </p>
           </CardContent>
         </Card>
       </div>
 
       <div>
-        <RecentBookings bookings={bookings} routes={routes} />
+        <RecentBookings bookings={bookings} routes={sanitizedRoutes} />
       </div>
     </div>
   );
