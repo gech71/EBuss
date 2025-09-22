@@ -6,12 +6,24 @@ import prisma from "@/lib/prisma";
 
 export default async function Home() {
   const { user } = await validateRequest();
-  const routes = await prisma.route.findMany({
+  
+  const routesData = await prisma.route.findMany({
+    include: {
+        origin: true,
+        destination: true,
+        bus: true,
+    },
     orderBy: {
       departureTime: 'asc',
     },
   });
-  const buses = await prisma.bus.findMany();
+
+  // Sanitize Decimal fields for client components
+  const routes = routesData.map(route => ({
+    ...route,
+    price: route.price,
+  }));
+  
   const locations = await prisma.location.findMany({
     orderBy: {
       name: 'asc'
@@ -32,7 +44,7 @@ export default async function Home() {
         </section>
 
         <div className="mt-2.5">
-          <RouteSearch routes={routes} buses={buses} locations={locations} />
+          <RouteSearch routes={routes} locations={locations} />
         </div>
         
       </main>

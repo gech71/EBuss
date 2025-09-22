@@ -9,36 +9,31 @@ import { Calendar as CalendarIcon, Search, Bus as BusIcon, ArrowLeft } from 'luc
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { format } from 'date-fns';
-import { RouteCard } from './RouteCard';
 import { GroupedRouteCard } from './GroupedRouteCard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 interface GroupedRoutes {
-  [key: string]: Route[];
+  [key: string]: (Route & { bus: Bus, origin: Location, destination: Location })[];
 }
 
 interface RouteSearchProps {
-    routes: Route[];
-    buses: Bus[];
+    routes: (Route & { bus: Bus, origin: Location, destination: Location })[];
     locations: Location[];
 }
 
-export function RouteSearch({ routes, buses, locations }: RouteSearchProps) {
+export function RouteSearch({ routes, locations }: RouteSearchProps) {
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [date, setDate] = useState<Date | undefined>();
-  const [searchResults, setSearchResults] = useState<Route[]>([]);
+  const [searchResults, setSearchResults] = useState<(Route & { bus: Bus, origin: Location, destination: Location })[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   
   const [openDate, setOpenDate] = useState(false);
   
   const handleSearch = () => {
     const results = routes.filter(route => {
-      const originLocation = locations.find(l => l.id === route.originId);
-      const destinationLocation = locations.find(l => l.id === route.destinationId);
-
-      const isOriginMatch = !origin || originLocation?.name === origin;
-      const isDestinationMatch = !destination || destinationLocation?.name === destination;
+      const isOriginMatch = !origin || route.origin.name === origin;
+      const isDestinationMatch = !destination || route.destination.name === destination;
       const isDateMatch = !date || format(new Date(route.departureTime), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
       return isOriginMatch && isDestinationMatch && isDateMatch;
     });
@@ -53,16 +48,14 @@ export function RouteSearch({ routes, buses, locations }: RouteSearchProps) {
 
   const groupedSearchResults = useMemo(() => {
     return searchResults.reduce((acc: GroupedRoutes, route) => {
-      const originLocation = locations.find(l => l.id === route.originId);
-      const destinationLocation = locations.find(l => l.id === route.destinationId);
-      const key = `${originLocation?.name}-${destinationLocation?.name}-${route.departureTime.toISOString()}`;
+      const key = `${route.origin.name}-${route.destination.name}-${route.departureTime.toISOString()}`;
       if (!acc[key]) {
         acc[key] = [];
       }
       acc[key].push(route);
       return acc;
     }, {});
-  }, [searchResults, locations]);
+  }, [searchResults]);
 
 
   return (
@@ -150,13 +143,10 @@ export function RouteSearch({ routes, buses, locations }: RouteSearchProps) {
           {Object.keys(groupedSearchResults).length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {Object.values(groupedSearchResults).map((routeGroup, index) => {
-                 const firstRoute = routeGroup[0];
-                 const origin = locations.find(l => l.id === firstRoute.originId);
-                 const destination = locations.find(l => l.id === firstRoute.destinationId);
                 if (routeGroup.length > 1) {
-                  return <GroupedRouteCard key={index} routes={routeGroup} buses={buses} origin={origin} destination={destination} />;
+                  return <GroupedRouteCard key={index} routes={routeGroup} />;
                 }
-                return <RouteCard key={routeGroup[0].id} route={routeGroup[0]} buses={buses} origin={origin} destination={destination}/>;
+                return <GroupedRouteCard key={routeGroup[0].id} routes={routeGroup}/>;
               })}
             </div>
           ) : (

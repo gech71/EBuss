@@ -8,14 +8,20 @@ import { Button } from "@/components/ui/button";
 import Link from 'next/link';
 import { updateLocationAction } from "@/app/admin/locations/actions";
 import { SubmitButton } from "@/components/SubmitButton";
+import { validateRequest } from "@/app/lib/auth";
 
 interface EditLocationPageProps {
     params: { id: string };
 }
 
 export default async function EditLocationPage({ params }: EditLocationPageProps) {
-    const location = await prisma.location.findUnique({
-        where: { id: params.id }
+    const { user } = await validateRequest();
+
+    const location = await prisma.location.findFirst({
+        where: { 
+            id: params.id,
+            ownerId: user?.busOwnerId,
+        }
     });
 
     if (!location) {

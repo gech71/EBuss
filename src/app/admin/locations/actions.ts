@@ -5,18 +5,23 @@ import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
+import { validateRequest } from '@/app/lib/auth';
 
 const locationSchema = z.object({
   name: z.string().min(1, 'Location name is required.'),
 });
 
 export async function createLocationAction(formData: FormData) {
+    const { user } = await validateRequest();
+    if (!user || !user.busOwnerId) {
+        return { success: false, message: 'Unauthorized' };
+    }
+
     const validatedData = locationSchema.safeParse({
         name: formData.get('name'),
     });
 
     if (!validatedData.success) {
-        // Handle validation errors, maybe return them to the form
         return {
             success: false,
             message: validatedData.error.errors.map(e => e.message).join(', ')
@@ -27,10 +32,13 @@ export async function createLocationAction(formData: FormData) {
 
     try {
         await prisma.location.create({
-            data: { name }
+            data: { 
+                name,
+                ownerId: user.busOwnerId,
+            }
         });
     } catch (error) {
-        return { success: false, message: 'A location with this name already exists.' };
+        return { success: false, message: 'A location with this name already exists for your account.' };
     }
     
     revalidatePath('/admin/locations');
@@ -38,6 +46,11 @@ export async function createLocationAction(formData: FormData) {
 }
 
 export async function updateLocationAction(formData: FormData) {
+    const { user } = await validateRequest();
+    if (!user || !user.busOwnerId) {
+        return redirect('/login');
+    }
+
     const id = formData.get('id') as string;
     const name = formData.get('name') as string;
 
@@ -48,7 +61,10 @@ export async function updateLocationAction(formData: FormData) {
 
     try {
         await prisma.location.update({
-            where: { id },
+            where: { 
+                id,
+                ownerId: user.busOwnerId,
+            },
             data: { name },
         });
 
@@ -64,7 +80,20 @@ export async function updateLocationAction(formData: FormData) {
 
 
 export async function deleteLocationAction(locationId: string): Promise<{ success: boolean; message: string }> {
+  const { user } = await validateRequest();
+  if (!user || !user.busOwnerId) {
+      return { success: false, message: 'Unauthorized' };
+  }
+  
   try {
+    const location = await prisma.location.findFirst({
+        where: { id: locationId, ownerId: user.busOwnerId }
+    });
+
+    if (!location) {
+        return { success: false, message: 'Location not found or you do not have permission to delete it.' };
+    }
+
     const originInUse = await prisma.route.count({ where: { originId: locationId } });
     const destinationInUse = await prisma.route.count({ where: { destinationId: locationId } });
 
