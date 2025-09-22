@@ -88,9 +88,14 @@ export async function deleteBusAction(busId: string): Promise<{ success: boolean
       };
     }
 
+    const bus = await prisma.bus.findUnique({ where: { id: busId }, include: { layout: true } });
+    if (bus && bus.layout) {
+      await prisma.seat.deleteMany({ where: { layoutId: bus.layout.id } });
+      await prisma.seatLayout.delete({ where: { id: bus.layout.id } });
+    }
+    
     await prisma.bus.delete({ 
         where: { id: busId },
-        include: { layout: { include: { seats: true } } }
     });
     
     revalidatePath('/admin/buses');

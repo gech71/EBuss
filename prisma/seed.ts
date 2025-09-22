@@ -13,7 +13,7 @@ const generateSeats = (rows: number, cols: number, aisleCols: number[], lastRowF
       const isAisle = aisleCols.includes(c) && !(lastRowFull && isLastRow);
       
       seats.push({
-        seatNumber: `${c + 1}${String.fromCharCode(65 + r)}`,
+        seatNumber: `${String.fromCharCode(65 + r)}${c + 1}`,
         status: isAisle ? SeatStatus.AVAILABLE : (Math.random() > 0.7 ? SeatStatus.OCCUPIED : SeatStatus.AVAILABLE),
         type: isAisle ? SeatType.AISLE : SeatType.SEAT,
       });
@@ -38,29 +38,13 @@ async function main() {
   await prisma.seatLayout.deleteMany();
   await prisma.bus.deleteMany();
   await prisma.commissionTier.deleteMany();
+  await prisma.location.deleteMany();
   await prisma.user.deleteMany();
   await prisma.busOwner.deleteMany();
-  await prisma.location.deleteMany(); // Clear locations
   console.log('Existing data cleared.');
 
-  // 2. Create Locations
-  const locations = await prisma.location.createManyAndReturn({
-    data: [
-      { name: 'New York, NY' },
-      { name: 'Boston, MA' },
-      { name: 'Los Angeles, CA' },
-      { name: 'San Francisco, CA' },
-      { name: 'Chicago, IL' },
-      { name: 'Detroit, MI' },
-      { name: 'Miami, FL' },
-      { name: 'Orlando, FL' },
-    ],
-  });
-  const locationMap = new Map(locations.map(l => [l.name, l.id]));
-  console.log('Created locations.');
-
-
-  // 3. Create Bus Owners
+  
+  // 2. Create Bus Owners
   const owner1 = await prisma.busOwner.create({
     data: {
       name: 'FleetFirst Inc.',
@@ -86,6 +70,26 @@ async function main() {
   });
 
   console.log(`Created owners: ${owner1.name}, ${owner2.name}`);
+
+
+  // 3. Create Locations
+  const locationsData = [
+      { name: 'New York, NY', ownerId: owner1.id },
+      { name: 'Boston, MA', ownerId: owner1.id },
+      { name: 'Los Angeles, CA', ownerId: owner2.id },
+      { name: 'San Francisco, CA', ownerId: owner2.id },
+      { name: 'Chicago, IL', ownerId: owner1.id },
+      { name: 'Detroit, MI', ownerId: owner1.id },
+      { name: 'Miami, FL', ownerId: owner2.id },
+      { name: 'Orlando, FL', ownerId: owner2.id },
+  ];
+  await prisma.location.createMany({
+    data: locationsData,
+  });
+  const allLocations = await prisma.location.findMany();
+  const locationMap = new Map(allLocations.map(l => [l.name, l.id]));
+  console.log('Created locations.');
+
 
   // 4. Create Users
   await prisma.user.create({
@@ -294,7 +298,7 @@ async function main() {
       routeId: route1.id,
       bookedSeats: {
         create: [
-          { seatNumber: '1A' },
+          { seatNumber: 'A1' },
         ]
       }
     }
@@ -308,8 +312,8 @@ async function main() {
       routeId: route2.id,
       bookedSeats: {
         create: [
-          { seatNumber: '2B' },
-          { seatNumber: '2C' },
+          { seatNumber: 'B2' },
+          { seatNumber: 'B3' },
         ]
       }
     }
