@@ -21,7 +21,7 @@ export default async function AdminLayout({
   
   return (
     <SidebarProvider>
-      <div className="flex flex-col min-h-screen">
+      <div className="flex flex-col min-h-screen w-full">
         <Header user={user} />
         <div className="flex flex-1">
           <Sidebar>
