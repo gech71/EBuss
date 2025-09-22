@@ -65,14 +65,6 @@ export default function LoginPage() {
              <Button variant="outline" asChild className="w-full">
                 <Link href="/">Continue as a customer</Link>
             </Button>
-            <div className="text-center text-sm text-muted-foreground">
-              Don't have an account?{' '}
-              <Button variant="link" asChild className="p-0 h-auto">
-                <Link href="/register">
-                  Register
-                </Link>
-              </Button>
-            </div>
           </CardFooter>
         </form>
       </Card>
