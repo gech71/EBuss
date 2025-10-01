@@ -43,6 +43,8 @@ export default function LoginPage() {
         setLockoutTime(lockoutTime - 1);
       }, 1000);
       return () => clearTimeout(timer);
+    } else {
+        setErrorMessage(undefined);
     }
   }, [lockoutTime]);
 
