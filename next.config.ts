@@ -46,6 +46,11 @@ const nextConfig: NextConfig = {
         hostname: 'api.qrserver.com',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'picsum.photos',
+        pathname: '/**',
+      },
     ],
   },
 };

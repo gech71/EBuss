@@ -4,6 +4,8 @@ import { RouteSearch } from "@/components/RouteSearch";
 import { validateRequest } from "@/app/lib/auth";
 import prisma from "@/lib/prisma";
 import { FeaturedRoutes } from "@/components/FeaturedRoutes";
+import Image from "next/image";
+import { Card } from "@/components/ui/card";
 
 export default async function Home() {
   const { user } = await validateRequest();
@@ -18,6 +20,7 @@ export default async function Home() {
     orderBy: {
       departureTime: 'asc',
     },
+    take: 20, // Limit the number of routes for performance
   });
 
   // Sanitize Decimal fields for client components
@@ -41,24 +44,37 @@ export default async function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header user={user} />
-      <main className="flex-1 container mx-auto py-8 px-4">
-        <section className="text-center mb-4">
-          <h1 className="font-headline text-2xl md:text-3xl font-bold text-primary mb-2">
-            Find Your Next Journey
-          </h1>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Explore our routes and book your ticket today.
-          </p>
+       <main className="flex-1">
+        {/* Hero Section */}
+        <section className="relative h-[400px] md:h-[500px] flex items-center justify-center text-center text-white">
+          <Image
+            src="https://picsum.photos/seed/bus-hero/1800/600"
+            alt="Winding road through mountains"
+            fill
+            className="object-cover"
+            priority
+            data-ai-hint="scenic road"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-black/20" />
+          <div className="relative z-10 p-4 max-w-4xl mx-auto">
+            <h1 className="font-headline text-4xl md:text-6xl font-bold tracking-tight text-shadow-lg">
+              Find Your Next Journey
+            </h1>
+            <p className="mt-4 text-lg md:text-xl text-shadow">
+              Explore thousands of routes and book your ticket to new adventures today.
+            </p>
+          </div>
         </section>
 
-        <div className="mt-8">
+        {/* Search Section */}
+        <div className="container mx-auto px-4 -mt-24 md:-mt-32 relative z-20">
           <RouteSearch routes={routes} locations={locations} owners={owners} />
         </div>
-        
-        <div className="mt-12">
-            <FeaturedRoutes routes={routes} />
+
+        {/* Featured Routes Section */}
+        <div className="container mx-auto px-4 py-12 md:py-16">
+          <FeaturedRoutes routes={routes} />
         </div>
-        
       </main>
     </div>
   );
