@@ -20,7 +20,7 @@ export default async function Home() {
     orderBy: {
       departureTime: 'asc',
     },
-    take: 20, // Limit the number of routes for performance
+    take: 100, // Fetch more routes to accommodate pagination
   });
 
   // Sanitize Decimal fields for client components
@@ -73,7 +73,7 @@ export default async function Home() {
 
         {/* Featured Routes Section */}
         <div className="container mx-auto px-4 py-12 md:py-16">
-          <FeaturedRoutes routes={routes} />
+          <FeaturedRoutes routes={routes} owners={owners} />
         </div>
       </main>
     </div>
