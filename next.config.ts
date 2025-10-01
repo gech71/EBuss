@@ -14,6 +14,7 @@ const contentSecurityPolicy = `
 
 const nextConfig: NextConfig = {
   /* config options here */
+  poweredByHeader: false,
   typescript: {
     ignoreBuildErrors: true,
   },
