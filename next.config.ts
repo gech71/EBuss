@@ -6,7 +6,7 @@ const ContentSecurityPolicy = `
 `;
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  poweredByHeader: false,
   async headers() {
     return [
       {
@@ -15,6 +15,10 @@ const nextConfig: NextConfig = {
           {
             key: 'Content-Security-Policy',
             value: ContentSecurityPolicy.replace(/\s{2,}/g, ' ').trim(),
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
           },
         ],
       },
