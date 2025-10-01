@@ -51,7 +51,10 @@ export default async function AdminDashboard() {
   const sanitizedRoutes = routes.map(r => ({
       ...r,
       origin: r.origin.name,
-      destination: r.destination.name
+      destination: r.destination.name,
+      departureTime: r.departureTime.toISOString(),
+      arrivalTime: r.arrivalTime.toISOString(),
+      price: Number(r.price)
   }));
 
 

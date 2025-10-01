@@ -7,11 +7,17 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, Ticket } from "lucide-react";
 import { Badge } from "../ui/badge";
-import type { Booking, Route } from "@prisma/client";
+import type { Booking } from "@prisma/client";
+
+interface SanitizedRoute {
+    id: string;
+    origin: string;
+    destination: string;
+}
 
 interface RecentBookingsProps {
     bookings: (Booking & { bookedSeats: { seatNumber: string }[] })[];
-    routes: Route[];
+    routes: SanitizedRoute[];
 }
 
 export function RecentBookings({ bookings, routes }: RecentBookingsProps) {

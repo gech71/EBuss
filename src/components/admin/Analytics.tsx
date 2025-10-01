@@ -15,6 +15,15 @@ import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import type { Booking, Route, Bus } from "@prisma/client";
 
+interface SanitizedRoute {
+    id: string;
+    origin: string;
+    destination: string;
+    departureTime: string;
+    price: number;
+    busId: string;
+}
+
 interface RouteStat {
     routeId: string;
     origin: string;
@@ -27,7 +36,7 @@ interface RouteStat {
 
 interface AnalyticsProps {
     bookings: (Booking & { bookedSeats: { seatNumber: string }[] })[];
-    routes: Route[];
+    routes: SanitizedRoute[];
     buses: Bus[];
 }
 
@@ -46,7 +55,6 @@ export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
         });
 
         const todayRouteIds = todayRoutes.map(r => r.id);
-
         const todayBookings = bookings.filter(b => todayRouteIds.includes(b.routeId));
         
         const potentialRevenue = todayRoutes.reduce((acc, route) => {
