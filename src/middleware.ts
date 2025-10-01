@@ -37,9 +37,10 @@ export async function middleware(request: NextRequest) {
     `
       default-src 'self';
       script-src 'self' 'nonce-${nonce}';
-      style-src 'self' https://fonts.googleapis.com;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
       font-src 'self' https://fonts.gstatic.com;
       img-src 'self' https://api.qrserver.com data:;
+      connect-src 'self';
       frame-ancestors 'self';
       object-src 'none';
       base-uri 'self';
@@ -57,6 +58,6 @@ export async function middleware(request: NextRequest) {
 // 5. Apply middleware to ALL routes except Next.js internals and static files
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml)).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)).*)',
   ],
 };
