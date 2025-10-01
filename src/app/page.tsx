@@ -48,12 +48,12 @@ export default async function Home() {
         {/* Hero Section */}
         <section className="relative h-[400px] md:h-[500px] flex items-center justify-center text-center text-white">
           <Image
-            src="https://picsum.photos/seed/bus-hero/1800/600"
-            alt="Winding road through mountains"
+            src="https://picsum.photos/seed/bus-modern/1800/600"
+            alt="A modern bus on the road"
             fill
             className="object-cover"
             priority
-            data-ai-hint="scenic road"
+            data-ai-hint="modern bus"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-black/20" />
           <div className="relative z-10 p-4 max-w-4xl mx-auto">
