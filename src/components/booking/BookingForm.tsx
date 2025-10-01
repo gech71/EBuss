@@ -1,8 +1,9 @@
 
 "use client";
 
-import { useState, useMemo, useTransition } from "react";
+import { useState, useMemo, useTransition, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useFormState, useFormStatus } from "react-dom";
 import type { Route, Bus, SeatLayout, Seat, Discount, DiscountTier, Location } from "@prisma/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,17 +30,39 @@ interface BookingFormProps {
   alternativeRoutes: AlternativeRoute[];
 }
 
-export function BookingForm({ route: initialRoute, alternativeRoutes }: BookingFormProps) {
-  const router = useRouter();
-  const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
+const initialState = {
+  success: false,
+  message: "",
+};
 
+function SubmitButton() {
+    const { pending } = useFormStatus();
+    return (
+        <Button type="submit" size="lg" className="w-full" disabled={pending}>
+            {pending ? 'Processing...' : 'Book Now & Pay'}
+        </Button>
+    )
+}
+
+export function BookingForm({ route: initialRoute, alternativeRoutes }: BookingFormProps) {
+  const { toast } = useToast();
+  const [state, formAction] = useFormState(createBookingAction, initialState);
+  
   const [selectedRoute, setSelectedRoute] = useState<RouteWithDetails>(initialRoute);
   const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
   const [passengerName, setPassengerName] = useState("");
   const [passengerEmail, setPassengerEmail] = useState("");
 
   const ticketCount = selectedSeats.length;
+
+  useEffect(() => {
+    if (state.message) {
+      if (!state.success) {
+        toast({ title: "Booking Failed", description: state.message, variant: "destructive" });
+      }
+    }
+  }, [state, toast]);
+
 
   const { subtotal, discountAmount, finalPrice, appliedTier } = useMemo(() => {
     const subtotal = selectedRoute.price * ticketCount;
@@ -66,51 +89,30 @@ export function BookingForm({ route: initialRoute, alternativeRoutes }: BookingF
     
     // Fetch full route details for the selected alternative
     const response = await fetch(`/api/route/${routeId}`);
+    if (!response.ok) {
+        toast({ title: "Error", description: "Failed to load route details.", variant: "destructive"});
+        return;
+    }
     const newRouteDetails: RouteWithDetails = await response.json();
 
     setSelectedRoute(newRouteDetails);
     setSelectedSeats([]); // Reset seat selection when route changes
   };
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (selectedSeats.length === 0) {
-      toast({ title: "No seats selected", description: "Please select at least one seat.", variant: "destructive" });
-      return;
-    }
-    if (!passengerName || !passengerEmail) {
-      toast({ title: "Passenger details required", description: "Please enter your name and email.", variant: "destructive" });
-      return;
-    }
-
-    const bookingData = {
-      routeId: selectedRoute.id,
-      selectedSeatNumbers: selectedSeats.map(s => s.seatNumber),
-      totalPrice: finalPrice,
-      passengerName,
-      passengerEmail
-    };
-
-    startTransition(async () => {
-      const result = await createBookingAction(bookingData);
-      if (result.success && result.bookingId) {
-        toast({ title: "Booking Successful!", description: "Your ticket has been confirmed." });
-        router.push(`/ticket/${result.bookingId}`);
-      } else {
-        toast({ title: "Booking Failed", description: result.message, variant: "destructive" });
-        // Optionally, refetch route data to show which seats are gone
-      }
-    });
-  };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form action={formAction}>
       <Card>
         <CardHeader>
           <CardTitle className="font-headline text-3xl">Confirm Your Booking</CardTitle>
           <CardDescription>Review your trip details and select your seats.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
+          {/* Hidden inputs for form submission */}
+          <input type="hidden" name="routeId" value={selectedRoute.id} />
+          <input type="hidden" name="selectedSeatNumbers" value={JSON.stringify(selectedSeats.map(s => s.seatNumber))} />
+          <input type="hidden" name="totalPrice" value={finalPrice} />
+
           {/* Route Details */}
           <div className="p-4 border rounded-lg bg-muted/30">
              <div className="flex justify-between items-center">
@@ -159,11 +161,11 @@ export function BookingForm({ route: initialRoute, alternativeRoutes }: BookingF
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="passengerName">Full Name</Label>
-                <Input id="passengerName" placeholder="e.g., John Doe" required value={passengerName} onChange={e => setPassengerName(e.target.value)} />
+                <Input id="passengerName" name="passengerName" placeholder="e.g., John Doe" required value={passengerName} onChange={e => setPassengerName(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="passengerEmail">Email Address</Label>
-                <Input id="passengerEmail" type="email" placeholder="e.g., john.doe@example.com" required value={passengerEmail} onChange={e => setPassengerEmail(e.target.value)} />
+                <Input id="passengerEmail" name="passengerEmail" type="email" placeholder="e.g., john.doe@example.com" required value={passengerEmail} onChange={e => setPassengerEmail(e.target.value)} />
               </div>
             </div>
           </div>
@@ -202,9 +204,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes }: BookingF
             </div>
           </div>
           
-          <Button type="submit" size="lg" className="w-full" disabled={isPending}>
-            {isPending ? 'Processing...' : 'Book Now & Pay'}
-          </Button>
+          <SubmitButton />
 
         </CardContent>
       </Card>

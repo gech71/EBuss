@@ -1,7 +1,8 @@
 
 "use client";
 
-import { useState, useTransition, useRef } from "react";
+import { useRef, useEffect, useState } from "react";
+import { useFormState, useFormStatus } from "react-dom";
 import {
   Card,
   CardContent,
@@ -30,40 +31,45 @@ interface CreateUserFormProps {
   existingEmails: string[];
 }
 
+const initialState = {
+  success: false,
+  message: "",
+};
+
+function SubmitButton() {
+    const { pending } = useFormStatus();
+    return (
+        <Button type="submit" disabled={pending}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            {pending ? "Creating..." : "Create User"}
+        </Button>
+    )
+}
+
 export function CreateUserForm({ owners, existingEmails }: CreateUserFormProps) {
   const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
-  const [showPassword, setShowPassword] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+  const [state, formAction] = useFormState(createUserAction, initialState);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (formData: FormData) => {
-    const email = formData.get("email") as string;
-    if (existingEmails.includes(email.toLowerCase())) {
-      toast({
-        title: "Email already exists",
-        description: "A user with this email address is already registered.",
-        variant: "destructive",
-      });
-      return;
-    }
 
-    startTransition(async () => {
-      const result = await createUserAction(formData);
-      if (result?.success) {
+  useEffect(() => {
+    if (state.message) {
+      if (state.success) {
         toast({
           title: "User Created",
-          description: result.message,
+          description: state.message,
         });
         formRef.current?.reset();
       } else {
         toast({
           title: "Creation Failed",
-          description: result.message,
+          description: state.message,
           variant: "destructive",
         });
       }
-    });
-  };
+    }
+  }, [state, toast]);
 
   return (
     <Card>
@@ -73,7 +79,7 @@ export function CreateUserForm({ owners, existingEmails }: CreateUserFormProps) 
           Create a new administrative user and assign them to a bus owner.
         </CardDescription>
       </CardHeader>
-      <form ref={formRef} action={handleSubmit}>
+      <form ref={formRef} action={formAction}>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -143,10 +149,7 @@ export function CreateUserForm({ owners, existingEmails }: CreateUserFormProps) 
           </div>
         </CardContent>
         <CardFooter>
-          <Button type="submit" disabled={isPending}>
-            <UserPlus className="mr-2 h-4 w-4" />
-            {isPending ? "Creating..." : "Create User"}
-          </Button>
+          <SubmitButton />
         </CardFooter>
       </form>
     </Card>

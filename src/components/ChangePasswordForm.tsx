@@ -1,7 +1,8 @@
 
 "use client";
 
-import { useState, useTransition, useRef } from "react";
+import { useRef } from "react";
+import { useFormState, useFormStatus } from "react-dom";
 import {
   Card,
   CardContent,
@@ -16,45 +17,47 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff } from "lucide-react";
 import { changePasswordAction } from "@/app/lib/actions";
+import { useEffect, useState } from "react";
+
+const initialState = {
+  success: false,
+  message: "",
+};
+
+function SubmitButton() {
+    const { pending } = useFormStatus();
+    return (
+        <Button type="submit" disabled={pending}>
+            {pending ? "Updating..." : "Update Password"}
+        </Button>
+    )
+}
 
 export function ChangePasswordForm() {
   const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
+  const formRef = useRef<HTMLFormElement>(null);
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const formRef = useRef<HTMLFormElement>(null);
+  const [state, formAction] = useFormState(changePasswordAction, initialState);
 
-  const handleSubmit = (formData: FormData) => {
-    const newPassword = formData.get("newPassword") as string;
-    const confirmPassword = formData.get("confirmPassword") as string;
-
-    if (newPassword !== confirmPassword) {
-      toast({
-        title: "Passwords do not match",
-        description: "Please ensure the new passwords match.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    startTransition(async () => {
-      const result = await changePasswordAction(formData);
-      if (result?.success) {
+  useEffect(() => {
+    if (state.message) {
+      if (state.success) {
         toast({
           title: "Password Updated",
-          description: result.message,
+          description: state.message,
         });
         formRef.current?.reset();
       } else {
         toast({
           title: "Update Failed",
-          description: result.message,
+          description: state.message,
           variant: "destructive",
         });
       }
-    });
-  };
+    }
+  }, [state, toast]);
 
   return (
     <Card className="max-w-xl border-0 shadow-none">
@@ -64,7 +67,7 @@ export function ChangePasswordForm() {
           Enter your current and new password to update your account.
         </CardDescription>
       </CardHeader>
-      <form ref={formRef} action={handleSubmit}>
+      <form ref={formRef} action={formAction}>
         <CardContent className="space-y-4 pt-6 p-0">
           <div className="space-y-2">
             <Label htmlFor="currentPassword">Current Password</Label>
@@ -124,9 +127,7 @@ export function ChangePasswordForm() {
            </div>
         </CardContent>
         <CardFooter className="p-0 pt-6">
-          <Button type="submit" disabled={isPending}>
-            {isPending ? "Updating..." : "Update Password"}
-          </Button>
+          <SubmitButton />
         </CardFooter>
       </form>
     </Card>

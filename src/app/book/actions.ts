@@ -4,6 +4,7 @@
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import { redirect } from 'next/navigation';
 
 const createBookingSchema = z.object({
   routeId: z.string().min(1),
@@ -13,7 +14,17 @@ const createBookingSchema = z.object({
   passengerEmail: z.string().email('Invalid email address.'),
 });
 
-export async function createBookingAction(data: unknown) {
+export async function createBookingAction(formData: FormData) {
+
+  const data = {
+    routeId: formData.get('routeId'),
+    // The seats are sent as a stringified array
+    selectedSeatNumbers: JSON.parse(formData.get('selectedSeatNumbers') as string),
+    totalPrice: formData.get('totalPrice'),
+    passengerName: formData.get('passengerName'),
+    passengerEmail: formData.get('passengerEmail'),
+  }
+
   const validatedData = createBookingSchema.safeParse(data);
 
   if (!validatedData.success) {
@@ -94,13 +105,15 @@ export async function createBookingAction(data: unknown) {
     });
 
     revalidatePath(`/book/${routeId}`);
-    return { success: true, bookingId: newBooking.id };
+    // Redirect to the ticket page after a successful booking
+    redirect(`/ticket/${newBooking.id}`);
     
   } catch (error) {
     console.error('Booking failed:', error);
+    if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
+        throw error;
+    }
     const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
     return { success: false, message };
   }
 }
-
-    
