@@ -82,6 +82,10 @@ async function main() {
       { name: 'Detroit, MI', ownerId: owner1.id },
       { name: 'Miami, FL', ownerId: owner2.id },
       { name: 'Orlando, FL', ownerId: owner2.id },
+      { name: 'Washington, D.C.', ownerId: owner1.id },
+      { name: 'Philadelphia, PA', ownerId: owner1.id },
+      { name: 'Dallas, TX', ownerId: owner2.id },
+      { name: 'Houston, TX', ownerId: owner2.id },
   ];
   await prisma.location.createMany({
     data: locationsData,
@@ -225,103 +229,98 @@ async function main() {
   console.log(`Created discounts: ${summerDiscount.name}, ${weekendDiscount.name}`);
 
   // 7. Create Routes
-  const tomorrow = new Date('2025-09-19T00:00:00.000Z');
-  const dayAfterTomorrow = new Date('2025-09-20T00:00:00.000Z');
+  const routesToCreate = [
+    // 10 with discounts
+    { origin: 'New York, NY', destination: 'Boston, MA', departureHour: 9, price: 45.00, busId: bus1.id, discountId: summerDiscount.id, dayOffset: 1 },
+    { origin: 'Los Angeles, CA', destination: 'San Francisco, CA', departureHour: 11, price: 60.00, busId: bus2.id, discountId: weekendDiscount.id, dayOffset: 1 },
+    { origin: 'New York, NY', destination: 'Boston, MA', departureHour: 15, price: 55.00, busId: bus3.id, discountId: summerDiscount.id, dayOffset: 1 },
+    { origin: 'Washington, D.C.', destination: 'Philadelphia, PA', departureHour: 10, price: 30.00, busId: bus1.id, discountId: summerDiscount.id, dayOffset: 2 },
+    { origin: 'Dallas, TX', destination: 'Houston, TX', departureHour: 13, price: 40.00, busId: bus2.id, discountId: weekendDiscount.id, dayOffset: 2 },
+    { origin: 'Boston, MA', destination: 'New York, NY', departureHour: 9, price: 45.00, busId: bus1.id, discountId: summerDiscount.id, dayOffset: 3 },
+    { origin: 'San Francisco, CA', destination: 'Los Angeles, CA', departureHour: 11, price: 60.00, busId: bus2.id, discountId: weekendDiscount.id, dayOffset: 3 },
+    { origin: 'Philadelphia, PA', destination: 'Washington, D.C.', departureHour: 16, price: 30.00, busId: bus3.id, discountId: summerDiscount.id, dayOffset: 4 },
+    { origin: 'Houston, TX', destination: 'Dallas, TX', departureHour: 14, price: 40.00, busId: bus2.id, discountId: weekendDiscount.id, dayOffset: 4 },
+    { origin: 'Chicago, IL', destination: 'Detroit, MI', departureHour: 12, price: 38.00, busId: bus1.id, discountId: summerDiscount.id, dayOffset: 5 },
+    
+    // 10 without discounts
+    { origin: 'Chicago, IL', destination: 'Detroit, MI', departureHour: 8, price: 35.00, busId: bus1.id, discountId: null, dayOffset: 2 },
+    { origin: 'Miami, FL', destination: 'Orlando, FL', departureHour: 14, price: 25.00, busId: bus2.id, discountId: null, dayOffset: 2 },
+    { origin: 'Detroit, MI', destination: 'Chicago, IL', departureHour: 18, price: 35.00, busId: bus3.id, discountId: null, dayOffset: 3 },
+    { origin: 'Orlando, FL', destination: 'Miami, FL', departureHour: 9, price: 25.00, busId: bus2.id, discountId: null, dayOffset: 3 },
+    { origin: 'New York, NY', destination: 'Washington, D.C.', departureHour: 7, price: 50.00, busId: bus1.id, discountId: null, dayOffset: 4 },
+    { origin: 'Washington, D.C.', destination: 'New York, NY', departureHour: 19, price: 50.00, busId: bus3.id, discountId: null, dayOffset: 5 },
+    { origin: 'Los Angeles, CA', destination: 'Dallas, TX', departureHour: 6, price: 120.00, busId: bus2.id, discountId: null, dayOffset: 6 },
+    { origin: 'Dallas, TX', destination: 'Los Angeles, CA', departureHour: 20, price: 120.00, busId: bus2.id, discountId: null, dayOffset: 7 },
+    { origin: 'Boston, MA', destination: 'Philadelphia, PA', departureHour: 13, price: 48.00, busId: bus1.id, discountId: null, dayOffset: 8 },
+    { origin: 'Philadelphia, PA', destination: 'Boston, MA', departureHour: 13, price: 48.00, busId: bus3.id, discountId: null, dayOffset: 9 },
+  ];
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-  const route1 = await prisma.route.create({
-    data: {
-      originId: locationMap.get('New York, NY')!,
-      destinationId: locationMap.get('Boston, MA')!,
-      departureTime: new Date(new Date(tomorrow).setHours(9, 0, 0, 0)),
-      arrivalTime: new Date(new Date(tomorrow).setHours(13, 30, 0, 0)),
-      price: 45.00,
-      busId: bus1.id,
-      discountId: summerDiscount.id
-    }
-  });
+  for (const routeData of routesToCreate) {
+    const departureDate = new Date(today);
+    departureDate.setDate(today.getDate() + routeData.dayOffset);
+    
+    const departureTime = new Date(departureDate);
+    departureTime.setHours(routeData.departureHour, 0, 0, 0);
 
-  const route2 = await prisma.route.create({
-    data: {
-        originId: locationMap.get('Los Angeles, CA')!,
-        destinationId: locationMap.get('San Francisco, CA')!,
-        departureTime: new Date(new Date(tomorrow).setHours(11, 0, 0, 0)),
-        arrivalTime: new Date(new Date(tomorrow).setHours(18, 0, 0, 0)),
-        price: 60.00,
-        busId: bus2.id,
-        discountId: weekendDiscount.id
-    }
-  });
+    const arrivalTime = new Date(departureTime);
+    // Assuming travel time is roughly 4 hours for simplicity
+    arrivalTime.setHours(departureTime.getHours() + 4, 30, 0, 0);
 
-   const route3 = await prisma.route.create({
-    data: {
-        originId: locationMap.get('Chicago, IL')!,
-        destinationId: locationMap.get('Detroit, MI')!,
-        departureTime: new Date(new Date(dayAfterTomorrow).setHours(8, 30, 0, 0)),
-        arrivalTime: new Date(new Date(dayAfterTomorrow).setHours(14, 0, 0, 0)),
-        price: 35.00,
-        busId: bus1.id,
-    }
-  });
+    await prisma.route.create({
+      data: {
+        originId: locationMap.get(routeData.origin)!,
+        destinationId: locationMap.get(routeData.destination)!,
+        departureTime,
+        arrivalTime,
+        price: routeData.price,
+        busId: routeData.busId,
+        discountId: routeData.discountId,
+      }
+    });
+  }
 
-  const route4 = await prisma.route.create({
-    data: {
-        originId: locationMap.get('Miami, FL')!,
-        destinationId: locationMap.get('Orlando, FL')!,
-        departureTime: new Date(new Date(dayAfterTomorrow).setHours(14, 0, 0, 0)),
-        arrivalTime: new Date(new Date(dayAfterTomorrow).setHours(18, 0, 0, 0)),
-        price: 25.00,
-        busId: bus2.id,
-    }
-  });
+  console.log(`Created ${routesToCreate.length} routes.`);
 
-  const route5 = await prisma.route.create({
-    data: {
-        originId: locationMap.get('New York, NY')!,
-        destinationId: locationMap.get('Boston, MA')!,
-        departureTime: new Date(new Date(tomorrow).setHours(9, 0, 0, 0)),
-        arrivalTime: new Date(new Date(tomorrow).setHours(13, 30, 0, 0)),
-        price: 55.00,
-        busId: bus3.id,
-        discountId: summerDiscount.id
-    }
-  });
-
-  console.log('Created 5 routes.');
+  const allCreatedRoutes = await prisma.route.findMany();
 
   // 8. Create some sample Bookings
-  const booking1 = await prisma.booking.create({
-    data: {
-      passengerName: 'Alice Johnson',
-      passengerEmail: 'alice@example.com',
-      totalPrice: 45.00,
-      routeId: route1.id,
-      status: 'VALID',
-      bookedSeats: {
-        create: [
-          { seatNumber: 'A1' },
-        ]
+  if (allCreatedRoutes.length >= 2) {
+    const booking1 = await prisma.booking.create({
+      data: {
+        passengerName: 'Alice Johnson',
+        passengerEmail: 'alice@example.com',
+        totalPrice: allCreatedRoutes[0].price,
+        routeId: allCreatedRoutes[0].id,
+        status: 'VALID',
+        bookedSeats: {
+          create: [
+            { seatNumber: 'A1' },
+          ]
+        }
       }
-    }
-  });
+    });
 
-  const booking2 = await prisma.booking.create({
-    data: {
-      passengerName: 'Bob Williams',
-      passengerEmail: 'bob@example.com',
-      totalPrice: 120.00,
-      routeId: route2.id,
-      status: 'VALID',
-      bookedSeats: {
-        create: [
-          { seatNumber: 'B2' },
-          { seatNumber: 'B3' },
-        ]
+    const booking2 = await prisma.booking.create({
+      data: {
+        passengerName: 'Bob Williams',
+        passengerEmail: 'bob@example.com',
+        totalPrice: allCreatedRoutes[1].price * 2,
+        routeId: allCreatedRoutes[1].id,
+        status: 'VALID',
+        bookedSeats: {
+          create: [
+            { seatNumber: 'B2' },
+            { seatNumber: 'B3' },
+          ]
+        }
       }
-    }
-  });
-  
-  console.log(`Created bookings for ${booking1.passengerName} and ${booking2.passengerName}.`);
+    });
+    
+    console.log(`Created bookings for ${booking1.passengerName} and ${booking2.passengerName}.`);
+  }
 
   console.log('Seeding finished.');
 }
@@ -334,5 +333,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-
-    
