@@ -19,6 +19,7 @@ export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
   const [csrfToken, setCsrfToken] = useState<string>("");
   const [isPending, startTransition] = useTransition();
+  const [lockoutTime, setLockoutTime] = useState(0);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -36,8 +37,20 @@ export default function LoginPage() {
     fetchCsrfToken();
   }, []);
 
+  useEffect(() => {
+    if (lockoutTime > 0) {
+      const timer = setTimeout(() => {
+        setLockoutTime(lockoutTime - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [lockoutTime]);
+
+
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (lockoutTime > 0) return;
+
     const formData = new FormData(event.currentTarget);
     
     startTransition(async () => {
@@ -48,14 +61,25 @@ export default function LoginPage() {
         // The redirect in the action will navigate the user.
       } else {
         setErrorMessage(resultMessage);
+        const lockoutMatch = resultMessage?.match(/try again in (\d+) seconds/);
+        if (lockoutMatch && lockoutMatch[1]) {
+          setLockoutTime(parseInt(lockoutMatch[1], 10));
+        }
       }
     });
   };
 
   function LoginButton() {
+    const isButtonDisabled = isPending || lockoutTime > 0;
+    const buttonText = () => {
+        if (isPending) return 'Logging in...';
+        if (lockoutTime > 0) return `Try again in ${lockoutTime}s`;
+        return 'Login';
+    }
+
     return (
-      <Button className="w-full" aria-disabled={isPending} type="submit">
-        {isPending ? 'Logging in...' : 'Login'}
+      <Button className="w-full" aria-disabled={isButtonDisabled} disabled={isButtonDisabled} type="submit">
+        {buttonText()}
       </Button>
     );
   }
