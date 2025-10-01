@@ -19,12 +19,6 @@ export function RouteCard({ route }: RouteCardProps) {
   return (
     <Card className="flex flex-col hover:shadow-xl transition-shadow duration-300 relative overflow-hidden group">
        {isExpired && <Badge variant="destructive" className="absolute top-3 right-3 z-10">Expired</Badge>}
-       {discount && !isExpired && (
-         <Badge className="absolute top-3 right-3 z-10 bg-accent text-accent-foreground">
-          <Percent className="h-3 w-3 mr-1" />
-          Discount
-        </Badge>
-       )}
       <CardHeader className="p-4 pb-2">
         <div className="flex justify-between items-start">
             <div>
@@ -33,7 +27,15 @@ export function RouteCard({ route }: RouteCardProps) {
                 </CardTitle>
                 <CardDescription>From {origin?.name || 'Unknown'}</CardDescription>
             </div>
-             <div className="text-2xl font-bold text-primary">${route.price.toFixed(2)}</div>
+             <div className="text-right flex flex-col items-end">
+                {discount && !isExpired && (
+                    <Badge className="bg-accent text-accent-foreground mb-1">
+                        <Percent className="h-3 w-3 mr-1" />
+                        Discount
+                    </Badge>
+                )}
+                <div className="text-2xl font-bold text-primary">${route.price.toFixed(2)}</div>
+             </div>
         </div>
       </CardHeader>
       <CardContent className="flex-grow space-y-2 p-4 pt-2">
