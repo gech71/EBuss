@@ -3,6 +3,7 @@ import { Header } from "@/components/Header";
 import { RouteSearch } from "@/components/RouteSearch";
 import { validateRequest } from "@/app/lib/auth";
 import prisma from "@/lib/prisma";
+import { FeaturedRoutes } from "@/components/FeaturedRoutes";
 
 export default async function Home() {
   const { user } = await validateRequest();
@@ -12,6 +13,7 @@ export default async function Home() {
         origin: true,
         destination: true,
         bus: true,
+        discount: true,
     },
     orderBy: {
       departureTime: 'asc',
@@ -49,8 +51,12 @@ export default async function Home() {
           </p>
         </section>
 
-        <div className="mt-2.5">
+        <div className="mt-8">
           <RouteSearch routes={routes} locations={locations} owners={owners} />
+        </div>
+        
+        <div className="mt-12">
+            <FeaturedRoutes routes={routes} />
         </div>
         
       </main>
