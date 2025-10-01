@@ -23,9 +23,10 @@ export async function authenticate(
   prevState: string | undefined,
   formData: FormData
 ): Promise<string | undefined> {
+  const cookieStore = await cookies();
   // 1. CSRF Token Validation
   const csrfTokenFromForm = formData.get('csrfToken') as string;
-  const csrfTokenFromCookie = cookies().get('csrf_token')?.value;
+  const csrfTokenFromCookie = cookieStore.get('csrf_token')?.value;
 
   if (!csrfTokenFromForm || !csrfTokenFromCookie || csrfTokenFromForm !== csrfTokenFromCookie) {
     return 'Invalid session. Please try logging in again.';
@@ -58,12 +59,12 @@ export async function authenticate(
     }
 
     // CSRF token is valid, and user is authenticated. Invalidate CSRF token.
-    cookies().set('csrf_token', '', { expires: new Date(0), path: '/' });
+    cookieStore.set('csrf_token', '', { expires: new Date(0), path: '/' });
 
     // Create Lucia session for server components
     const session = await lucia.createSession(existingUser.id, {});
     const sessionCookie = lucia.createSessionCookie(session.id);
-    cookies().set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
+    cookieStore.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
 
     // Redirect after setting cookies
     let redirectPath = '/';
@@ -89,6 +90,7 @@ export async function authenticate(
 }
 
 export async function logout(): Promise<ActionResult> {
+  const cookieStore = await cookies();
 	const { session } = await validateRequest();
 	if (!session) {
 		return {
@@ -99,11 +101,11 @@ export async function logout(): Promise<ActionResult> {
 	await lucia.invalidateSession(session.id);
 
 	const sessionCookie = lucia.createBlankSessionCookie();
-	cookies().set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
+	cookieStore.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
   
   // Also clear the JWT cookie and any CSRF token
-  cookies().set('auth_session', '', { expires: new Date(0), path: '/' });
-  cookies().set('csrf_token', '', { expires: new Date(0), path: '/' });
+  cookieStore.set('auth_session', '', { expires: new Date(0), path: '/' });
+  cookieStore.set('csrf_token', '', { expires: new Date(0), path: '/' });
 	
   return redirect("/login");
 }
@@ -119,6 +121,7 @@ const changePasswordSchema = z.object({
 
 
 export async function changePasswordAction(formData: FormData) {
+    const cookieStore = await cookies();
     const { user, session } = await validateRequest();
     if (!user || !session) {
         return { success: false, message: 'Unauthorized' };
@@ -166,7 +169,7 @@ export async function changePasswordAction(formData: FormData) {
         // Create a new session after password change
         const newSession = await lucia.createSession(user.id, {});
         const sessionCookie = lucia.createSessionCookie(newSession.id);
-        cookies().set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
+        cookieStore.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
 
         return { success: true, message: 'Password updated successfully. You have been logged out of other devices.' };
 

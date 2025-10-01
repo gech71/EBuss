@@ -5,8 +5,8 @@ import { randomBytes } from 'crypto';
 
 export async function GET(request: Request) {
   const token = randomBytes(32).toString('hex');
-  
-  cookies().set({
+  const cookieStore = await cookies();
+  cookieStore.set({
     name: 'csrf_token',
     value: token,
     httpOnly: true,
