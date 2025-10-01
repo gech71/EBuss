@@ -1,4 +1,3 @@
-
 // src/middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
@@ -6,7 +5,7 @@ import type { NextRequest } from 'next/server';
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1. Generate a nonce using Web Crypto API (Edge Runtime safe)
+  // 1. Generate a nonce (safe for Edge Runtime)
   const array = new Uint8Array(16);
   crypto.getRandomValues(array);
   const nonce = btoa(String.fromCharCode(...array));
@@ -16,8 +15,10 @@ export async function middleware(request: NextRequest) {
   const isAuthenticated = !!sessionCookie;
 
   // 3. Auth/Protected routes logic
-  const isProtectedRoute = pathname.startsWith('/admin') || pathname.startsWith('/super-admin');
-  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register');
+  const isProtectedRoute =
+    pathname.startsWith('/admin') || pathname.startsWith('/super-admin');
+  const isAuthRoute =
+    pathname.startsWith('/login') || pathname.startsWith('/register');
 
   let response: NextResponse;
   if (isProtectedRoute && !isAuthenticated) {
@@ -32,7 +33,7 @@ export async function middleware(request: NextRequest) {
     response = NextResponse.next();
   }
 
-  // 4. Strong security headers
+  // 4. Strong security headers (with missing directives added)
   response.headers.set(
     'Content-Security-Policy',
     `
@@ -43,15 +44,24 @@ export async function middleware(request: NextRequest) {
       img-src 'self' https://api.qrserver.com data:;
       connect-src 'self';
       frame-ancestors 'self';
+      frame-src 'none';
+      child-src 'none';
+      worker-src 'self';
+      media-src 'self';
+      manifest-src 'self';
       object-src 'none';
       base-uri 'self';
+      form-action 'self';
     `.replace(/\s+/g, ' ').trim()
   );
 
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  response.headers.set('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  response.headers.set(
+    'Permissions-Policy',
+    'geolocation=(), microphone=(), camera=()'
+  );
 
   return response;
 }
