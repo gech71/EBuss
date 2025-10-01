@@ -1,52 +1,40 @@
-
-import type {NextConfig} from 'next';
-
-const ContentSecurityPolicy = `
-  default-src 'self';
-  script-src 'self';
-  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-  font-src 'self' https://fonts.gstatic.com;
-  img-src 'self' https://api.qrserver.com data:;
-  frame-ancestors 'self';
-`;
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  poweredByHeader: false,
+  poweredByHeader: false, // remove "X-Powered-By" header
   async headers() {
     return [
       {
         source: '/:path*',
         headers: [
           {
-            key: 'Content-Security-Policy',
-            value: ContentSecurityPolicy.replace(/\s{2,}/g, ' ').trim(),
+            key: 'X-Content-Type-Options',
+            value: 'nosniff', // prevents MIME sniffing
           },
           {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
+            key: 'X-Frame-Options',
+            value: 'DENY', // prevents clickjacking
           },
         ],
       },
     ];
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: true, // ignore TS build errors
   },
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: true, // ignore ESLint errors during build
   },
   images: {
     remotePatterns: [
       {
         protocol: 'https',
         hostname: 'placehold.co',
-        port: '',
         pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'api.qrserver.com',
-        port: '',
         pathname: '/**',
       },
     ],
