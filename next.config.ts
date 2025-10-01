@@ -1,3 +1,4 @@
+
 import type {NextConfig} from 'next';
 
 const contentSecurityPolicy = `
@@ -8,6 +9,7 @@ const contentSecurityPolicy = `
   img-src 'self' https://api.qrserver.com data:;
   connect-src 'self';
   frame-src 'self';
+  frame-ancestors 'self';
 `;
 
 const nextConfig: NextConfig = {
