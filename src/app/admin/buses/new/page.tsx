@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useState, useMemo, useTransition, useRef } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { useFormState, useFormStatus } from "react-dom";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { createBusAction } from "@/app/admin/buses/actions";
@@ -30,17 +31,30 @@ const generateSeats = (rows: number, cols: number, aisleCols: number[], lastRowF
   return seats;
 };
 
+const initialState = {
+    success: false,
+    message: '',
+};
+
+function SubmitButton() {
+    const { pending } = useFormStatus();
+    return (
+        <Button type="submit" disabled={pending}>
+            {pending ? "Saving..." : "Save Bus"}
+        </Button>
+    )
+}
 
 export default function NewBusPage() {
     const { toast } = useToast();
     const router = useRouter();
-    const [isPending, startTransition] = useTransition();
     const formRef = useRef<HTMLFormElement>(null);
+    const [state, formAction] = useFormState(createBusAction, initialState);
 
     const [name, setName] = useState('');
     const [rows, setRows] = useState(12);
     const [cols, setCols] = useState(5);
-    const [aisleCols, setAisleCols] = useState('2');
+    const [aisleCols, setAisleCols] = useState('3');
     const [lastRowFull, setLastRowFull] = useState(false);
     
     const parsedAisleCols = useMemo(() => {
@@ -60,39 +74,26 @@ export default function NewBusPage() {
         return baseCapacity - aisleSeats;
     }, [rows, cols, parsedAisleCols, lastRowFull]);
 
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        
-        if (!name || rows <= 0 || cols <= 0 || aisleCols.trim() === '' || parsedAisleCols.some(ac => ac < 0 || ac >= cols)) {
-            toast({
-                title: "Invalid Input",
-                description: "Please provide valid details for the bus layout.",
-                variant: "destructive"
-            });
-            return;
-        }
-
-        const seats = generateSeats(rows, cols, parsedAisleCols, lastRowFull);
-        
-        const formData = new FormData(event.currentTarget);
-        formData.append('capacity', capacity.toString());
-        formData.append('rows', rows.toString());
-        formData.append('cols', cols.toString());
-        formData.append('seats', JSON.stringify(seats));
-        
-        startTransition(async () => {
-            const result = await createBusAction(formData);
-             if (result?.success === false) {
-                 toast({ title: "Creation Failed", description: result.message, variant: "destructive" });
+    useEffect(() => {
+        if (state.message) {
+            if (state.success) {
+                toast({ title: "Success!", description: state.message });
+                router.push('/admin/buses');
             } else {
-                 toast({ title: "Success!", description: "New bus has been added."});
-                 formRef.current?.reset();
+                toast({ title: "Creation Failed", description: state.message, variant: "destructive" });
             }
-        });
-    };
+        }
+    }, [state, toast, router]);
+    
+    const seats = useMemo(() => generateSeats(rows, cols, parsedAisleCols, lastRowFull), [rows, cols, parsedAisleCols, lastRowFull]);
 
     return (
-        <form ref={formRef} onSubmit={handleSubmit}>
+        <form ref={formRef} action={formAction}>
+            <input type="hidden" name="capacity" value={capacity} />
+            <input type="hidden" name="rows" value={rows} />
+            <input type="hidden" name="cols" value={cols} />
+            <input type="hidden" name="seats" value={JSON.stringify(seats)} />
+
             <Card className="max-w-xl mx-auto">
                 <CardHeader>
                     <CardTitle>Add New Bus</CardTitle>
@@ -139,7 +140,7 @@ export default function NewBusPage() {
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-                    <Button type="submit" disabled={isPending}>{isPending ? "Saving..." : "Save Bus"}</Button>
+                    <SubmitButton />
                 </CardFooter>
             </Card>
         </form>

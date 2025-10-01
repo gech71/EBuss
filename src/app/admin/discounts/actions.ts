@@ -21,7 +21,7 @@ const discountSchema = z.object({
   tiers: z.array(tierSchema).min(1, "At least one discount tier is required."),
 });
 
-export async function createDiscountAction(formData: FormData) {
+export async function createDiscountAction(prevState: any, formData: FormData) {
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         return { success: false, message: 'Unauthorized' };
@@ -69,7 +69,7 @@ export async function createDiscountAction(formData: FormData) {
     redirect('/admin/discounts');
 }
 
-export async function updateDiscountAction(formData: FormData) {
+export async function updateDiscountAction(prevState: any, formData: FormData) {
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         return { success: false, message: 'Unauthorized' };

@@ -13,7 +13,8 @@ import { CalendarIcon, Check, ChevronsUpDown } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { useState, useTransition, useRef } from "react";
+import { useState, useTransition, useRef, useEffect } from "react";
+import { useFormState, useFormStatus } from "react-dom";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import type { Bus, Discount, Location } from "@prisma/client";
 import { createRouteAction } from "@/app/admin/routes/actions";
@@ -24,11 +25,22 @@ interface NewRouteFormProps {
     discounts: Discount[];
 }
 
+const initialState = {
+    success: false,
+    message: ''
+};
+
+function SubmitButton() {
+    const { pending } = useFormStatus();
+    return (
+        <Button type="submit" disabled={pending}>{pending ? "Saving..." : "Save Route"}</Button>
+    )
+}
+
 export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps) {
     const { toast } = useToast();
     const router = useRouter();
-    const [isPending, startTransition] = useTransition();
-    const formRef = useRef<HTMLFormElement>(null);
+    const [state, formAction] = useFormState(createRouteAction, initialState);
     
     const [originId, setOriginId] = useState<string>('');
     const [destinationId, setDestinationId] = useState<string>('');
@@ -38,38 +50,18 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
     const [arrivalTime, setArrivalTime] = useState('16:00');
     const [selectedBusIds, setSelectedBusIds] = useState<string[]>([]);
     
-    const [openOrigin, setOpenOrigin] = useState(false);
-    const [openDestination, setOpenDestination] = useState(false);
     const [openBuses, setOpenBuses] = useState(false);
-    
-    const handleSubmit = (formData: FormData) => {
-        if (!originId || !destinationId || !departureDate || !arrivalDate || selectedBusIds.length === 0) {
-            toast({ title: "Error", description: "Please fill out all fields, including selecting at least one bus.", variant: "destructive" });
-            return;
-        }
-         if (originId === destinationId) {
-            toast({ title: "Error", description: "Origin and destination cannot be the same.", variant: "destructive" });
-            return;
-        }
 
-        formData.append('originId', originId);
-        formData.append('destinationId', destinationId);
-        formData.append('departureDate', format(departureDate, 'yyyy-MM-dd'));
-        formData.append('departureTime', departureTime);
-        formData.append('arrivalDate', format(arrivalDate, 'yyyy-MM-dd'));
-        formData.append('arrivalTime', arrivalTime);
-        formData.append('busIds', JSON.stringify(selectedBusIds));
-
-        startTransition(async () => {
-            const result = await createRouteAction(formData);
-            if (result?.success === false) {
-                 toast({ title: "Creation Failed", description: result.message, variant: "destructive" });
+    useEffect(() => {
+        if(state.message) {
+            if (state.success) {
+                toast({ title: "Success!", description: state.message });
+                router.push('/admin/routes');
             } else {
-                 toast({ title: "Success!", description: `${selectedBusIds.length} new route(s) have been added.` });
-                 formRef.current?.reset();
+                toast({ title: "Creation Failed", description: state.message, variant: "destructive" });
             }
-        });
-    };
+        }
+    }, [state, toast, router]);
     
     const toggleBusSelection = (busId: string) => {
         setSelectedBusIds(prev => 
@@ -82,7 +74,15 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
     const selectedBuses = buses.filter(b => selectedBusIds.includes(b.id));
 
     return (
-        <form ref={formRef} action={handleSubmit}>
+        <form action={formAction}>
+            <input type="hidden" name="originId" value={originId} />
+            <input type="hidden" name="destinationId" value={destinationId} />
+            {departureDate && <input type="hidden" name="departureDate" value={format(departureDate, 'yyyy-MM-dd')} />}
+            <input type="hidden" name="departureTime" value={departureTime} />
+            {arrivalDate && <input type="hidden" name="arrivalDate" value={format(arrivalDate, 'yyyy-MM-dd')} />}
+            <input type="hidden" name="arrivalTime" value={arrivalTime} />
+            <input type="hidden" name="busIds" value={JSON.stringify(selectedBusIds)} />
+
             <Card className="max-w-xl mx-auto">
                 <CardHeader>
                     <CardTitle>Add New Route</CardTitle>
@@ -93,7 +93,7 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="origin">Origin</Label>
-                                 <Select name="originId" required value={originId} onValueChange={setOriginId}>
+                                 <Select required value={originId} onValueChange={setOriginId}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select an origin..." />
                                     </SelectTrigger>
@@ -108,7 +108,7 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="destination">Destination</Label>
-                                <Select name="destinationId" required value={destinationId} onValueChange={setDestinationId}>
+                                <Select required value={destinationId} onValueChange={setDestinationId}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select a destination..." />
                                     </SelectTrigger>
@@ -137,7 +137,7 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                                             <Calendar mode="single" selected={departureDate} onSelect={setDepartureDate} initialFocus />
                                         </PopoverContent>
                                     </Popover>
-                                    <Input type="time" value={departureTime} onChange={e => setDepartureTime(e.target.value)} />
+                                    <Input type="time" value={departureTime} onChange={e => setDepartureTime(e.target.value)} required />
                                 </div>
                             </div>
                              <div className="space-y-2">
@@ -154,7 +154,7 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                                             <Calendar mode="single" selected={arrivalDate} onSelect={setArrivalDate} initialFocus />
                                         </PopoverContent>
                                     </Popover>
-                                     <Input type="time" value={arrivalTime} onChange={e => setArrivalTime(e.target.value)} />
+                                     <Input type="time" value={arrivalTime} onChange={e => setArrivalTime(e.target.value)} required />
                                 </div>
                             </div>
                         </div>
@@ -227,7 +227,7 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
                      <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-                    <Button type="submit" disabled={isPending}>{isPending ? "Saving..." : "Save Route"}</Button>
+                    <SubmitButton />
                 </CardFooter>
             </Card>
         </form>

@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
+import { useFormState, useFormStatus } from "react-dom";
 import { Separator } from "@/components/ui/separator";
 import { PlusCircle, Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -25,15 +26,40 @@ type CommissionTierState = {
     value: number;
 };
 
+const initialState = {
+    success: false,
+    message: ''
+};
+
+function SubmitButton() {
+    const { pending } = useFormStatus();
+    return (
+        <Button type="submit" disabled={pending}>
+            {pending ? 'Saving...' : 'Save Owner'}
+        </Button>
+    )
+}
+
 export function NewOwnerForm({ existingOwnerNames }: NewOwnerFormProps) {
     const { toast } = useToast();
     const router = useRouter();
-    const [isPending, startTransition] = useTransition();
+    const [state, formAction] = useFormState(createOwnerAction, initialState);
     
     const [name, setName] = useState('');
     const [tiers, setTiers] = useState<CommissionTierState[]>([
         { minSales: 1, maxSales: 100, type: 'PERCENTAGE', value: 0 }
     ]);
+    
+    useEffect(() => {
+        if(state.message){
+            if(state.success) {
+                toast({ title: "Success!", description: `Owner "${name}" has been added.`});
+                router.push('/super-admin/owners');
+            } else {
+                toast({ title: "Creation Failed", description: state.message, variant: "destructive" });
+            }
+        }
+    }, [state, toast, router, name]);
 
     const handleTierChange = (index: number, field: keyof Omit<CommissionTierState, 'type'>, value: number) => {
         const newTiers = [...tiers];
@@ -62,48 +88,11 @@ export function NewOwnerForm({ existingOwnerNames }: NewOwnerFormProps) {
         }
     };
 
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        if (!name) {
-            toast({ title: "Error", description: "Owner name cannot be empty.", variant: "destructive" });
-            return;
-        }
-        if (existingOwnerNames.some(n => n.toLowerCase() === name.toLowerCase())) {
-             toast({ title: "Error", description: "An owner with this name already exists.", variant: "destructive" });
-             return;
-        }
-
-        for (const tier of tiers) {
-             if (!tier.minSales || !tier.maxSales || !tier.value ) {
-                toast({ title: "Error", description: "Please fill out all tier fields with valid numbers.", variant: "destructive" });
-                return;
-            }
-             if (tier.minSales <= 0 || tier.maxSales <= 0 || tier.value <= 0) {
-                 toast({ title: "Error", description: "All tier values must be greater than 0.", variant: "destructive" });
-                return;
-            }
-            if(tier.minSales > tier.maxSales) {
-                toast({ title: "Error", description: "Min sales cannot be greater than max sales in a tier.", variant: "destructive" });
-                return;
-            }
-        }
-        
-        const formData = new FormData();
-        formData.append('name', name);
-        formData.append('commissionTiers', JSON.stringify(tiers));
-
-        startTransition(async () => {
-            const result = await createOwnerAction(formData);
-            if (result?.success === false) {
-                 toast({ title: "Creation Failed", description: result.message, variant: "destructive" });
-            } else {
-                 toast({ title: "Success!", description: `Owner "${name}" has been added.`});
-            }
-        });
-    };
-
     return (
-        <form onSubmit={handleSubmit}>
+        <form action={formAction}>
+            <input type="hidden" name="name" value={name} />
+            <input type="hidden" name="commissionTiers" value={JSON.stringify(tiers)} />
+
             <Card className="max-w-3xl mx-auto">
                 <CardHeader>
                     <CardTitle>Add New Bus Owner</CardTitle>
@@ -114,7 +103,6 @@ export function NewOwnerForm({ existingOwnerNames }: NewOwnerFormProps) {
                         <Label htmlFor="name">Owner Name</Label>
                         <Input 
                             id="name" 
-                            name="name"
                             placeholder="e.g., Metro Transit Inc." 
                             required
                             value={name}
@@ -175,9 +163,7 @@ export function NewOwnerForm({ existingOwnerNames }: NewOwnerFormProps) {
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-                    <Button type="submit" disabled={isPending}>
-                        {isPending ? 'Saving...' : 'Save Owner'}
-                    </Button>
+                    <SubmitButton />
                 </CardFooter>
             </Card>
         </form>

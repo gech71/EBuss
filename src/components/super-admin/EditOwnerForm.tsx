@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
+import { useFormState, useFormStatus } from "react-dom";
 import { Separator } from "@/components/ui/separator";
 import type { CommissionTier, BusOwner, CommissionType } from "@prisma/client";
 import { PlusCircle, Trash2 } from "lucide-react";
@@ -23,13 +24,38 @@ interface EditOwnerFormProps {
 // Re-defining a client-side type because Prisma Decimal cannot be passed to client components.
 type ClientCommissionTier = Omit<CommissionTier, 'value'> & { value: number };
 
+const initialState = {
+    success: false,
+    message: ''
+};
+
+function SubmitButton() {
+    const { pending } = useFormStatus();
+    return (
+        <Button type="submit" disabled={pending}>
+            {pending ? 'Saving...' : 'Save Changes'}
+        </Button>
+    )
+}
+
 export function EditOwnerForm({ owner: initialOwner, otherOwnerNames }: EditOwnerFormProps) {
     const { toast } = useToast();
     const router = useRouter();
-    const [isPending, startTransition] = useTransition();
+    const [state, formAction] = useFormState(updateOwnerAction, initialState);
     
     const [owner, setOwner] = useState(initialOwner);
     const [tiers, setTiers] = useState<ClientCommissionTier[]>(initialOwner.commissionTiers);
+
+    useEffect(() => {
+        if(state.message) {
+            if(state.success) {
+                toast({ title: "Success!", description: "Owner details have been updated."});
+                router.push('/super-admin/owners');
+            } else {
+                toast({ title: "Update Failed", description: state.message, variant: "destructive" });
+            }
+        }
+    }, [state, toast, router]);
 
     const handleTierChange = (index: number, field: keyof Omit<ClientCommissionTier, 'id' | 'type' | 'busOwnerId'>, value: number) => {
         const newTiers = [...tiers];
@@ -59,51 +85,13 @@ export function EditOwnerForm({ owner: initialOwner, otherOwnerNames }: EditOwne
         }
     };
 
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-
-        if (!owner.name) {
-            toast({ title: "Error", description: "Owner name cannot be empty.", variant: "destructive" });
-            return;
-        }
-        
-        if (otherOwnerNames.some(name => name.toLowerCase() === owner.name.toLowerCase())) {
-             toast({ title: "Error", description: "An owner with this name already exists.", variant: "destructive" });
-             return;
-        }
-        
-        for (const tier of tiers) {
-            if (!tier.minSales || !tier.maxSales || !tier.value ) {
-                toast({ title: "Error", description: "Please fill out all tier fields with valid numbers.", variant: "destructive" });
-                return;
-            }
-            if (tier.minSales <= 0 || tier.maxSales <= 0 || tier.value <= 0) {
-                 toast({ title: "Error", description: "All tier values must be greater than 0.", variant: "destructive" });
-                return;
-            }
-            if(tier.minSales > tier.maxSales) {
-                toast({ title: "Error", description: "Min sales cannot be greater than max sales in a tier.", variant: "destructive" });
-                return;
-            }
-        }
-        
-        const formData = new FormData();
-        formData.append('id', owner.id);
-        formData.append('name', owner.name);
-        formData.append('commissionTiers', JSON.stringify(tiers));
-
-        startTransition(async () => {
-            const result = await updateOwnerAction(formData);
-            if (result?.success === false) {
-                 toast({ title: "Update Failed", description: result.message, variant: "destructive" });
-            } else {
-                 toast({ title: "Success!", description: "Owner details have been updated."});
-            }
-        });
-    };
 
     return (
-        <form onSubmit={handleSubmit}>
+        <form action={formAction}>
+            <input type="hidden" name="id" value={owner.id} />
+            <input type="hidden" name="name" value={owner.name} />
+            <input type="hidden" name="commissionTiers" value={JSON.stringify(tiers)} />
+
             <Card className="max-w-3xl mx-auto">
                 <CardHeader>
                     <CardTitle>Edit Bus Owner</CardTitle>
@@ -114,7 +102,6 @@ export function EditOwnerForm({ owner: initialOwner, otherOwnerNames }: EditOwne
                         <Label htmlFor="name">Owner Name</Label>
                         <Input 
                             id="name" 
-                            name="name"
                             placeholder="e.g., Metro Transit Inc." 
                             required
                             value={owner.name}
@@ -175,9 +162,7 @@ export function EditOwnerForm({ owner: initialOwner, otherOwnerNames }: EditOwne
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={() => router.push('/super-admin/owners')}>Cancel</Button>
-                    <Button type="submit" disabled={isPending}>
-                        {isPending ? 'Saving...' : 'Save Changes'}
-                    </Button>
+                    <SubmitButton />
                 </CardFooter>
             </Card>
         </form>

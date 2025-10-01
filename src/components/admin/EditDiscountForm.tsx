@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
+import { useFormState, useFormStatus } from "react-dom";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, PlusCircle, Trash2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
@@ -24,14 +25,39 @@ interface EditDiscountFormProps {
     discount: DiscountWithTiers;
 }
 
+const initialState = {
+    success: false,
+    message: ""
+};
+
+function SubmitButton() {
+    const { pending } = useFormStatus();
+    return (
+        <Button type="submit" disabled={pending}>
+            {pending ? "Saving..." : "Save Changes"}
+        </Button>
+    )
+}
+
 export function EditDiscountForm({ discount: initialDiscount }: EditDiscountFormProps) {
     const { toast } = useToast();
     const router = useRouter();
-    const [isPending, startTransition] = useTransition();
+    const [state, formAction] = useFormState(updateDiscountAction, initialState);
 
     const [name, setName] = useState(initialDiscount.name);
     const [dateRange, setDateRange] = useState<DateRange | undefined>({ from: new Date(initialDiscount.startDate), to: new Date(initialDiscount.endDate) });
     const [tiers, setTiers] = useState(initialDiscount.tiers);
+
+    useEffect(() => {
+        if(state.message) {
+            if(state.success) {
+                toast({ title: "Success!", description: "Discount has been updated."});
+                router.push('/admin/discounts');
+            } else {
+                toast({ title: "Update Failed", description: state.message, variant: "destructive" });
+            }
+        }
+    }, [state, toast, router]);
 
 
     const handleTierChange = (index: number, field: keyof Omit<DiscountTier, 'id' | 'discountId'>, value: number) => {
@@ -60,45 +86,14 @@ export function EditDiscountForm({ discount: initialDiscount }: EditDiscountForm
     };
     
 
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-
-        if (!name || !dateRange?.from || !dateRange.to) {
-            toast({ title: "Error", description: "Please fill out all required fields.", variant: "destructive" });
-            return;
-        }
-
-        for (const tier of tiers) {
-            if (tier.minTickets <= 0 || tier.maxTickets <= 0 || tier.percentage <= 0) {
-                toast({ title: "Error", description: "Please fill out all tier fields with valid numbers.", variant: "destructive" });
-                return;
-            }
-            if(tier.minTickets > tier.maxTickets) {
-                toast({ title: "Error", description: "Min tickets cannot be greater than max tickets in a tier.", variant: "destructive" });
-                return;
-            }
-        }
-
-        const formData = new FormData();
-        formData.append('id', initialDiscount.id);
-        formData.append('name', name);
-        formData.append('startDate', dateRange.from.toISOString());
-        formData.append('endDate', dateRange.to.toISOString());
-        formData.append('tiers', JSON.stringify(tiers));
-
-        startTransition(async () => {
-            const result = await updateDiscountAction(formData);
-             if (result?.success === false) {
-                 toast({ title: "Update Failed", description: result.message, variant: "destructive" });
-            } else {
-                 toast({ title: "Success!", description: "Discount has been updated."});
-                 router.push("/admin/discounts");
-            }
-        });
-    };
-
     return (
-        <form onSubmit={handleSubmit}>
+        <form action={formAction}>
+            <input type="hidden" name="id" value={initialDiscount.id} />
+            <input type="hidden" name="name" value={name} />
+            {dateRange?.from && <input type="hidden" name="startDate" value={dateRange.from.toISOString()} />}
+            {dateRange?.to && <input type="hidden" name="endDate" value={dateRange.to.toISOString()} />}
+            <input type="hidden" name="tiers" value={JSON.stringify(tiers)} />
+
             <Card className="max-w-3xl mx-auto">
                 <CardHeader>
                     <CardTitle>Edit Tiered Discount</CardTitle>
@@ -176,7 +171,7 @@ export function EditDiscountForm({ discount: initialDiscount }: EditDiscountForm
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
                      <Button type="button" variant="outline" onClick={() => router.push('/admin/discounts')}>Cancel</Button>
-                    <Button type="submit" disabled={isPending}>{isPending ? "Saving..." : "Save Changes"}</Button>
+                    <SubmitButton />
                 </CardFooter>
             </Card>
         </form>
