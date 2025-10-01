@@ -3,7 +3,7 @@
 
 import { redirect } from 'next/navigation';
 import prisma from '@/lib/prisma';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { Argon2id } from 'oslo/password';
 import { lucia, validateRequest } from '@/app/lib/auth';
 import type { ActionResult } from 'next/dist/server/app-render/types';
@@ -18,12 +18,48 @@ const getJwtSecret = () => {
   return new TextEncoder().encode(secret);
 };
 
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOGIN_ATTEMPT_WINDOW_SECONDS = 60;
+
+function getIP() {
+    const forwardedFor = headers().get('x-forwarded-for');
+    if (forwardedFor) {
+        return forwardedFor.split(',')[0].trim();
+    }
+    const realIp = headers().get('x-real-ip');
+    if (realIp) {
+        return realIp.trim();
+    }
+    return null;
+}
 
 export async function authenticate(
   prevState: string | undefined,
   formData: FormData
 ): Promise<string | undefined> {
   const cookieStore = await cookies();
+  const ip = getIP();
+
+  if (ip) {
+      const now = new Date();
+      const windowStart = new Date(now.getTime() - LOGIN_ATTEMPT_WINDOW_SECONDS * 1000);
+      
+      const attempts = await prisma.loginAttempt.findMany({
+          where: {
+              ipAddress: ip,
+              timestamp: { gte: windowStart }
+          },
+          orderBy: { timestamp: 'asc' }
+      });
+      
+      if (attempts.length >= MAX_LOGIN_ATTEMPTS) {
+          const firstAttemptTime = attempts[0].timestamp.getTime();
+          const timeLeft = Math.ceil((firstAttemptTime + (LOGIN_ATTEMPT_WINDOW_SECONDS * 1000) - now.getTime()) / 1000);
+          return `Too many login attempts. Please try again in ${timeLeft} seconds.`;
+      }
+  }
+
+
   // 1. CSRF Token Validation
   const csrfTokenFromForm = formData.get('csrfToken') as string;
   const csrfTokenFromCookie = cookieStore.get('csrf_token')?.value;
@@ -47,6 +83,9 @@ export async function authenticate(
     });
 
     if (!existingUser || !existingUser.hashed_password) {
+      if (ip) {
+        await prisma.loginAttempt.create({ data: { ipAddress: ip }});
+      }
       return 'Invalid email or password.';
     }
 
@@ -55,6 +94,9 @@ export async function authenticate(
       password
     );
     if (!validPassword) {
+      if (ip) {
+        await prisma.loginAttempt.create({ data: { ipAddress: ip }});
+      }
       return 'Invalid email or password.';
     }
 
