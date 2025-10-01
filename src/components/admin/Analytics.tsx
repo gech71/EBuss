@@ -34,8 +34,6 @@ interface AnalyticsProps {
 export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
     
-    const getBusById = (busId: string) => buses.find(b => b.id === busId);
-
     const todayStats = useMemo(() => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -47,15 +45,12 @@ export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
             return departureDate >= today && departureDate < tomorrow;
         });
 
-        const todayBookings = bookings.filter(b => {
-             const route = routes.find(r => r.id === b.routeId);
-             if (!route) return false;
-             const departureDate = new Date(route.departureTime);
-             return departureDate >= today && departureDate < tomorrow;
-        });
+        const todayRouteIds = todayRoutes.map(r => r.id);
+
+        const todayBookings = bookings.filter(b => todayRouteIds.includes(b.routeId));
         
         const potentialRevenue = todayRoutes.reduce((acc, route) => {
-            const bus = getBusById(route.busId);
+            const bus = buses.find(b => b.id === route.busId);
             const capacity = bus?.capacity || 0;
             return acc + (capacity * route.price);
         }, 0);
@@ -66,7 +61,7 @@ export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
 
         return { potentialRevenue, actualRevenue, effectiveness };
 
-    }, [routes, bookings]);
+    }, [routes, bookings, buses]);
 
     const routeStats = useMemo(() => {
         const stats: Record<string, RouteStat> = {};
@@ -85,7 +80,7 @@ export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
             const route = routes.find(r => r.id === booking.routeId);
             if (!route) return;
             
-            const bus = getBusById(route.busId);
+            const bus = buses.find(b => b.id === route.busId);
             const capacity = bus?.capacity || 0;
 
             if (!stats[route.id]) {
@@ -106,7 +101,7 @@ export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
 
         return Object.values(stats).sort((a, b) => b.revenue - a.revenue);
 
-    }, [bookings, routes, dateRange]);
+    }, [bookings, routes, dateRange, buses]);
 
     const { totalRevenue, totalPotentialRevenue } = useMemo(() => {
         return routeStats.reduce(
