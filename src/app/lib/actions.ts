@@ -23,6 +23,14 @@ export async function authenticate(
   prevState: string | undefined,
   formData: FormData
 ): Promise<string | undefined> {
+  // 1. CSRF Token Validation
+  const csrfTokenFromForm = formData.get('csrfToken') as string;
+  const csrfTokenFromCookie = cookies().get('csrf_token')?.value;
+
+  if (!csrfTokenFromForm || !csrfTokenFromCookie || csrfTokenFromForm !== csrfTokenFromCookie) {
+    return 'Invalid session. Please try logging in again.';
+  }
+
   try {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
@@ -49,38 +57,28 @@ export async function authenticate(
       return 'Invalid email or password.';
     }
 
-    // 1. Create JWT for middleware
-    const token = await new SignJWT({ 
-        userId: existingUser.id, 
-        role: existingUser.role,
-      })
-      .setProtectedHeader({ alg: 'HS256' })
-      .setIssuedAt()
-      .setExpirationTime('1h') // Token expires in 1 hour
-      .sign(getJwtSecret());
+    // CSRF token is valid, and user is authenticated. Invalidate CSRF token.
+    cookies().set('csrf_token', '', { expires: new Date(0), path: '/' });
 
-    // Set JWT in 'auth_session' cookie for the middleware
-    cookies().set('auth_session', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 60 * 60 // 1 hour
-    });
-
-    // 2. Create Lucia session for server components
+    // Create Lucia session for server components
     const session = await lucia.createSession(existingUser.id, {});
     const sessionCookie = lucia.createSessionCookie(session.id);
     cookies().set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
 
-    // 3. Redirect after setting cookies
+    // Redirect after setting cookies
+    let redirectPath = '/';
     if (existingUser.role === 'SUPER_ADMIN') {
-      return redirect('/super-admin');
+      redirectPath = '/super-admin';
     } else if (existingUser.role === 'ADMIN') {
-      return redirect('/admin');
-    } else {
-      return redirect('/');
+      redirectPath = '/admin';
     }
+    
+    // Instead of calling redirect() which throws an error, return a success message.
+    // The client will handle the navigation.
+    redirect(redirectPath);
+    // This part will not be reached due to redirect, but as a fallback:
+    return 'success';
+
   } catch (error) {
     if (error instanceof Error && 'message' in error && error.message.includes('NEXT_REDIRECT')) {
       throw error;
@@ -103,8 +101,9 @@ export async function logout(): Promise<ActionResult> {
 	const sessionCookie = lucia.createBlankSessionCookie();
 	cookies().set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
   
-  // Also clear the JWT cookie
+  // Also clear the JWT cookie and any CSRF token
   cookies().set('auth_session', '', { expires: new Date(0), path: '/' });
+  cookies().set('csrf_token', '', { expires: new Date(0), path: '/' });
 	
   return redirect("/login");
 }

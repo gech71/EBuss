@@ -1,8 +1,7 @@
 
 "use client";
 
-import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
+import { useState, useEffect, useTransition } from "react";
 import { authenticate } from "@/app/lib/actions";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,9 +12,53 @@ import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
-  const [errorMessage, formAction] = useActionState(authenticate, undefined);
+  const [errorMessage, setErrorMessage] = useState<string | undefined>();
+  const [csrfToken, setCsrfToken] = useState<string>("");
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    async function fetchCsrfToken() {
+      try {
+        const response = await fetch('/api/csrf');
+        const { token } = await response.json();
+        setCsrfToken(token);
+      } catch (error) {
+        console.error("Failed to fetch CSRF token", error);
+        setErrorMessage("Could not initialize secure session. Please try again.");
+      }
+    }
+    fetchCsrfToken();
+  }, []);
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    
+    startTransition(async () => {
+      const resultMessage = await authenticate(undefined, formData);
+      if (resultMessage === 'success') {
+        // Successful login is handled by redirect inside the action
+        toast({ title: "Login Successful!" });
+        // The redirect in the action will navigate the user.
+      } else {
+        setErrorMessage(resultMessage);
+      }
+    });
+  };
+
+  function LoginButton() {
+    return (
+      <Button className="w-full" aria-disabled={isPending} type="submit">
+        {isPending ? 'Logging in...' : 'Login'}
+      </Button>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
@@ -27,8 +70,9 @@ export default function LoginPage() {
           <CardTitle>Welcome Back</CardTitle>
           <CardDescription>Enter your credentials to access your account.</CardDescription>
         </CardHeader>
-        <form action={formAction}>
+        <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
+            <input type="hidden" name="csrfToken" value={csrfToken} />
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -69,15 +113,5 @@ export default function LoginPage() {
         </form>
       </Card>
     </div>
-  );
-}
-
-function LoginButton() {
-  const { pending } = useFormStatus();
- 
-  return (
-    <Button className="w-full" aria-disabled={pending} type="submit">
-      {pending ? 'Logging in...' : 'Login'}
-    </Button>
   );
 }

@@ -9,11 +9,10 @@ const adapter = new PrismaAdapter(prisma.session, prisma.user);
 
 export const lucia = new Lucia(adapter, {
 	sessionCookie: {
-		// this sets cookies with an expiration date of 1 year.
 		expires: false,
 		attributes: {
-			// set to `true` when using HTTPS
-			secure: process.env.NODE_ENV === "production"
+			secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
 		}
 	},
     getUserAttributes: (attributes) => {
