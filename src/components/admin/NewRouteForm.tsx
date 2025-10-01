@@ -13,7 +13,7 @@ import { CalendarIcon, Check, ChevronsUpDown } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { useState, useTransition, useRef } from "react";
+import { useState, useTransition } from "react";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import type { Bus, Discount, Location } from "@prisma/client";
 import { createRouteAction } from "@/app/admin/routes/actions";
@@ -28,21 +28,17 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
     const { toast } = useToast();
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
-    const formRef = useRef<HTMLFormElement>(null);
     
-    const [originId, setOriginId] = useState<string>('');
-    const [destinationId, setDestinationId] = useState<string>('');
     const [departureDate, setDepartureDate] = useState<Date>();
-    const [departureTime, setDepartureTime] = useState('12:00');
     const [arrivalDate, setArrivalDate] = useState<Date>();
-    const [arrivalTime, setArrivalTime] = useState('16:00');
     const [selectedBusIds, setSelectedBusIds] = useState<string[]>([]);
     
-    const [openOrigin, setOpenOrigin] = useState(false);
-    const [openDestination, setOpenDestination] = useState(false);
     const [openBuses, setOpenBuses] = useState(false);
     
     const handleSubmit = (formData: FormData) => {
+        const originId = formData.get('originId') as string;
+        const destinationId = formData.get('destinationId') as string;
+
         if (!originId || !destinationId || !departureDate || !arrivalDate || selectedBusIds.length === 0) {
             toast({ title: "Error", description: "Please fill out all fields, including selecting at least one bus.", variant: "destructive" });
             return;
@@ -52,12 +48,8 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
             return;
         }
 
-        formData.append('originId', originId);
-        formData.append('destinationId', destinationId);
         formData.append('departureDate', format(departureDate, 'yyyy-MM-dd'));
-        formData.append('departureTime', departureTime);
         formData.append('arrivalDate', format(arrivalDate, 'yyyy-MM-dd'));
-        formData.append('arrivalTime', arrivalTime);
         formData.append('busIds', JSON.stringify(selectedBusIds));
 
         startTransition(async () => {
@@ -65,8 +57,8 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
             if (result?.success === false) {
                  toast({ title: "Creation Failed", description: result.message, variant: "destructive" });
             } else {
-                 toast({ title: "Success!", description: `${selectedBusIds.length} new route(s) have been added.` });
-                 formRef.current?.reset();
+                 toast({ title: "Success!", description: `${selectedBusIds.length} new route(s) have been added.`});
+                 router.push("/admin/routes");
             }
         });
     };
@@ -82,7 +74,7 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
     const selectedBuses = buses.filter(b => selectedBusIds.includes(b.id));
 
     return (
-        <form ref={formRef} action={handleSubmit}>
+        <form action={handleSubmit}>
             <Card className="max-w-xl mx-auto">
                 <CardHeader>
                     <CardTitle>Add New Route</CardTitle>
@@ -92,8 +84,8 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                     <div className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="origin">Origin</Label>
-                                 <Select name="originId" required value={originId} onValueChange={setOriginId}>
+                                <Label htmlFor="originId">Origin</Label>
+                                 <Select name="originId" required>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select an origin..." />
                                     </SelectTrigger>
@@ -107,8 +99,8 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="destination">Destination</Label>
-                                <Select name="destinationId" required value={destinationId} onValueChange={setDestinationId}>
+                                <Label htmlFor="destinationId">Destination</Label>
+                                <Select name="destinationId" required>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select a destination..." />
                                     </SelectTrigger>
@@ -137,7 +129,7 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                                             <Calendar mode="single" selected={departureDate} onSelect={setDepartureDate} initialFocus />
                                         </PopoverContent>
                                     </Popover>
-                                    <Input type="time" value={departureTime} onChange={e => setDepartureTime(e.target.value)} />
+                                    <Input type="time" name="departureTime" defaultValue="12:00" />
                                 </div>
                             </div>
                              <div className="space-y-2">
@@ -154,7 +146,7 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                                             <Calendar mode="single" selected={arrivalDate} onSelect={setArrivalDate} initialFocus />
                                         </PopoverContent>
                                     </Popover>
-                                     <Input type="time" value={arrivalTime} onChange={e => setArrivalTime(e.target.value)} />
+                                     <Input type="time" name="arrivalTime" defaultValue="16:00" />
                                 </div>
                             </div>
                         </div>

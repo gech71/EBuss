@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useState, useTransition, useRef } from "react";
+import { useState, useTransition } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, PlusCircle, Trash2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
@@ -27,9 +27,7 @@ export function NewDiscountForm() {
     const { toast } = useToast();
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
-    const formRef = useRef<HTMLFormElement>(null);
     
-    const [name, setName] = useState('');
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
     const [tiers, setTiers] = useState<TierState[]>([
         { minTickets: 0, maxTickets: 0, percentage: 0 }
@@ -53,10 +51,8 @@ export function NewDiscountForm() {
         }
     };
 
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-
-        if (!name || !dateRange?.from || !dateRange?.to) {
+    const handleSubmit = (formData: FormData) => {
+        if (!dateRange?.from || !dateRange?.to) {
             toast({ title: "Error", description: "Please fill out the discount name and validity period.", variant: "destructive" });
             return;
         }
@@ -72,7 +68,6 @@ export function NewDiscountForm() {
             }
         }
 
-        const formData = new FormData(event.currentTarget);
         formData.append('startDate', dateRange.from.toISOString());
         formData.append('endDate', dateRange.to.toISOString());
         formData.append('tiers', JSON.stringify(tiers));
@@ -83,13 +78,13 @@ export function NewDiscountForm() {
                  toast({ title: "Creation Failed", description: result.message, variant: "destructive" });
             } else {
                  toast({ title: "Success!", description: "New discount has been added."});
-                 formRef.current?.reset();
+                 router.push("/admin/discounts");
             }
         });
     };
 
     return (
-        <form ref={formRef} onSubmit={handleSubmit}>
+        <form action={handleSubmit}>
             <Card className="max-w-3xl mx-auto">
                 <CardHeader>
                     <CardTitle>Add New Tiered Discount</CardTitle>
@@ -98,7 +93,7 @@ export function NewDiscountForm() {
                 <CardContent className="space-y-6">
                      <div className="space-y-2">
                         <Label htmlFor="name">Discount Name</Label>
-                        <Input id="name" name="name" placeholder="e.g., Summer Group Offer" required value={name} onChange={e => setName(e.target.value)} />
+                        <Input id="name" name="name" placeholder="e.g., Summer Group Offer" required />
                     </div>
                     <div className="space-y-2">
                          <Label>Validity Period</Label>

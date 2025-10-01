@@ -72,8 +72,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes }: BookingF
     setSelectedSeats([]); // Reset seat selection when route changes
   };
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleFormAction = async () => {
     if (selectedSeats.length === 0) {
       toast({ title: "No seats selected", description: "Please select at least one seat.", variant: "destructive" });
       return;
@@ -104,7 +103,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes }: BookingF
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form action={handleFormAction}>
       <Card>
         <CardHeader>
           <CardTitle className="font-headline text-3xl">Confirm Your Booking</CardTitle>
@@ -159,11 +158,11 @@ export function BookingForm({ route: initialRoute, alternativeRoutes }: BookingF
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="passengerName">Full Name</Label>
-                <Input id="passengerName" placeholder="e.g., John Doe" required value={passengerName} onChange={e => setPassengerName(e.target.value)} />
+                <Input id="passengerName" name="passengerName" placeholder="e.g., John Doe" required value={passengerName} onChange={e => setPassengerName(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="passengerEmail">Email Address</Label>
-                <Input id="passengerEmail" type="email" placeholder="e.g., john.doe@example.com" required value={passengerEmail} onChange={e => setPassengerEmail(e.target.value)} />
+                <Input id="passengerEmail" name="passengerEmail" type="email" placeholder="e.g., john.doe@example.com" required value={passengerEmail} onChange={e => setPassengerEmail(e.target.value)} />
               </div>
             </div>
           </div>

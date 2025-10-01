@@ -26,18 +26,6 @@ export function ChangePasswordForm() {
   const formRef = useRef<HTMLFormElement>(null);
 
   const handleSubmit = (formData: FormData) => {
-    const newPassword = formData.get("newPassword") as string;
-    const confirmPassword = formData.get("confirmPassword") as string;
-
-    if (newPassword !== confirmPassword) {
-      toast({
-        title: "Passwords do not match",
-        description: "Please ensure the new passwords match.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     startTransition(async () => {
       const result = await changePasswordAction(formData);
       if (result?.success) {

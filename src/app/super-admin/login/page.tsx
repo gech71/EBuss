@@ -1,44 +1,19 @@
 
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useData } from "@/lib/store";
-import { useToast } from "@/hooks/use-toast";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
+import { authenticate } from "@/app/lib/actions";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/Logo";
-import { Gem, Eye, EyeOff } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle, Gem } from "lucide-react";
 
 export default function SuperAdminLoginPage() {
-  const [email, setEmail] = useState("super@example.com");
-  const [password, setPassword] = useState("password");
-  const [showPassword, setShowPassword] = useState(false);
-  const { login } = useData();
-  const router = useRouter();
-  const { toast } = useToast();
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    const result = login(email, password);
-    
-    if (result && result.user.ownerId === 'super-admin') {
-      toast({
-        title: "Login Successful",
-        description: `Welcome back, ${result.user.name}!`,
-      });
-      localStorage.setItem('authToken', result.token);
-      router.push("/super-admin");
-    } else {
-      toast({
-        title: "Access Denied",
-        description: "You do not have permission to access this area.",
-        variant: "destructive",
-      });
-    }
-  };
+  const [errorMessage, formAction] = useActionState(authenticate, undefined);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
@@ -53,53 +28,54 @@ export default function SuperAdminLoginPage() {
           </CardTitle>
           <CardDescription>Enter your credentials for platform administration.</CardDescription>
         </CardHeader>
-        <form onSubmit={handleLogin}>
+        <form action={formAction}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
+                name="email"
                 type="email"
                 placeholder="super@example.com"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                defaultValue="super@example.com"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input 
-                  id="password" 
-                  type={showPassword ? "text" : "password"} 
-                  required 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                 <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute top-0 right-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                >
-                    {showPassword ? (
-                        <EyeOff className="h-4 w-4" aria-hidden="true" />
-                    ) : (
-                        <Eye className="h-4 w-4" aria-hidden="true" />
-                    )}
-                    <span className="sr-only">
-                        {showPassword ? "Hide password" : "Show password"}
-                    </span>
-                </Button>
-              </div>
+              <Input 
+                id="password" 
+                name="password"
+                type="password"
+                required 
+                defaultValue="password"
+              />
             </div>
+             {errorMessage && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  {errorMessage}
+                </AlertDescription>
+              </Alert>
+            )}
           </CardContent>
           <CardFooter>
-            <Button className="w-full" type="submit">Login</Button>
+            <LoginButton />
           </CardFooter>
         </form>
       </Card>
     </div>
+  );
+}
+
+
+function LoginButton() {
+  const { pending } = useFormStatus();
+ 
+  return (
+    <Button className="w-full" aria-disabled={pending} type="submit">
+      {pending ? 'Logging in...' : 'Login'}
+    </Button>
   );
 }

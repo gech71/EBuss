@@ -1,10 +1,8 @@
 
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useData } from "@/lib/store";
-import { useToast } from "@/hooks/use-toast";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,35 +10,21 @@ import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/Logo";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
-import { Eye, EyeOff } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
+import { registerUserAction } from "../lib/actions";
+
+function RegisterButton() {
+  const { pending } = useFormStatus();
+  return (
+    <Button className="w-full" type="submit" disabled={pending}>
+      {pending ? "Creating Account..." : "Create Account"}
+    </Button>
+  );
+}
 
 export default function RegisterPage() {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const { register } = useData();
-  const router = useRouter();
-  const { toast } = useToast();
-
-  const handleRegister = (e: React.FormEvent) => {
-    e.preventDefault();
-    const result = register({ name, email, password });
-    
-    if (result.success) {
-      toast({
-        title: "Registration Successful",
-        description: "You can now log in with your new account.",
-      });
-      router.push("/login");
-    } else {
-      toast({
-        title: "Registration Failed",
-        description: result.message,
-        variant: "destructive",
-      });
-    }
-  };
+  const [errorMessage, formAction] = useActionState(registerUserAction, undefined);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
@@ -52,61 +36,48 @@ export default function RegisterPage() {
           <CardTitle>Create an Account</CardTitle>
           <CardDescription>Sign up to start booking your bus tickets.</CardDescription>
         </CardHeader>
-        <form onSubmit={handleRegister}>
+        <form action={formAction}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
               <Input
                 id="name"
+                name="name"
                 type="text"
                 placeholder="John Doe"
                 required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
+                name="email"
                 type="email"
                 placeholder="m@example.com"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <div className="relative">
                 <Input 
                   id="password" 
-                  type={showPassword ? "text" : "password"} 
+                  name="password"
+                  type="password"
                   required 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
                 />
-                 <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute top-0 right-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                >
-                    {showPassword ? (
-                        <EyeOff className="h-4 w-4" aria-hidden="true" />
-                    ) : (
-                        <Eye className="h-4 w-4" aria-hidden="true" />
-                    )}
-                    <span className="sr-only">
-                        {showPassword ? "Hide password" : "Show password"}
-                    </span>
-                </Button>
-              </div>
             </div>
+             {errorMessage && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  {errorMessage}
+                </AlertDescription>
+              </Alert>
+            )}
           </CardContent>
           <CardFooter className="flex-col gap-4">
-            <Button className="w-full" type="submit">Create Account</Button>
+            <RegisterButton />
             <Separator className="my-2" />
              <div className="text-center text-sm text-muted-foreground">
               Already have an account?{' '}
