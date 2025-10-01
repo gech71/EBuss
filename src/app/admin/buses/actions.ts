@@ -74,7 +74,7 @@ export async function createBusAction(prevState: any, formData: FormData) {
     }
 
     revalidatePath('/admin/buses');
-    return { success: true, message: 'New bus has been added.' };
+    redirect('/admin/buses');
 }
 
 export async function deleteBusAction(busId: string): Promise<{ success: boolean; message: string }> {

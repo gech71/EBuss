@@ -21,12 +21,12 @@ const routeSchema = z.object({
 const combineDateTime = (dateStr: string, timeStr: string): Date => {
     const date = new Date(dateStr);
     const [hours, minutes] = timeStr.split(':').map(Number);
-    date.setHours(hours, minutes, 0, 0);
+    date.setUTCHours(hours, minutes, 0, 0);
     return date;
 };
 
 
-export async function createRouteAction(formData: FormData) {
+export async function createRouteAction(prevState: any, formData: FormData) {
     const rawData = {
         originId: formData.get('originId'),
         destinationId: formData.get('destinationId'),
@@ -49,6 +49,10 @@ export async function createRouteAction(formData: FormData) {
     }
 
     const { originId, destinationId, departureDate, departureTime, arrivalDate, arrivalTime, price, busIds, discountId } = validatedData.data;
+
+    if (originId === destinationId) {
+        return { success: false, message: 'Origin and destination cannot be the same.' };
+    }
 
     const fullDepartureTime = combineDateTime(departureDate, departureTime);
     const fullArrivalTime = combineDateTime(arrivalDate, arrivalTime);
@@ -82,7 +86,7 @@ export async function createRouteAction(formData: FormData) {
 }
 
 
-export async function updateRouteAction(formData: FormData) {
+export async function updateRouteAction(prevState: any, formData: FormData) {
     const routeId = formData.get('routeId') as string;
     const rawData = {
         originId: formData.get('originId'),
@@ -109,6 +113,10 @@ export async function updateRouteAction(formData: FormData) {
     }
 
     const { originId, destinationId, departureDate, departureTime, arrivalDate, arrivalTime, price, busIds, discountId } = validatedData.data;
+
+     if (originId === destinationId) {
+        return { success: false, message: 'Origin and destination cannot be the same.' };
+    }
 
     const fullDepartureTime = combineDateTime(departureDate, departureTime);
     const fullArrivalTime = combineDateTime(arrivalDate, arrivalTime);

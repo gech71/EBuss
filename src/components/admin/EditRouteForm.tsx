@@ -12,7 +12,8 @@ import { CalendarIcon } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo, useEffect } from "react";
+import { useFormState, useFormStatus } from "react-dom";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import type { Route, Bus, Discount, Location } from "@prisma/client";
 import { updateRouteAction } from "@/app/admin/routes/actions";
@@ -24,9 +25,23 @@ interface EditRouteFormProps {
     discounts: Discount[];
 }
 
+const initialState = {
+    success: false,
+    message: ''
+};
+
+function SubmitButton() {
+    const { pending } = useFormStatus();
+    return (
+        <Button type="submit" disabled={pending}>{isPending ? "Saving..." : "Save Changes"}</Button>
+    )
+}
+
 export function EditRouteForm({ route, locations, buses, discounts }: EditRouteFormProps) {
     const { toast } = useToast();
     const router = useRouter();
+    const [state, formAction] = useFormState(updateRouteAction, initialState);
+    
     const [isPending, startTransition] = useTransition();
 
     const [departureDate, setDepartureDate] = useState<Date | undefined>(new Date(route.departureTime));
@@ -34,42 +49,28 @@ export function EditRouteForm({ route, locations, buses, discounts }: EditRouteF
     const [arrivalDate, setArrivalDate] = useState<Date | undefined>(new Date(route.arrivalTime));
     const [arrivalTime, setArrivalTime] = useState(format(new Date(route.arrivalTime), "HH:mm"));
 
-    const handleSubmit = (formData: FormData) => {
-        if (!departureDate || !arrivalDate) {
-            toast({ title: "Error", description: "Please fill out all fields.", variant: "destructive" });
-            return;
-        }
+    const busId = useMemo(() => JSON.stringify([route.busId]), [route.busId]);
 
-        const originId = formData.get('originId') as string;
-        const destinationId = formData.get('destinationId') as string;
-        if (originId === destinationId) {
-            toast({ title: "Error", description: "Origin and destination cannot be the same.", variant: "destructive" });
-            return;
-        }
-        
-        formData.append('routeId', route.id);
-        formData.append('departureDate', format(departureDate, 'yyyy-MM-dd'));
-        formData.append('departureTime', departureTime);
-        formData.append('arrivalDate', format(arrivalDate, 'yyyy-MM-dd'));
-        formData.append('arrivalTime', arrivalTime);
-        // The form only submits the one busId, but we pass it as an array to match the schema
-        const selectedBusId = formData.get('busId');
-        formData.append('busIds', JSON.stringify(selectedBusId ? [selectedBusId] : []));
-        formData.delete('busId');
-
-
-        startTransition(async () => {
-            const result = await updateRouteAction(formData);
-            if (result?.success === false) {
-                 toast({ title: "Update Failed", description: result.message, variant: "destructive" });
+     useEffect(() => {
+        if(state.message) {
+            if(state.success === false) {
+                 toast({ title: "Update Failed", description: state.message, variant: "destructive" });
             } else {
                  toast({ title: "Success!", description: "Route has been updated."});
+                 router.push('/admin/routes');
             }
-        });
-    };
+        }
+    }, [state, toast, router]);
 
     return (
-        <form action={handleSubmit}>
+        <form action={formAction}>
+            <input type="hidden" name="routeId" value={route.id} />
+            {departureDate && <input type="hidden" name="departureDate" value={format(departureDate, 'yyyy-MM-dd')} />}
+            <input type="hidden" name="departureTime" value={departureTime} />
+            {arrivalDate && <input type="hidden" name="arrivalDate" value={format(arrivalDate, 'yyyy-MM-dd')} />}
+            <input type="hidden" name="arrivalTime" value={arrivalTime} />
+            <input type="hidden" name="busIds" value={busId} />
+
             <Card className="max-w-xl mx-auto">
                 <CardHeader>
                     <CardTitle>Edit Route</CardTitle>
@@ -161,7 +162,7 @@ export function EditRouteForm({ route, locations, buses, discounts }: EditRouteF
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="price">Price</Label>
-                                <Input id="price" name="price" type="number" step="0.01" placeholder="e.g., 45.00" required defaultValue={route.price} />
+                                <Input id="price" name="price" type="number" step="0.01" placeholder="e.g., 45.00" required defaultValue={Number(route.price)} />
                             </div>
                              <div className="space-y-2">
                                 <Label htmlFor="discount">Discount Offer</Label>

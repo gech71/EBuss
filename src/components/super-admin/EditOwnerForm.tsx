@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useState, useTransition, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { Separator } from "@/components/ui/separator";
 import type { CommissionTier, BusOwner, CommissionType } from "@prisma/client";
@@ -21,7 +21,6 @@ interface EditOwnerFormProps {
     otherOwnerNames: string[];
 }
 
-// Re-defining a client-side type because Prisma Decimal cannot be passed to client components.
 type ClientCommissionTier = Omit<CommissionTier, 'value'> & { value: number };
 
 const initialState = {
@@ -43,21 +42,20 @@ export function EditOwnerForm({ owner: initialOwner, otherOwnerNames }: EditOwne
     const router = useRouter();
     const [state, formAction] = useFormState(updateOwnerAction, initialState);
     
-    const [owner, setOwner] = useState(initialOwner);
-    const [tiers, setTiers] = useState<ClientCommissionTier[]>(initialOwner.commissionTiers);
+    const [name, setName] = useState(initialOwner.name);
+    const [tiers, setTiers] = useState<ClientCommissionTier[]>(
+        initialOwner.commissionTiers.map(t => ({...t, value: Number(t.value)}))
+    );
 
     useEffect(() => {
         if(state.message) {
-            if(state.success) {
-                toast({ title: "Success!", description: "Owner details have been updated."});
-                router.push('/super-admin/owners');
-            } else {
+            if(!state.success) {
                 toast({ title: "Update Failed", description: state.message, variant: "destructive" });
             }
         }
     }, [state, toast, router]);
 
-    const handleTierChange = (index: number, field: keyof Omit<ClientCommissionTier, 'id' | 'type' | 'busOwnerId'>, value: number) => {
+    const handleTierChange = (index: number, field: keyof Omit<ClientCommissionTier, 'id' | 'type' | 'ownerId'>, value: number) => {
         const newTiers = [...tiers];
         newTiers[index] = { ...newTiers[index], [field]: value };
         setTiers(newTiers);
@@ -72,7 +70,7 @@ export function EditOwnerForm({ owner: initialOwner, otherOwnerNames }: EditOwne
     const addTier = () => {
         const lastTier = tiers[tiers.length - 1];
         const newMinSales = lastTier ? lastTier.maxSales + 1 : 1;
-        const newTiers = [...tiers, { id: `new-tier-${Date.now()}`, busOwnerId: owner.id, minSales: newMinSales, maxSales: newMinSales + 100, type: 'PERCENTAGE', value: 0 }];
+        const newTiers = [...tiers, { id: `new-tier-${Date.now()}`, ownerId: initialOwner.id, minSales: newMinSales, maxSales: newMinSales + 100, type: 'PERCENTAGE', value: 0 }];
         setTiers(newTiers);
     };
 
@@ -88,8 +86,8 @@ export function EditOwnerForm({ owner: initialOwner, otherOwnerNames }: EditOwne
 
     return (
         <form action={formAction}>
-            <input type="hidden" name="id" value={owner.id} />
-            <input type="hidden" name="name" value={owner.name} />
+            <input type="hidden" name="id" value={initialOwner.id} />
+            <input type="hidden" name="name" value={name} />
             <input type="hidden" name="commissionTiers" value={JSON.stringify(tiers)} />
 
             <Card className="max-w-3xl mx-auto">
@@ -102,10 +100,11 @@ export function EditOwnerForm({ owner: initialOwner, otherOwnerNames }: EditOwne
                         <Label htmlFor="name">Owner Name</Label>
                         <Input 
                             id="name" 
+                            name="name"
                             placeholder="e.g., Metro Transit Inc." 
                             required
-                            value={owner.name}
-                            onChange={(e) => setOwner({...owner, name: e.target.value})}
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
                         />
                     </div>
                     

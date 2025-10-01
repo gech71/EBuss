@@ -13,7 +13,7 @@ import { CalendarIcon, Check, ChevronsUpDown } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { useState, useTransition, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import type { Bus, Discount, Location } from "@prisma/client";
@@ -54,10 +54,7 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
 
     useEffect(() => {
         if(state.message) {
-            if (state.success) {
-                toast({ title: "Success!", description: state.message });
-                router.push('/admin/routes');
-            } else {
+            if (!state.success) {
                 toast({ title: "Creation Failed", description: state.message, variant: "destructive" });
             }
         }

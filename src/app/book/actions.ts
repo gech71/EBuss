@@ -14,7 +14,7 @@ const createBookingSchema = z.object({
   passengerEmail: z.string().email('Invalid email address.'),
 });
 
-export async function createBookingAction(formData: FormData) {
+export async function createBookingAction(prevState: any, formData: FormData) {
 
   const data = {
     routeId: formData.get('routeId'),
@@ -61,8 +61,8 @@ export async function createBookingAction(formData: FormData) {
         }
       });
 
-      if (!route) {
-        throw new Error('Route not found.');
+      if (!route || !route.bus.layout) {
+        throw new Error('Route or bus layout not found.');
       }
 
       const availableSeats = route.bus.layout.seats.filter(seat =>

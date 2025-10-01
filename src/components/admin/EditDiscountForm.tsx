@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useState, useTransition, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, PlusCircle, Trash2 } from "lucide-react";
@@ -46,14 +46,11 @@ export function EditDiscountForm({ discount: initialDiscount }: EditDiscountForm
 
     const [name, setName] = useState(initialDiscount.name);
     const [dateRange, setDateRange] = useState<DateRange | undefined>({ from: new Date(initialDiscount.startDate), to: new Date(initialDiscount.endDate) });
-    const [tiers, setTiers] = useState(initialDiscount.tiers);
+    const [tiers, setTiers] = useState(initialDiscount.tiers.map(t => ({...t, percentage: Number(t.percentage)})));
 
     useEffect(() => {
         if(state.message) {
-            if(state.success) {
-                toast({ title: "Success!", description: "Discount has been updated."});
-                router.push('/admin/discounts');
-            } else {
+            if(!state.success) {
                 toast({ title: "Update Failed", description: state.message, variant: "destructive" });
             }
         }
@@ -102,7 +99,7 @@ export function EditDiscountForm({ discount: initialDiscount }: EditDiscountForm
                 <CardContent className="space-y-6">
                      <div className="space-y-2">
                         <Label htmlFor="name">Discount Name</Label>
-                        <Input id="name" placeholder="e.g., Summer Group Offer" required value={name} onChange={e => setName(e.target.value)} />
+                        <Input id="name" name="name" placeholder="e.g., Summer Group Offer" required value={name} onChange={e => setName(e.target.value)} />
                     </div>
                     <div className="space-y-2">
                          <Label>Validity Period</Label>

@@ -1,12 +1,18 @@
 
 "use client";
 
-import { useData } from "@/lib/store";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronsUpDown } from "lucide-react";
+import { BusOwner } from "@prisma/client";
 
-export function UserSwitcher() {
-    const { owners, viewedOwnerId, setViewedOwnerId, isSuperAdmin } = useData();
+interface UserSwitcherProps {
+    owners: BusOwner[];
+    viewedOwnerId: string | null;
+    setViewedOwnerId: (id: string) => void;
+    isSuperAdmin: boolean;
+}
+
+export function UserSwitcher({ owners, viewedOwnerId, setViewedOwnerId, isSuperAdmin }: UserSwitcherProps) {
 
     if (!isSuperAdmin) {
         return null;
@@ -17,7 +23,7 @@ export function UserSwitcher() {
 
     return (
         <div className="w-full max-w-xs">
-            <Select onValueChange={setViewedOwnerId} defaultValue={viewedOwnerId}>
+            <Select onValueChange={setViewedOwnerId} defaultValue={viewedOwnerId ?? undefined}>
                 <SelectTrigger className="h-9">
                     <SelectValue placeholder="Select an owner to view..." />
                 </SelectTrigger>
