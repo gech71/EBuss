@@ -7,12 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useState, useMemo, useTransition, useRef } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { createBusAction } from "@/app/admin/buses/actions";
+import { useFormState, useFormStatus } from "react-dom";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
-// Helper function to generate seat layouts, adapted from the original data file.
+// Helper function to generate seat layouts
 const generateSeats = (rows: number, cols: number, aisleCols: number[], lastRowFull: boolean = false) => {
   const seats = [];
   for (let r = 0; r < rows; r++) {
@@ -30,17 +33,28 @@ const generateSeats = (rows: number, cols: number, aisleCols: number[], lastRowF
   return seats;
 };
 
+const initialState = {
+    success: false,
+    message: '',
+}
+
+function SubmitButton() {
+    const { pending } = useFormStatus();
+    return (
+        <Button type="submit" disabled={pending}>{pending ? "Saving..." : "Save Bus"}</Button>
+    )
+}
 
 export default function NewBusPage() {
     const { toast } = useToast();
     const router = useRouter();
-    const [isPending, startTransition] = useTransition();
+    const [state, formAction] = useFormState(createBusAction, initialState);
     const formRef = useRef<HTMLFormElement>(null);
 
     const [name, setName] = useState('');
     const [rows, setRows] = useState(12);
     const [cols, setCols] = useState(5);
-    const [aisleCols, setAisleCols] = useState('2');
+    const [aisleCols, setAisleCols] = useState('3'); // Default to '3' which is index 2
     const [lastRowFull, setLastRowFull] = useState(false);
     
     const parsedAisleCols = useMemo(() => {
@@ -50,49 +64,46 @@ export default function NewBusPage() {
     const capacity = useMemo(() => {
         if (cols <= 0 || rows <= 0) return 0;
         
-        const baseCapacity = rows * cols;
-        let aisleSeats = rows * parsedAisleCols.length;
-        
-        if (lastRowFull && rows > 0) {
-            aisleSeats -= parsedAisleCols.length;
-        }
-        
-        return baseCapacity - aisleSeats;
-    }, [rows, cols, parsedAisleCols, lastRowFull]);
-
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        
-        if (!name || rows <= 0 || cols <= 0 || aisleCols.trim() === '' || parsedAisleCols.some(ac => ac < 0 || ac >= cols)) {
-            toast({
-                title: "Invalid Input",
-                description: "Please provide valid details for the bus layout.",
-                variant: "destructive"
-            });
-            return;
-        }
-
-        const seats = generateSeats(rows, cols, parsedAisleCols, lastRowFull);
-        
-        const formData = new FormData(event.currentTarget);
-        formData.append('capacity', capacity.toString());
-        formData.append('rows', rows.toString());
-        formData.append('cols', cols.toString());
-        formData.append('seats', JSON.stringify(seats));
-        
-        startTransition(async () => {
-            const result = await createBusAction(formData);
-             if (result?.success === false) {
-                 toast({ title: "Creation Failed", description: result.message, variant: "destructive" });
-            } else {
-                 toast({ title: "Success!", description: "New bus has been added."});
-                 formRef.current?.reset();
+        let aisleSeatsCount = 0;
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const isLastRow = r === rows - 1;
+                const isAisle = parsedAisleCols.includes(c) && !(lastRowFull && isLastRow);
+                if (isAisle) {
+                    aisleSeatsCount++;
+                }
             }
-        });
-    };
+        }
+        return (rows * cols) - aisleSeatsCount;
+
+    }, [rows, cols, parsedAisleCols, lastRowFull]);
+    
+    useEffect(() => {
+        if (state.success) {
+            toast({ title: "Success!", description: state.message });
+            formRef.current?.reset();
+            // Resetting form fields
+            setName('');
+            setRows(12);
+            setCols(5);
+            setAisleCols('3');
+            setLastRowFull(false);
+             // Redirect after a short delay to allow toast to be seen
+            setTimeout(() => router.push('/admin/buses'), 1000);
+        } else if (state.message) {
+            toast({ title: "Creation Failed", description: state.message, variant: "destructive" });
+        }
+    }, [state, toast, router]);
 
     return (
-        <form ref={formRef} onSubmit={handleSubmit}>
+        <form ref={formRef} action={(formData) => {
+            const seats = generateSeats(rows, cols, parsedAisleCols, lastRowFull);
+            formData.append('capacity', capacity.toString());
+            formData.append('rows', rows.toString());
+            formData.append('cols', cols.toString());
+            formData.append('seats', JSON.stringify(seats));
+            formAction(formData);
+        }}>
             <Card className="max-w-xl mx-auto">
                 <CardHeader>
                     <CardTitle>Add New Bus</CardTitle>
@@ -112,11 +123,11 @@ export default function NewBusPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="rows">Rows</Label>
-                                    <Input id="rows" type="number" placeholder="e.g., 12" required value={rows} onChange={e => setRows(Number(e.target.value))} />
+                                    <Input id="rows" type="number" name="rows" min="1" placeholder="e.g., 12" required value={rows} onChange={e => setRows(Number(e.target.value))} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="cols">Columns</Label>
-                                    <Input id="cols" type="number" placeholder="e.g., 5" required value={cols} onChange={e => setCols(Number(e.target.value))} />
+                                    <Input id="cols" type="number" name="cols" min="1" placeholder="e.g., 5" required value={cols} onChange={e => setCols(Number(e.target.value))} />
                                 </div>
                             </div>
                              <div className="space-y-2 mt-4">
@@ -133,13 +144,21 @@ export default function NewBusPage() {
 
                          <div className="space-y-2">
                             <Label>Calculated Capacity</Label>
-                            <Input value={capacity} disabled className="font-bold bg-muted/50" />
+                            <Input value={capacity} name="capacity" readOnly className="font-bold bg-muted/50" />
                         </div>
+
+                        {state.message && !state.success && (
+                            <Alert variant="destructive">
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertTitle>Error</AlertTitle>
+                                <AlertDescription>{state.message}</AlertDescription>
+                            </Alert>
+                        )}
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-                    <Button type="submit" disabled={isPending}>{isPending ? "Saving..." : "Save Bus"}</Button>
+                    <SubmitButton />
                 </CardFooter>
             </Card>
         </form>

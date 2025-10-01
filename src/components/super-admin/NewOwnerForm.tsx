@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
+import { useFormState, useFormStatus } from "react-dom";
 import { Separator } from "@/components/ui/separator";
 import { PlusCircle, Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -25,19 +26,44 @@ type CommissionTierState = {
     value: number;
 };
 
+const initialState = {
+    success: false,
+    message: '',
+};
+
+function SubmitButton() {
+    const { pending } = useFormStatus();
+    return (
+        <Button type="submit" disabled={pending}>
+            {pending ? 'Saving...' : 'Save Owner'}
+        </Button>
+    )
+}
+
 export function NewOwnerForm({ existingOwnerNames }: NewOwnerFormProps) {
     const { toast } = useToast();
     const router = useRouter();
-    const [isPending, startTransition] = useTransition();
+    const [state, formAction] = useFormState(createOwnerAction, initialState);
     
     const [name, setName] = useState('');
     const [tiers, setTiers] = useState<CommissionTierState[]>([
-        { minSales: 1, maxSales: 100, type: 'PERCENTAGE', value: 0 }
+        { minSales: 1, maxSales: 100, type: 'PERCENTAGE', value: 5 }
     ]);
 
-    const handleTierChange = (index: number, field: keyof Omit<CommissionTierState, 'type'>, value: number) => {
+    useEffect(() => {
+        if (state.message) {
+             if (state.success) {
+                 toast({ title: "Success!", description: `Owner "${name}" has been added.`});
+                 router.push('/super-admin/owners');
+             } else {
+                 toast({ title: "Creation Failed", description: state.message, variant: "destructive" });
+             }
+        }
+    }, [state, name, router, toast]);
+
+    const handleTierChange = (index: number, field: keyof Omit<CommissionTierState, 'type'>, value: string) => {
         const newTiers = [...tiers];
-        newTiers[index][field] = value;
+        newTiers[index][field] = Number(value);
         setTiers(newTiers);
     };
     
@@ -62,8 +88,7 @@ export function NewOwnerForm({ existingOwnerNames }: NewOwnerFormProps) {
         }
     };
 
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
+    const handleFormAction = (formData: FormData) => {
         if (!name) {
             toast({ title: "Error", description: "Owner name cannot be empty.", variant: "destructive" });
             return;
@@ -88,22 +113,13 @@ export function NewOwnerForm({ existingOwnerNames }: NewOwnerFormProps) {
             }
         }
         
-        const formData = new FormData();
-        formData.append('name', name);
-        formData.append('commissionTiers', JSON.stringify(tiers));
-
-        startTransition(async () => {
-            const result = await createOwnerAction(formData);
-            if (result?.success === false) {
-                 toast({ title: "Creation Failed", description: result.message, variant: "destructive" });
-            } else {
-                 toast({ title: "Success!", description: `Owner "${name}" has been added.`});
-            }
-        });
+        formData.set('name', name);
+        formData.set('commissionTiers', JSON.stringify(tiers));
+        formAction(formData);
     };
 
     return (
-        <form onSubmit={handleSubmit}>
+        <form action={handleFormAction}>
             <Card className="max-w-3xl mx-auto">
                 <CardHeader>
                     <CardTitle>Add New Bus Owner</CardTitle>
@@ -142,11 +158,11 @@ export function NewOwnerForm({ existingOwnerNames }: NewOwnerFormProps) {
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor={`minSales-${index}`}>Min Sales</Label>
-                                        <Input id={`minSales-${index}`} type="number" placeholder="e.g., 1" required value={tier.minSales || ''} onChange={e => handleTierChange(index, 'minSales', Number(e.target.value))} />
+                                        <Input id={`minSales-${index}`} type="number" placeholder="e.g., 1" required value={tier.minSales || ''} onChange={e => handleTierChange(index, 'minSales', e.target.value)} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor={`maxSales-${index}`}>Max Sales</Label>
-                                        <Input id={`maxSales-${index}`} type="number" placeholder="e.g., 100" required value={tier.maxSales || ''} onChange={e => handleTierChange(index, 'maxSales', Number(e.target.value))} />
+                                        <Input id={`maxSales-${index}`} type="number" placeholder="e.g., 100" required value={tier.maxSales || ''} onChange={e => handleTierChange(index, 'maxSales', e.target.value)} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor={`type-${index}`}>Type</Label>
@@ -162,7 +178,7 @@ export function NewOwnerForm({ existingOwnerNames }: NewOwnerFormProps) {
                                     </div>
                                      <div className="space-y-2">
                                         <Label htmlFor={`value-${index}`}>{tier.type === 'FIXED' ? 'Amount ($)' : 'Rate (%)'}</Label>
-                                        <Input id={`value-${index}`} type="number" placeholder="e.g., 3" required value={tier.value || ''} onChange={e => handleTierChange(index, 'value', Number(e.target.value))} />
+                                        <Input id={`value-${index}`} type="number" step="0.01" placeholder="e.g., 3" required value={tier.value || ''} onChange={e => handleTierChange(index, 'value', e.target.value)} />
                                     </div>
                                 </div>
                                 <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => removeTier(index)} disabled={tiers.length <= 1}>
@@ -175,9 +191,7 @@ export function NewOwnerForm({ existingOwnerNames }: NewOwnerFormProps) {
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-                    <Button type="submit" disabled={isPending}>
-                        {isPending ? 'Saving...' : 'Save Owner'}
-                    </Button>
+                    <SubmitButton />
                 </CardFooter>
             </Card>
         </form>

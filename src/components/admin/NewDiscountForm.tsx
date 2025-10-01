@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useState, useTransition, useRef } from "react";
+import { useState, useTransition, useRef, useEffect } from "react";
+import { useFormState, useFormStatus } from "react-dom";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, PlusCircle, Trash2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
@@ -23,17 +24,42 @@ type TierState = {
     percentage: number;
 }
 
+const initialState = {
+    success: false,
+    message: '',
+}
+
+function SubmitButton() {
+    const { pending } = useFormStatus();
+    return (
+        <Button type="submit" disabled={pending}>{pending ? "Saving..." : "Save Discount"}</Button>
+    )
+}
+
 export function NewDiscountForm() {
     const { toast } = useToast();
     const router = useRouter();
-    const [isPending, startTransition] = useTransition();
+    const [state, formAction] = useFormState(createDiscountAction, initialState);
     const formRef = useRef<HTMLFormElement>(null);
     
     const [name, setName] = useState('');
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
     const [tiers, setTiers] = useState<TierState[]>([
-        { minTickets: 0, maxTickets: 0, percentage: 0 }
+        { minTickets: 2, maxTickets: 4, percentage: 10 }
     ]);
+
+    useEffect(() => {
+        if (state.success) {
+            toast({ title: "Success!", description: state.message });
+            formRef.current?.reset();
+            setName('');
+            setDateRange(undefined);
+            setTiers([{ minTickets: 2, maxTickets: 4, percentage: 10 }]);
+            setTimeout(() => router.push('/admin/discounts'), 1000);
+        } else if (state.message) {
+            toast({ title: "Creation Failed", description: state.message, variant: "destructive" });
+        }
+    }, [state, toast, router]);
 
     const handleTierChange = (index: number, field: keyof TierState, value: number) => {
         const newTiers = [...tiers];
@@ -53,9 +79,7 @@ export function NewDiscountForm() {
         }
     };
 
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-
+    const handleFormAction = (formData: FormData) => {
         if (!name || !dateRange?.from || !dateRange?.to) {
             toast({ title: "Error", description: "Please fill out the discount name and validity period.", variant: "destructive" });
             return;
@@ -72,24 +96,15 @@ export function NewDiscountForm() {
             }
         }
 
-        const formData = new FormData(event.currentTarget);
         formData.append('startDate', dateRange.from.toISOString());
         formData.append('endDate', dateRange.to.toISOString());
         formData.append('tiers', JSON.stringify(tiers));
 
-        startTransition(async () => {
-            const result = await createDiscountAction(formData);
-             if (result?.success === false) {
-                 toast({ title: "Creation Failed", description: result.message, variant: "destructive" });
-            } else {
-                 toast({ title: "Success!", description: "New discount has been added."});
-                 formRef.current?.reset();
-            }
-        });
+        formAction(formData);
     };
 
     return (
-        <form ref={formRef} onSubmit={handleSubmit}>
+        <form ref={formRef} action={handleFormAction}>
             <Card className="max-w-3xl mx-auto">
                 <CardHeader>
                     <CardTitle>Add New Tiered Discount</CardTitle>
@@ -178,7 +193,7 @@ export function NewDiscountForm() {
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
                      <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-                    <Button type="submit" disabled={isPending}>{isPending ? "Saving..." : "Save Discount"}</Button>
+                    <SubmitButton />
                 </CardFooter>
             </Card>
         </form>

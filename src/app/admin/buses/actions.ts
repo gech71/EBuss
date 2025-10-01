@@ -16,13 +16,13 @@ const seatSchema = z.object({
 
 const createBusSchema = z.object({
   name: z.string().min(1, 'Bus name is required.'),
-  capacity: z.number().int().positive('Capacity must be a positive integer.'),
-  rows: z.number().int().positive(),
-  cols: z.number().int().positive(),
+  capacity: z.coerce.number().int().positive('Capacity must be a positive integer.'),
+  rows: z.coerce.number().int().positive(),
+  cols: z.coerce.number().int().positive(),
   seats: z.array(seatSchema),
 });
 
-export async function createBusAction(formData: FormData) {
+export async function createBusAction(prevState: any, formData: FormData) {
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         return { success: false, message: 'Unauthorized' };
@@ -30,9 +30,9 @@ export async function createBusAction(formData: FormData) {
 
     const rawData = {
         name: formData.get('name'),
-        capacity: Number(formData.get('capacity')),
-        rows: Number(formData.get('rows')),
-        cols: Number(formData.get('cols')),
+        capacity: formData.get('capacity'),
+        rows: formData.get('rows'),
+        cols: formData.get('cols'),
         seats: JSON.parse(formData.get('seats') as string),
     };
 
@@ -74,7 +74,7 @@ export async function createBusAction(formData: FormData) {
     }
 
     revalidatePath('/admin/buses');
-    redirect('/admin/buses');
+    return { success: true, message: 'New bus has been added.' };
 }
 
 export async function deleteBusAction(busId: string): Promise<{ success: boolean; message: string }> {

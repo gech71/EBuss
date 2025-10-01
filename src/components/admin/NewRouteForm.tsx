@@ -9,14 +9,16 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { CalendarIcon, Check, ChevronsUpDown } from "lucide-react";
+import { CalendarIcon, Check, ChevronsUpDown, AlertCircle } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { useState, useTransition, useRef } from "react";
+import { useState, useTransition, useRef, useEffect } from "react";
+import { useFormState, useFormStatus } from "react-dom";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import type { Bus, Discount, Location } from "@prisma/client";
 import { createRouteAction } from "@/app/admin/routes/actions";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface NewRouteFormProps {
     locations: Location[];
@@ -24,10 +26,22 @@ interface NewRouteFormProps {
     discounts: Discount[];
 }
 
+const initialState = {
+    success: false,
+    message: '',
+};
+
+function SubmitButton() {
+    const { pending } = useFormStatus();
+    return (
+        <Button type="submit" disabled={pending}>{pending ? "Saving..." : "Save Route"}</Button>
+    )
+}
+
 export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps) {
     const { toast } = useToast();
     const router = useRouter();
-    const [isPending, startTransition] = useTransition();
+    const [state, formAction] = useFormState(createRouteAction, initialState);
     const formRef = useRef<HTMLFormElement>(null);
     
     const [originId, setOriginId] = useState<string>('');
@@ -38,11 +52,22 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
     const [arrivalTime, setArrivalTime] = useState('16:00');
     const [selectedBusIds, setSelectedBusIds] = useState<string[]>([]);
     
-    const [openOrigin, setOpenOrigin] = useState(false);
-    const [openDestination, setOpenDestination] = useState(false);
     const [openBuses, setOpenBuses] = useState(false);
+
+    useEffect(() => {
+        if (state.success) {
+            toast({ title: "Success!", description: state.message });
+            formRef.current?.reset();
+            setOriginId('');
+            setDestinationId('');
+            setDepartureDate(undefined);
+            setArrivalDate(undefined);
+            setSelectedBusIds([]);
+            router.push('/admin/routes');
+        }
+    }, [state, toast, router]);
     
-    const handleSubmit = (formData: FormData) => {
+    const handleFormAction = (formData: FormData) => {
         if (!originId || !destinationId || !departureDate || !arrivalDate || selectedBusIds.length === 0) {
             toast({ title: "Error", description: "Please fill out all fields, including selecting at least one bus.", variant: "destructive" });
             return;
@@ -52,23 +77,15 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
             return;
         }
 
-        formData.append('originId', originId);
-        formData.append('destinationId', destinationId);
-        formData.append('departureDate', format(departureDate, 'yyyy-MM-dd'));
-        formData.append('departureTime', departureTime);
-        formData.append('arrivalDate', format(arrivalDate, 'yyyy-MM-dd'));
-        formData.append('arrivalTime', arrivalTime);
-        formData.append('busIds', JSON.stringify(selectedBusIds));
+        formData.set('originId', originId);
+        formData.set('destinationId', destinationId);
+        formData.set('departureDate', format(departureDate, 'yyyy-MM-dd'));
+        formData.set('departureTime', departureTime);
+        formData.set('arrivalDate', format(arrivalDate, 'yyyy-MM-dd'));
+        formData.set('arrivalTime', arrivalTime);
+        formData.set('busIds', JSON.stringify(selectedBusIds));
 
-        startTransition(async () => {
-            const result = await createRouteAction(formData);
-            if (result?.success === false) {
-                 toast({ title: "Creation Failed", description: result.message, variant: "destructive" });
-            } else {
-                 toast({ title: "Success!", description: `${selectedBusIds.length} new route(s) have been added.` });
-                 formRef.current?.reset();
-            }
-        });
+        formAction(formData);
     };
     
     const toggleBusSelection = (busId: string) => {
@@ -82,7 +99,7 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
     const selectedBuses = buses.filter(b => selectedBusIds.includes(b.id));
 
     return (
-        <form ref={formRef} action={handleSubmit}>
+        <form ref={formRef} action={handleFormAction}>
             <Card className="max-w-xl mx-auto">
                 <CardHeader>
                     <CardTitle>Add New Route</CardTitle>
@@ -223,11 +240,19 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                                 </Select>
                             </div>
                         </div>
+
+                         {state.message && !state.success && (
+                            <Alert variant="destructive">
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertTitle>Error</AlertTitle>
+                                <AlertDescription>{state.message}</AlertDescription>
+                            </Alert>
+                        )}
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
                      <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-                    <Button type="submit" disabled={isPending}>{isPending ? "Saving..." : "Save Route"}</Button>
+                    <SubmitButton />
                 </CardFooter>
             </Card>
         </form>

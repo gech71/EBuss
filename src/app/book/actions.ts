@@ -13,13 +13,21 @@ const createBookingSchema = z.object({
   passengerEmail: z.string().email('Invalid email address.'),
 });
 
-export async function createBookingAction(data: unknown) {
+export async function createBookingAction(prevState: any, formData: FormData) {
+  const data = {
+      routeId: formData.get('routeId'),
+      selectedSeatNumbers: JSON.parse(formData.get('selectedSeatNumbers') as string),
+      totalPrice: formData.get('totalPrice'),
+      passengerName: formData.get('passengerName'),
+      passengerEmail: formData.get('passengerEmail'),
+  }
   const validatedData = createBookingSchema.safeParse(data);
 
   if (!validatedData.success) {
     return {
       success: false,
       message: validatedData.error.errors.map(e => e.message).join(', '),
+      bookingId: null
     };
   }
 
@@ -94,13 +102,11 @@ export async function createBookingAction(data: unknown) {
     });
 
     revalidatePath(`/book/${routeId}`);
-    return { success: true, bookingId: newBooking.id };
+    return { success: true, bookingId: newBooking.id, message: null };
     
   } catch (error) {
     console.error('Booking failed:', error);
     const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
-    return { success: false, message };
+    return { success: false, message, bookingId: null };
   }
 }
-
-    

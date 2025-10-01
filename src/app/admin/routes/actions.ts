@@ -26,7 +26,7 @@ const combineDateTime = (dateStr: string, timeStr: string): Date => {
 };
 
 
-export async function createRouteAction(formData: FormData) {
+export async function createRouteAction(prevState: any, formData: FormData) {
     const rawData = {
         originId: formData.get('originId'),
         destinationId: formData.get('destinationId'),
@@ -78,11 +78,11 @@ export async function createRouteAction(formData: FormData) {
     }
 
     revalidatePath('/admin/routes');
-    redirect('/admin/routes');
+    return { success: true, message: `${busIds.length} new route(s) have been added.` };
 }
 
 
-export async function updateRouteAction(formData: FormData) {
+export async function updateRouteAction(prevState: any, formData: FormData) {
     const routeId = formData.get('routeId') as string;
     const rawData = {
         originId: formData.get('originId'),

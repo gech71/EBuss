@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
+import { useFormState, useFormStatus } from "react-dom";
 import { Separator } from "@/components/ui/separator";
 import type { CommissionTier, BusOwner, CommissionType } from "@prisma/client";
 import { PlusCircle, Trash2 } from "lucide-react";
@@ -23,17 +24,43 @@ interface EditOwnerFormProps {
 // Re-defining a client-side type because Prisma Decimal cannot be passed to client components.
 type ClientCommissionTier = Omit<CommissionTier, 'value'> & { value: number };
 
+const initialState = {
+    success: false,
+    message: '',
+};
+
+function SubmitButton() {
+    const { pending } = useFormStatus();
+    return (
+         <Button type="submit" disabled={pending}>
+            {pending ? 'Saving...' : 'Save Changes'}
+        </Button>
+    )
+}
+
 export function EditOwnerForm({ owner: initialOwner, otherOwnerNames }: EditOwnerFormProps) {
     const { toast } = useToast();
     const router = useRouter();
-    const [isPending, startTransition] = useTransition();
+    const [state, formAction] = useFormState(updateOwnerAction, initialState);
     
     const [owner, setOwner] = useState(initialOwner);
-    const [tiers, setTiers] = useState<ClientCommissionTier[]>(initialOwner.commissionTiers);
+    const [tiers, setTiers] = useState<ClientCommissionTier[]>(initialOwner.commissionTiers.map(t => ({...t, value: Number(t.value)})));
 
-    const handleTierChange = (index: number, field: keyof Omit<ClientCommissionTier, 'id' | 'type' | 'busOwnerId'>, value: number) => {
+    useEffect(() => {
+        if (state.message) {
+            if (state.success) {
+                toast({ title: "Success!", description: "Owner has been updated." });
+                router.push('/super-admin/owners');
+            } else {
+                toast({ title: "Update Failed", description: state.message, variant: "destructive" });
+            }
+        }
+    }, [state, toast, router]);
+
+
+    const handleTierChange = (index: number, field: keyof Omit<ClientCommissionTier, 'id' | 'type' | 'busOwnerId'>, value: string) => {
         const newTiers = [...tiers];
-        newTiers[index] = { ...newTiers[index], [field]: value };
+        newTiers[index] = { ...newTiers[index], [field]: Number(value) };
         setTiers(newTiers);
     };
 
@@ -59,9 +86,7 @@ export function EditOwnerForm({ owner: initialOwner, otherOwnerNames }: EditOwne
         }
     };
 
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-
+    const handleFormAction = (formData: FormData) => {
         if (!owner.name) {
             toast({ title: "Error", description: "Owner name cannot be empty.", variant: "destructive" });
             return;
@@ -87,23 +112,15 @@ export function EditOwnerForm({ owner: initialOwner, otherOwnerNames }: EditOwne
             }
         }
         
-        const formData = new FormData();
-        formData.append('id', owner.id);
-        formData.append('name', owner.name);
-        formData.append('commissionTiers', JSON.stringify(tiers));
+        formData.set('id', owner.id);
+        formData.set('name', owner.name);
+        formData.set('commissionTiers', JSON.stringify(tiers.map(({ id, busOwnerId, ...rest}) => rest)));
 
-        startTransition(async () => {
-            const result = await updateOwnerAction(formData);
-            if (result?.success === false) {
-                 toast({ title: "Update Failed", description: result.message, variant: "destructive" });
-            } else {
-                 toast({ title: "Success!", description: "Owner details have been updated."});
-            }
-        });
+        formAction(formData);
     };
 
     return (
-        <form onSubmit={handleSubmit}>
+        <form action={handleFormAction}>
             <Card className="max-w-3xl mx-auto">
                 <CardHeader>
                     <CardTitle>Edit Bus Owner</CardTitle>
@@ -142,11 +159,11 @@ export function EditOwnerForm({ owner: initialOwner, otherOwnerNames }: EditOwne
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor={`minSales-${index}`}>Min Sales</Label>
-                                        <Input id={`minSales-${index}`} type="number" placeholder="e.g., 1" required value={tier.minSales} onChange={e => handleTierChange(index, 'minSales', Number(e.target.value))} />
+                                        <Input id={`minSales-${index}`} type="number" placeholder="e.g., 1" required value={tier.minSales} onChange={e => handleTierChange(index, 'minSales', e.target.value)} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor={`maxSales-${index}`}>Max Sales</Label>
-                                        <Input id={`maxSales-${index}`} type="number" placeholder="e.g., 100" required value={tier.maxSales} onChange={e => handleTierChange(index, 'maxSales', Number(e.target.value))} />
+                                        <Input id={`maxSales-${index}`} type="number" placeholder="e.g., 100" required value={tier.maxSales} onChange={e => handleTierChange(index, 'maxSales', e.target.value)} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor={`type-${index}`}>Type</Label>
@@ -162,7 +179,7 @@ export function EditOwnerForm({ owner: initialOwner, otherOwnerNames }: EditOwne
                                     </div>
                                      <div className="space-y-2">
                                         <Label htmlFor={`value-${index}`}>{tier.type === 'FIXED' ? 'Amount ($)' : 'Rate (%)'}</Label>
-                                        <Input id={`value-${index}`} type="number" placeholder="e.g., 3" required value={tier.value} onChange={e => handleTierChange(index, 'value', Number(e.target.value))} />
+                                        <Input id={`value-${index}`} type="number" step="0.01" placeholder="e.g., 3" required value={tier.value} onChange={e => handleTierChange(index, 'value', e.target.value)} />
                                     </div>
                                 </div>
                                 <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => removeTier(index)} disabled={tiers.length <= 1}>
@@ -175,9 +192,7 @@ export function EditOwnerForm({ owner: initialOwner, otherOwnerNames }: EditOwne
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={() => router.push('/super-admin/owners')}>Cancel</Button>
-                    <Button type="submit" disabled={isPending}>
-                        {isPending ? 'Saving...' : 'Save Changes'}
-                    </Button>
+                    <SubmitButton />
                 </CardFooter>
             </Card>
         </form>

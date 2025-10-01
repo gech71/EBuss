@@ -10,10 +10,10 @@ import type { CommissionTier, CommissionType } from '@prisma/client';
 
 const tierSchema = z.object({
   id: z.string().optional(),
-  minSales: z.number().positive("Min Sales must be positive"),
-  maxSales: z.number().positive("Max Sales must be positive"),
+  minSales: z.coerce.number().positive("Min Sales must be positive"),
+  maxSales: z.coerce.number().positive("Max Sales must be positive"),
   type: z.enum(['PERCENTAGE', 'FIXED']),
-  value: z.number().positive("Value must be positive")
+  value: z.coerce.number().positive("Value must be positive")
 });
 
 const createOwnerSchema = z.object({
@@ -28,7 +28,7 @@ const updateOwnerSchema = z.object({
 });
 
 
-export async function createOwnerAction(formData: FormData) {
+export async function createOwnerAction(prevState: any, formData: FormData) {
     const rawData = {
         name: formData.get('name'),
         commissionTiers: JSON.parse(formData.get('commissionTiers') as string)
@@ -46,6 +46,11 @@ export async function createOwnerAction(formData: FormData) {
     const { name, commissionTiers } = validatedData.data;
 
     try {
+        const existingOwner = await prisma.busOwner.findFirst({ where: { name: { equals: name, mode: 'insensitive' } } });
+        if (existingOwner) {
+            return { success: false, message: 'An owner with this name already exists.' };
+        }
+
         await prisma.busOwner.create({
             data: {
                 name,
@@ -70,7 +75,7 @@ export async function createOwnerAction(formData: FormData) {
     redirect('/super-admin/owners');
 }
 
-export async function updateOwnerAction(formData: FormData) {
+export async function updateOwnerAction(prevState: any, formData: FormData) {
     const rawData = {
         id: formData.get('id'),
         name: formData.get('name'),
@@ -89,6 +94,11 @@ export async function updateOwnerAction(formData: FormData) {
     const { id, name, commissionTiers } = validatedData.data;
 
     try {
+         const existingOwner = await prisma.busOwner.findFirst({ where: { name: { equals: name, mode: 'insensitive' }, id: { not: id } } });
+        if (existingOwner) {
+            return { success: false, message: 'An owner with this name already exists.' };
+        }
+
         await prisma.$transaction(async (tx) => {
             // Update owner name
             await tx.busOwner.update({

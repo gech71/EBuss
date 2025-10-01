@@ -12,7 +12,8 @@ import { CalendarIcon } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
+import { useFormState, useFormStatus } from "react-dom";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import type { Route, Bus, Discount, Location } from "@prisma/client";
 import { updateRouteAction } from "@/app/admin/routes/actions";
@@ -24,17 +25,35 @@ interface EditRouteFormProps {
     discounts: Discount[];
 }
 
+const initialState = {
+    success: false,
+    message: '',
+}
+
+function SubmitButton() {
+    const { pending } = useFormStatus();
+    return (
+        <Button type="submit" disabled={pending}>{pending ? "Saving..." : "Save Changes"}</Button>
+    )
+}
+
 export function EditRouteForm({ route, locations, buses, discounts }: EditRouteFormProps) {
     const { toast } = useToast();
     const router = useRouter();
-    const [isPending, startTransition] = useTransition();
+    const [state, formAction] = useFormState(updateRouteAction, initialState);
 
     const [departureDate, setDepartureDate] = useState<Date | undefined>(new Date(route.departureTime));
     const [departureTime, setDepartureTime] = useState(format(new Date(route.departureTime), "HH:mm"));
     const [arrivalDate, setArrivalDate] = useState<Date | undefined>(new Date(route.arrivalTime));
     const [arrivalTime, setArrivalTime] = useState(format(new Date(route.arrivalTime), "HH:mm"));
 
-    const handleSubmit = (formData: FormData) => {
+    useEffect(() => {
+        if(state.message && !state.success) {
+            toast({ title: "Update Failed", description: state.message, variant: "destructive" });
+        }
+    }, [state, toast]);
+
+    const handleFormAction = (formData: FormData) => {
         if (!departureDate || !arrivalDate) {
             toast({ title: "Error", description: "Please fill out all fields.", variant: "destructive" });
             return;
@@ -52,24 +71,16 @@ export function EditRouteForm({ route, locations, buses, discounts }: EditRouteF
         formData.append('departureTime', departureTime);
         formData.append('arrivalDate', format(arrivalDate, 'yyyy-MM-dd'));
         formData.append('arrivalTime', arrivalTime);
-        // The form only submits the one busId, but we pass it as an array to match the schema
         const selectedBusId = formData.get('busId');
         formData.append('busIds', JSON.stringify(selectedBusId ? [selectedBusId] : []));
         formData.delete('busId');
 
 
-        startTransition(async () => {
-            const result = await updateRouteAction(formData);
-            if (result?.success === false) {
-                 toast({ title: "Update Failed", description: result.message, variant: "destructive" });
-            } else {
-                 toast({ title: "Success!", description: "Route has been updated."});
-            }
-        });
+        formAction(formData);
     };
 
     return (
-        <form action={handleSubmit}>
+        <form action={handleFormAction}>
             <Card className="max-w-xl mx-auto">
                 <CardHeader>
                     <CardTitle>Edit Route</CardTitle>
@@ -182,7 +193,7 @@ export function EditRouteForm({ route, locations, buses, discounts }: EditRouteF
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
                      <Button type="button" variant="outline" onClick={() => router.push('/admin/routes')}>Cancel</Button>
-                    <Button type="submit" disabled={isPending}>{isPending ? "Saving..." : "Save Changes"}</Button>
+                    <SubmitButton />
                 </CardFooter>
             </Card>
         </form>

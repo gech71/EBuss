@@ -1,16 +1,32 @@
+
+import type { Role, SeatStatus, SeatType, CommissionType } from "@prisma/client"
+
+// This file defines client-side types, which are similar to Prisma models.
+// They are used to ensure type safety in components and data providers
+// without passing Prisma-specific types to the client.
+
 export interface Seat {
-  id: string; // e.g., "1A", "1B"
-  status: 'available' | 'occupied' | 'selected';
-  type: 'seat' | 'aisle' | 'blocked' | 'driver';
-  priceModifier?: number; // For premium seats
+  id: string;
+  seatNumber: string;
+  status: SeatStatus;
+  type: SeatType;
+  layoutId?: string;
+}
+
+export interface SeatLayout {
+  id: string;
+  rows: number;
+  cols: number;
+  seats: Seat[];
 }
 
 export interface CommissionTier {
   id: string;
   minSales: number;
   maxSales: number;
-  type: 'fixed' | 'percentage';
+  type: CommissionType;
   value: number;
+  ownerId: string;
 }
 
 export interface BusOwner {
@@ -23,21 +39,23 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  ownerId: string | null;
-  role: string;
-  password?: string;
+  role: Role;
+  busOwnerId: string | null;
+  hashed_password?: string;
 }
 
 export interface Bus {
   id: string;
   name: string;
   capacity: number;
-  layout: {
-    rows: number;
-    cols: number;
-    seats: Seat[];
-  };
+  layout: SeatLayout;
   ownerId: string;
+}
+
+export interface Location {
+    id: string;
+    name: string;
+    ownerId: string;
 }
 
 export interface Route {
@@ -48,22 +66,18 @@ export interface Route {
   arrivalTime: Date;
   price: number;
   busId: string;
-  discountId?: string;
-}
-
-export interface Location {
-    id: string;
-    name: string;
+  discountId?: string | null;
 }
 
 export interface Booking {
   id:string;
   routeId: string;
-  seats: Seat[];
-  totalPrice: number;
-  bookingTime: Date;
   passengerName: string;
   passengerEmail: string;
+  totalPrice: number;
+  bookingTime: Date;
+  status: "VALID" | "CANCELLED" | "USED";
+  bookedSeats: { seatNumber: string }[];
 }
 
 export interface DiscountTier {
@@ -71,6 +85,7 @@ export interface DiscountTier {
   minTickets: number;
   maxTickets: number;
   percentage: number;
+  discountId: string;
 }
 
 export interface Discount {
