@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useMemo } from 'react';
-import type { Route, Bus, Location, BusOwner } from '@prisma/client';
+import type { Route, Bus, Location, BusOwner, Discount } from '@prisma/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar as CalendarIcon, Search, Bus as BusIcon, ArrowLeft, Check, ChevronsUpDown, Building } from 'lucide-react';
@@ -18,7 +18,8 @@ import { cn } from '@/lib/utils';
 type EnrichedRoute = Route & { 
   bus: Bus & { owner: BusOwner }, 
   origin: Location, 
-  destination: Location 
+  destination: Location,
+  discount: Discount | null
 };
 
 interface GroupedRoutes {
