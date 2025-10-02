@@ -56,6 +56,11 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'dekonpower.com',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.daimlertruck.com',
+        pathname: '/**',
       }
     ],
   },

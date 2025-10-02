@@ -53,7 +53,7 @@ export default async function Home() {
         {/* Hero Section */}
         <section className="relative h-[400px] md:h-[500px] flex items-center justify-center text-center text-white">
           <Image
-            src="https://dekonpower.com/wp-content/uploads/2024/06/df0bc-image-18.png"
+            src="https://www.daimlertruck.com/fileadmin/press/6/5/D654009/cms.jpeg"
             alt="A public bus on a clean road"
             fill
             className="object-cover"
