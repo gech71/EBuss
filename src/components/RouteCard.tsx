@@ -27,7 +27,7 @@ export function RouteCard({ route }: RouteCardProps) {
       <CardHeader className="p-4 pb-2">
         <div className="flex justify-between items-start">
             <div>
-                <CardTitle className="text-2xl font-semibold">
+                <CardTitle className="text-xl font-semibold">
                     <span>{destination?.name || 'Unknown'}</span>
                 </CardTitle>
                 <CardDescription>From {origin?.name || 'Unknown'}</CardDescription>
@@ -48,13 +48,15 @@ export function RouteCard({ route }: RouteCardProps) {
           <Clock className="w-4 h-4 mr-2" />
           <span>{new Date(route.departureTime).toLocaleDateString([], { month: 'short', day: 'numeric' })} at {new Date(route.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
         </div>
-        <div className="flex items-center text-sm text-muted-foreground">
-          <Ticket className="w-4 h-4 mr-2" />
-          <span>{bus?.name || 'Standard Bus'}</span>
-        </div>
-         <div className="flex items-center text-sm font-semibold text-foreground">
-          <Building className="w-4 h-4 mr-2 text-primary/80" />
-          <span>{bus?.owner.name || 'Unknown Operator'}</span>
+        <div className="flex justify-between items-center">
+            <div className="flex items-center text-sm text-muted-foreground">
+                <Ticket className="w-4 h-4 mr-2" />
+                <span>{bus?.name || 'Standard Bus'}</span>
+            </div>
+            <div className="flex items-center text-sm font-semibold text-primary">
+                <Building className="w-4 h-4 mr-1" />
+                <span>{bus?.owner.name || 'Unknown Operator'}</span>
+            </div>
         </div>
       </CardContent>
       <CardFooter className="p-4 pt-0">

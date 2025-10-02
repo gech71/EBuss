@@ -42,20 +42,22 @@ export function GroupedRouteCard({ routes }: GroupedRouteCardProps) {
                         {index > 0 && <Separator className="mb-3" />}
                         <div className="flex justify-between items-center gap-2">
                            <div>
-                                <div className="flex items-center text-sm font-semibold">
+                                <div className="text-sm font-semibold text-foreground/90">
                                     <span>{bus?.name || 'Standard Bus'}</span>
                                 </div>
-                                 <div className="text-sm font-semibold text-foreground/90 flex items-center gap-1.5">
-                                    <Building className="w-4 h-4 text-primary/80" />
+                                <div className="text-lg font-bold text-primary">${Number(route.price).toFixed(2)}</div>
+                           </div>
+                           <div className="flex flex-col items-end">
+                                <div className="flex items-center text-sm font-semibold text-primary mb-1">
+                                    <Building className="w-4 h-4 mr-1" />
                                     {bus.owner.name}
                                 </div>
-                                 <div className="text-lg font-bold text-primary">${Number(route.price).toFixed(2)}</div>
+                                <Button asChild className="bg-accent hover:bg-accent/90 text-accent-foreground" size="sm" disabled={isExpired}>
+                                    <Link href={!isExpired ? `/book/${route.id}` : '#'}>
+                                        {isExpired ? 'Expired' : 'Book'} <ArrowRight className="ml-2 h-4 w-4" />
+                                    </Link>
+                                </Button>
                            </div>
-                            <Button asChild className="bg-accent hover:bg-accent/90 text-accent-foreground" size="sm" disabled={isExpired}>
-                                <Link href={!isExpired ? `/book/${route.id}` : '#'}>
-                                    {isExpired ? 'Expired' : 'Book'} <ArrowRight className="ml-2 h-4 w-4" />
-                                </Link>
-                            </Button>
                         </div>
                     </div>
                 )
