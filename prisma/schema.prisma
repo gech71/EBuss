@@ -3,8 +3,8 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = ["native", "debian-openssl-3.0.x"]
+  provider        = "prisma-client-js"
+  binaryTargets   = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -13,16 +13,14 @@ datasource db {
 }
 
 model User {
-  id              String  @id @default(cuid())
+  id              String      @id @default(cuid())
   name            String
-  email           String  @unique
-  hashed_password String?
+  email           String      @unique
+  hashed_password String
   role            Role
   busOwnerId      String?
-  busOwner        BusOwner? @relation("AdminUsers", fields: [busOwnerId], references: [id])
+  busOwner        BusOwner?   @relation("OwnerAdmins", fields: [busOwnerId], references: [id])
   sessions        Session[]
-
-  @@index([busOwnerId])
 }
 
 model Session {
@@ -36,35 +34,42 @@ model BusOwner {
   id              String           @id @default(cuid())
   name            String           @unique
   buses           Bus[]
-  admins          User[]           @relation("AdminUsers")
   locations       Location[]
+  admins          User[]           @relation("OwnerAdmins")
   discounts       Discount[]
   commissionTiers CommissionTier[]
 }
 
 model CommissionTier {
   id       String         @id @default(cuid())
-  owner    BusOwner       @relation(fields: [ownerId], references: [id])
-  ownerId  String
-  minSales Float
-  maxSales Float
+  minSales Int
+  maxSales Int
   type     CommissionType
   value    Decimal
+  owner    BusOwner       @relation(fields: [ownerId], references: [id])
+  ownerId  String
+}
 
-  @@index([ownerId])
+model Location {
+  id                 String  @id @default(cuid())
+  name               String
+  ownerId            String
+  owner              BusOwner @relation(fields: [ownerId], references: [id])
+  routesOrigin       Route[] @relation("OriginRoutes")
+  routesDestination  Route[] @relation("DestinationRoutes")
+
+  @@unique([name, ownerId])
 }
 
 model Bus {
   id       String      @id @default(cuid())
   name     String
   capacity Int
+  routes   Route[]
   owner    BusOwner    @relation(fields: [ownerId], references: [id])
   ownerId  String
-  layout   SeatLayout  @relation(fields: [seatLayoutId], references: [id])
-  seatLayoutId String   @unique
-  routes   Route[]
-
-  @@index([ownerId])
+  layout   SeatLayout? @relation(fields: [seatLayoutId], references: [id])
+  seatLayoutId String? @unique
 }
 
 model SeatLayout {
@@ -76,27 +81,12 @@ model SeatLayout {
 }
 
 model Seat {
-  id         String     @id @default(cuid())
-  layout     SeatLayout @relation(fields: [layoutId], references: [id])
-  layoutId   String
-  seatNumber String
-  status     SeatStatus @default(AVAILABLE)
-  type       SeatType   @default(SEAT)
-
-  @@unique([layoutId, seatNumber])
-  @@index([layoutId])
-}
-
-model Location {
-  id                   String  @id @default(cuid())
-  name                 String
-  owner                BusOwner @relation(fields: [ownerId], references: [id])
-  ownerId              String
-  routesOrigin         Route[] @relation("OriginRoutes")
-  routesDestination    Route[] @relation("DestinationRoutes")
-
-  @@unique([ownerId, name])
-  @@index([ownerId])
+  id          String     @id @default(cuid())
+  seatNumber  String
+  status      SeatStatus
+  type        SeatType
+  layout      SeatLayout @relation(fields: [layoutId], references: [id])
+  layoutId    String
 }
 
 model Route {
@@ -107,41 +97,12 @@ model Route {
   destinationId String
   departureTime DateTime
   arrivalTime   DateTime
-  price         Decimal
+  price         Decimal   @db.Decimal(10, 2)
   bus           Bus       @relation(fields: [busId], references: [id])
   busId         String
   bookings      Booking[]
   discount      Discount? @relation(fields: [discountId], references: [id])
   discountId    String?
-
-  @@index([busId])
-  @@index([discountId])
-  @@index([originId])
-  @@index([destinationId])
-}
-
-model Booking {
-  id             String       @id @default(cuid())
-  route          Route        @relation(fields: [routeId], references: [id])
-  routeId        String
-  bookedSeats    BookedSeat[]
-  totalPrice     Decimal
-  bookingTime    DateTime     @default(now())
-  passengerName  String
-  passengerEmail String
-  status         BookingStatus @default(VALID)
-
-  @@index([routeId])
-}
-
-model BookedSeat {
-    id String @id @default(cuid())
-    booking Booking @relation(fields: [bookingId], references: [id])
-    bookingId String
-    seatNumber String
-
-    @@unique([bookingId, seatNumber])
-    @@index([bookingId])
 }
 
 model Discount {
@@ -153,55 +114,59 @@ model Discount {
   routes    Route[]
   owner     BusOwner       @relation(fields: [ownerId], references: [id])
   ownerId   String
-
-  @@index([ownerId])
 }
 
 model DiscountTier {
   id         String   @id @default(cuid())
-  discount   Discount @relation(fields: [discountId], references: [id])
-  discountId String
   minTickets Int
   maxTickets Int
   percentage Decimal
+  discount   Discount @relation(fields: [discountId], references: [id], onDelete: Cascade)
+  discountId String
+}
 
-  @@index([discountId])
+model Booking {
+  id             String       @id @default(cuid())
+  passengerName  String
+  passengerEmail String
+  route          Route        @relation(fields: [routeId], references: [id])
+  routeId        String
+  totalPrice     Decimal      @db.Decimal(10, 2)
+  bookingTime    DateTime     @default(now())
+  status         String       @default("VALID")
+  bookedSeats    BookedSeat[]
+}
+
+model BookedSeat {
+  id          String   @id @default(cuid())
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId   String
+  seatNumber  String
 }
 
 model LoginAttempt {
   id        String   @id @default(cuid())
   ipAddress String
   timestamp DateTime @default(now())
+}
 
-  @@index([ipAddress, timestamp])
+enum SeatStatus {
+  AVAILABLE
+  OCCUPIED
+}
+
+enum SeatType {
+  AISLE
+  SEAT
+}
+
+enum CommissionType {
+  PERCENTAGE
+  FIXED
 }
 
 enum Role {
   CUSTOMER
   ADMIN
   SUPER_ADMIN
-}
-
-enum SeatStatus {
-  AVAILABLE
-  OCCUPIED
-  UNAVAILABLE
-}
-
-enum SeatType {
-  SEAT
-  AISLE
-  DRIVER
-  BLOCKED
-}
-
-enum BookingStatus {
-  VALID
-  CANCELLED
-  USED
-}
-
-enum CommissionType {
-  PERCENTAGE
-  FIXED
 }

@@ -53,8 +53,8 @@ export default async function Home() {
         {/* Hero Section */}
         <section className="relative h-[400px] md:h-[500px] flex items-center justify-center text-center text-white">
           <Image
-            src="https://picsum.photos/seed/public-bus/1800/600"
-            alt="A public bus driving on a clean road"
+            src="https://picsum.photos/seed/public-bus-road/1800/600"
+            alt="A public bus on the road"
             fill
             className="object-cover"
             priority
@@ -78,9 +78,10 @@ export default async function Home() {
 
         {/* Featured Routes Section */}
         <div className="container mx-auto px-4 py-12 md:py-2">
-          <FeaturedRoutes routes={routes} owners={owners} />
+          <FeaturedRoutes routes={routes} />
         </div>
       </main>
     </div>
   );
 }
+
