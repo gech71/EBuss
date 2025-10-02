@@ -23,7 +23,7 @@ export function GroupedRouteCard({ routes }: GroupedRouteCardProps) {
     <Card className="flex flex-col hover:shadow-lg transition-shadow duration-300 relative">
        {isExpired && <Badge variant="destructive" className="absolute top-2 right-2 z-10">Expired</Badge>}
       <CardHeader className="p-4">
-        <CardTitle className="font-sans text-xl font-semibold flex items-center">
+        <CardTitle className="text-xl font-semibold flex items-center">
           <span>{destination?.name || 'Unknown'}</span>
         </CardTitle>
         <CardDescription>From {origin?.name || 'Unknown'}</CardDescription>

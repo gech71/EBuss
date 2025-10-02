@@ -28,7 +28,7 @@ export function RouteCard({ route }: RouteCardProps) {
       <CardHeader className="p-4 pb-2">
         <div className="flex justify-between items-start">
             <div>
-                <CardTitle className="font-sans text-2xl font-semibold">
+                <CardTitle className="text-2xl font-semibold">
                     <span>{destination?.name || 'Unknown'}</span>
                 </CardTitle>
                 <CardDescription>From {origin?.name || 'Unknown'}</CardDescription>
