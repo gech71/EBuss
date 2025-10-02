@@ -13,7 +13,7 @@ export default async function BookPage({ params }: BookPageProps) {
   const { user } = await validateRequest();
   const routeId = params.id;
 
-  const route = await prisma.route.findUnique({
+  const routeData = await prisma.route.findUnique({
     where: { id: routeId },
     include: {
       origin: true,
@@ -35,21 +35,37 @@ export default async function BookPage({ params }: BookPageProps) {
     },
   });
 
-  if (!route) {
+  if (!routeData) {
     notFound();
   }
   
-  const alternativeRoutes = await prisma.route.findMany({
+  const alternativeRoutesData = await prisma.route.findMany({
       where: {
-          originId: route.originId,
-          destinationId: route.destinationId,
-          departureTime: route.departureTime,
-          id: { not: route.id }
+          originId: routeData.originId,
+          destinationId: routeData.destinationId,
+          departureTime: routeData.departureTime,
+          id: { not: routeData.id }
       },
       include: {
           bus: true
       }
   })
+
+  // Sanitize Decimal to number for client components
+  const route = {
+    ...routeData,
+    price: Number(routeData.price),
+    discount: routeData.discount ? {
+        ...routeData.discount,
+        tiers: routeData.discount.tiers.map(tier => ({...tier, percentage: Number(tier.percentage)}))
+    } : null
+  };
+
+  const alternativeRoutes = [routeData, ...alternativeRoutesData].map(altRoute => ({
+      ...altRoute,
+      price: Number(altRoute.price)
+  }))
+
 
   return (
     <div className="flex flex-col min-h-screen bg-muted/20">
@@ -58,7 +74,7 @@ export default async function BookPage({ params }: BookPageProps) {
         <div className="max-w-3xl mx-auto">
           <BookingForm 
             route={route} 
-            alternativeRoutes={[route, ...alternativeRoutes]}
+            alternativeRoutes={alternativeRoutes}
           />
         </div>
       </main>
