@@ -4,17 +4,28 @@ import { Analytics } from "@/components/admin/Analytics";
 import prisma from "@/lib/prisma";
 
 export default async function SuperAdminDashboard() {
-  const bookings = await prisma.booking.findMany({
+  const bookingsData = await prisma.booking.findMany({
     include: {
-      bookedSeats: true
+      bookedSeats: true,
     },
     orderBy: {
-      bookingTime: 'desc'
+      bookingTime: "desc",
+    },
+  });
+
+  const routes = await prisma.route.findMany({
+    include: {
+      origin: true,
+      destination: true,
     }
   });
 
-  const routes = await prisma.route.findMany();
   const buses = await prisma.bus.findMany();
+  
+  const bookings = bookingsData.map(booking => ({
+    ...booking,
+    totalPrice: booking.totalPrice.toNumber(),
+  }));
 
   return (
     <div className="space-y-8">

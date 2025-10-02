@@ -31,7 +31,7 @@ export default async function AdminDashboard() {
 
   const routeIds = routes.map(r => r.id);
 
-  const bookings = await prisma.booking.findMany({
+  const bookingsData = await prisma.booking.findMany({
     where: {
       routeId: {
         in: routeIds,
@@ -45,23 +45,18 @@ export default async function AdminDashboard() {
     },
   });
 
-  const totalRevenue = bookings.reduce((acc, booking) => acc + booking.totalPrice, 0);
+  const totalRevenue = bookingsData.reduce((acc, booking) => acc + booking.totalPrice.toNumber(), 0);
   
-  // To pass to client components, we need to make sure complex types are simplified
-  const sanitizedRoutes = routes.map(r => ({
-      ...r,
-      origin: r.origin.name,
-      destination: r.destination.name,
-      departureTime: r.departureTime.toISOString(),
-      arrivalTime: r.arrivalTime.toISOString(),
-      price: Number(r.price)
+  const bookings = bookingsData.map(booking => ({
+    ...booking,
+    totalPrice: booking.totalPrice.toNumber(),
   }));
 
 
   return (
     <div className="space-y-8">
 
-      <Analytics bookings={bookings} routes={sanitizedRoutes} buses={buses} />
+      <Analytics bookings={bookings} routes={routes} buses={buses} />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
@@ -105,7 +100,7 @@ export default async function AdminDashboard() {
       </div>
 
       <div>
-        <RecentBookings bookings={bookings} routes={sanitizedRoutes} />
+        <RecentBookings bookings={bookings} routes={routes} />
       </div>
     </div>
   );
