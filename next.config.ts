@@ -1,3 +1,4 @@
+
 // next.config.ts
 import type { NextConfig } from 'next';
 
@@ -51,6 +52,11 @@ const nextConfig: NextConfig = {
         hostname: 'picsum.photos',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'dekonpower.com',
+        pathname: '/**',
+      }
     ],
   },
 };
