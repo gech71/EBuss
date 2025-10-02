@@ -6,7 +6,7 @@ import type { Route, Bus, Location, BusOwner } from '@prisma/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowRight, Clock } from 'lucide-react';
+import { ArrowRight, Clock, Building } from 'lucide-react';
 import { Separator } from './ui/separator';
 import { Badge } from './ui/badge';
 
@@ -45,7 +45,10 @@ export function GroupedRouteCard({ routes }: GroupedRouteCardProps) {
                                 <div className="flex items-center text-sm font-semibold">
                                     <span>{bus?.name || 'Standard Bus'}</span>
                                 </div>
-                                 <div className="text-xs text-muted-foreground">by {bus.owner.name}</div>
+                                 <div className="text-sm font-semibold text-foreground/90 flex items-center gap-1.5">
+                                    <Building className="w-4 h-4 text-primary/80" />
+                                    {bus.owner.name}
+                                </div>
                                  <div className="text-lg font-bold text-primary">${Number(route.price).toFixed(2)}</div>
                            </div>
                             <Button asChild className="bg-accent hover:bg-accent/90 text-accent-foreground" size="sm" disabled={isExpired}>

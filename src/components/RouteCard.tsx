@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import type { Route, Bus, Location, Discount, BusOwner } from '@prisma/client';
@@ -53,8 +52,8 @@ export function RouteCard({ route }: RouteCardProps) {
           <Ticket className="w-4 h-4 mr-2" />
           <span>{bus?.name || 'Standard Bus'}</span>
         </div>
-         <div className="flex items-center text-sm text-muted-foreground">
-          <Building className="w-4 h-4 mr-2" />
+         <div className="flex items-center text-sm font-semibold text-foreground">
+          <Building className="w-4 h-4 mr-2 text-primary/80" />
           <span>{bus?.owner.name || 'Unknown Operator'}</span>
         </div>
       </CardContent>
