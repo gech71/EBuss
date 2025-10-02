@@ -12,16 +12,32 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Pagination, PaginationContent, PaginationItem, PaginationPrevious, PaginationNext } from './ui/pagination';
 import { cn } from '@/lib/utils';
 
+type EnrichedRoute = Route & { 
+  bus: Bus & { owner: BusOwner }, 
+  origin: Location, 
+  destination: Location, 
+  discount: Discount | null 
+};
+
 interface FeaturedRoutesProps {
-  routes: (Route & { bus: Bus, origin: Location, destination: Location, discount: Discount | null })[];
-  owners: BusOwner[];
+  routes: EnrichedRoute[];
 }
 
 const ITEMS_PER_PAGE = 8;
 
-export function FeaturedRoutes({ routes, owners }: FeaturedRoutesProps) {
+export function FeaturedRoutes({ routes }: FeaturedRoutesProps) {
+  const owners = useMemo(() => {
+    const ownerMap = new Map<string, BusOwner>();
+    routes.forEach(route => {
+      if (!ownerMap.has(route.bus.owner.id)) {
+        ownerMap.set(route.bus.owner.id, route.bus.owner);
+      }
+    });
+    return Array.from(ownerMap.values()).sort((a,b) => a.name.localeCompare(b.name));
+  }, [routes]);
+  
   const [openOwners, setOpenOwners] = useState(false);
-  const [selectedOwnerIds, setSelectedOwnerIds] = useState<string[]>(owners.map(o => o.id));
+  const [selectedOwnerIds, setSelectedOwnerIds] = useState<string[]>([]);
 
   const [discountedPage, setDiscountedPage] = useState(1);
   const [otherRoutesPage, setOtherRoutesPage] = useState(1);
@@ -29,11 +45,11 @@ export function FeaturedRoutes({ routes, owners }: FeaturedRoutesProps) {
   const upcomingRoutes = routes.filter(route => new Date(route.departureTime) >= new Date());
 
   const filteredRoutes = useMemo(() => {
-    if (selectedOwnerIds.length === owners.length) {
+    if (selectedOwnerIds.length === 0) {
       return upcomingRoutes;
     }
     return upcomingRoutes.filter(route => selectedOwnerIds.includes(route.bus.ownerId));
-  }, [upcomingRoutes, selectedOwnerIds, owners.length]);
+  }, [upcomingRoutes, selectedOwnerIds]);
 
   const discountedRoutes = filteredRoutes.filter(route => route.discount);
   const otherRoutes = filteredRoutes.filter(route => !route.discount);
@@ -161,7 +177,7 @@ export function FeaturedRoutes({ routes, owners }: FeaturedRoutesProps) {
               <Ticket className="w-8 h-8 text-primary" />
               <h2 className="font-headline text-3xl font-semibold text-primary">All Routes</h2>
             </div>
-             {!discountedRoutes.length && <OwnerFilter />}
+             {discountedRoutes.length === 0 && <OwnerFilter />}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {paginatedOtherRoutes.map(route => (

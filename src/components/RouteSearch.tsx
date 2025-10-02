@@ -1,11 +1,12 @@
 
+
 "use client";
 
 import { useState, useMemo } from 'react';
 import type { Route, Bus, Location, BusOwner } from '@prisma/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar as CalendarIcon, Search, Bus as BusIcon, ArrowLeft, Check, ChevronsUpDown } from 'lucide-react';
+import { Calendar as CalendarIcon, Search, Bus as BusIcon, ArrowLeft, Check, ChevronsUpDown, Building } from 'lucide-react';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { format } from 'date-fns';
@@ -14,12 +15,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
 import { cn } from '@/lib/utils';
 
+type EnrichedRoute = Route & { 
+  bus: Bus & { owner: BusOwner }, 
+  origin: Location, 
+  destination: Location 
+};
+
 interface GroupedRoutes {
-  [key: string]: (Route & { bus: Bus, origin: Location, destination: Location })[];
+  [key: string]: EnrichedRoute[];
 }
 
 interface RouteSearchProps {
-    routes: (Route & { bus: Bus, origin: Location, destination: Location })[];
+    routes: EnrichedRoute[];
     locations: Location[];
     owners: BusOwner[];
 }
@@ -28,9 +35,9 @@ export function RouteSearch({ routes, locations, owners }: RouteSearchProps) {
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [date, setDate] = useState<Date | undefined>();
-  const [searchResults, setSearchResults] = useState<(Route & { bus: Bus, origin: Location, destination: Location })[]>([]);
+  const [searchResults, setSearchResults] = useState<EnrichedRoute[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
-  const [selectedOwnerIds, setSelectedOwnerIds] = useState<string[]>(owners.map(o => o.id));
+  const [selectedOwnerIds, setSelectedOwnerIds] = useState<string[]>([]);
 
   const [openDate, setOpenDate] = useState(false);
   const [openOwners, setOpenOwners] = useState(false);
@@ -61,16 +68,18 @@ export function RouteSearch({ routes, locations, owners }: RouteSearchProps) {
   };
 
   const filteredLocations = useMemo(() => {
-    if (selectedOwnerIds.length === 0 || selectedOwnerIds.length === owners.length) {
+    if (selectedOwnerIds.length === 0) {
       return locations;
     }
-    return locations.filter(location =>
-      routes.some(route =>
-        (route.originId === location.id || route.destinationId === location.id) &&
-        selectedOwnerIds.includes(route.bus.ownerId)
-      )
-    );
-  }, [selectedOwnerIds, locations, routes, owners.length]);
+    const locationIdsInFilteredRoutes = new Set<string>();
+    routes.forEach(route => {
+      if (selectedOwnerIds.includes(route.bus.ownerId)) {
+        locationIdsInFilteredRoutes.add(route.originId);
+        locationIdsInFilteredRoutes.add(route.destinationId);
+      }
+    });
+    return locations.filter(location => locationIdsInFilteredRoutes.has(location.id));
+  }, [selectedOwnerIds, locations, routes]);
 
   const selectedOwners = owners.filter(o => selectedOwnerIds.includes(o.id));
 
@@ -213,10 +222,7 @@ export function RouteSearch({ routes, locations, owners }: RouteSearchProps) {
           {Object.keys(groupedSearchResults).length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {Object.values(groupedSearchResults).map((routeGroup, index) => {
-                if (routeGroup.length > 1) {
                   return <GroupedRouteCard key={index} routes={routeGroup} />;
-                }
-                return <GroupedRouteCard key={routeGroup[0].id} routes={routeGroup}/>;
               })}
             </div>
           ) : (
