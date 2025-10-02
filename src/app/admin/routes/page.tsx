@@ -15,7 +15,7 @@ export default async function AdminRoutesPage() {
     return redirect('/login');
   }
 
-  const routes = await prisma.route.findMany({
+  const routesData = await prisma.route.findMany({
     where: {
       bus: {
         ownerId: user.busOwnerId
@@ -29,6 +29,11 @@ export default async function AdminRoutesPage() {
       departureTime: 'asc'
     }
   });
+
+  const routes = routesData.map(route => ({
+    ...route,
+    price: Number(route.price)
+  }));
 
   return (
     <Card>
