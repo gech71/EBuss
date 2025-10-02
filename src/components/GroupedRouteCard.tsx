@@ -1,7 +1,8 @@
 
+
 "use client";
 
-import type { Route, Bus, Location } from '@prisma/client';
+import type { Route, Bus, Location, BusOwner } from '@prisma/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -10,7 +11,7 @@ import { Separator } from './ui/separator';
 import { Badge } from './ui/badge';
 
 interface GroupedRouteCardProps {
-  routes: (Route & { bus: Bus, origin: Location, destination: Location })[];
+  routes: (Route & { bus: Bus & { owner: BusOwner }, origin: Location, destination: Location })[];
 }
 
 export function GroupedRouteCard({ routes }: GroupedRouteCardProps) {
@@ -22,7 +23,7 @@ export function GroupedRouteCard({ routes }: GroupedRouteCardProps) {
     <Card className="flex flex-col hover:shadow-lg transition-shadow duration-300 relative">
        {isExpired && <Badge variant="destructive" className="absolute top-2 right-2 z-10">Expired</Badge>}
       <CardHeader className="p-4">
-        <CardTitle className="font-headline text-xl flex items-center">
+        <CardTitle className="font-sans text-xl font-semibold flex items-center">
           <span>{destination?.name || 'Unknown'}</span>
         </CardTitle>
         <CardDescription>From {origin?.name || 'Unknown'}</CardDescription>
@@ -44,7 +45,8 @@ export function GroupedRouteCard({ routes }: GroupedRouteCardProps) {
                                 <div className="flex items-center text-sm font-semibold">
                                     <span>{bus?.name || 'Standard Bus'}</span>
                                 </div>
-                                 <div className="text-lg font-bold text-primary">${route.price.toFixed(2)}</div>
+                                 <div className="text-xs text-muted-foreground">by {bus.owner.name}</div>
+                                 <div className="text-lg font-bold text-primary">${Number(route.price).toFixed(2)}</div>
                            </div>
                             <Button asChild className="bg-accent hover:bg-accent/90 text-accent-foreground" size="sm" disabled={isExpired}>
                                 <Link href={!isExpired ? `/book/${route.id}` : '#'}>

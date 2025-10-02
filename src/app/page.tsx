@@ -1,4 +1,5 @@
 
+
 import { Header } from "@/components/Header";
 import { RouteSearch } from "@/components/RouteSearch";
 import { validateRequest } from "@/app/lib/auth";
@@ -14,7 +15,11 @@ export default async function Home() {
     include: {
         origin: true,
         destination: true,
-        bus: true,
+        bus: {
+          include: {
+            owner: true,
+          }
+        },
         discount: true,
     },
     orderBy: {
@@ -73,7 +78,7 @@ export default async function Home() {
 
         {/* Featured Routes Section */}
         <div className="container mx-auto px-4 py-12 md:py-16">
-          <FeaturedRoutes routes={routes} owners={owners} />
+          <FeaturedRoutes routes={routes} />
         </div>
       </main>
     </div>

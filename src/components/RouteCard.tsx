@@ -1,15 +1,21 @@
 
+
 "use client";
 
-import type { Route, Bus, Location, Discount } from '@prisma/client';
+import type { Route, Bus, Location, Discount, BusOwner } from '@prisma/client';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowRight, Clock, Ticket, Percent } from 'lucide-react';
+import { ArrowRight, Clock, Ticket, Percent, Building } from 'lucide-react';
 import { Badge } from './ui/badge';
 
 interface RouteCardProps {
-  route: Route & { origin: Location, destination: Location, bus: Bus, discount: Discount | null };
+  route: Route & { 
+    origin: Location, 
+    destination: Location, 
+    bus: Bus & { owner: BusOwner }, 
+    discount: Discount | null 
+  };
 }
 
 export function RouteCard({ route }: RouteCardProps) {
@@ -22,7 +28,7 @@ export function RouteCard({ route }: RouteCardProps) {
       <CardHeader className="p-4 pb-2">
         <div className="flex justify-between items-start">
             <div>
-                <CardTitle className="font-headline text-2xl">
+                <CardTitle className="font-sans text-2xl font-semibold">
                     <span>{destination?.name || 'Unknown'}</span>
                 </CardTitle>
                 <CardDescription>From {origin?.name || 'Unknown'}</CardDescription>
@@ -34,7 +40,7 @@ export function RouteCard({ route }: RouteCardProps) {
                         Discount
                     </Badge>
                 )}
-                <div className="text-2xl font-bold text-primary">${route.price.toFixed(2)}</div>
+                <div className="text-2xl font-bold text-primary">${Number(route.price).toFixed(2)}</div>
              </div>
         </div>
       </CardHeader>
@@ -46,6 +52,10 @@ export function RouteCard({ route }: RouteCardProps) {
         <div className="flex items-center text-sm text-muted-foreground">
           <Ticket className="w-4 h-4 mr-2" />
           <span>{bus?.name || 'Standard Bus'}</span>
+        </div>
+         <div className="flex items-center text-sm text-muted-foreground">
+          <Building className="w-4 h-4 mr-2" />
+          <span>{bus?.owner.name || 'Unknown Operator'}</span>
         </div>
       </CardContent>
       <CardFooter className="p-4 pt-0">
