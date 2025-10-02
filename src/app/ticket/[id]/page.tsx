@@ -1,4 +1,5 @@
 
+
 import { Header } from '@/components/Header';
 import { TicketDisplay } from '@/components/booking/TicketDisplay';
 import { validateRequest } from '@/app/lib/auth';

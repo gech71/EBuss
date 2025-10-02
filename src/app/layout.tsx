@@ -7,7 +7,7 @@ import { DataProvider } from '@/components/DataProvider';
 /*
 import type {Metadata} from 'next';
 export const metadata: Metadata = {
-  title: 'EZBus',
+  title: 'NibTeraBuss',
   description: 'The easiest way to book your bus tickets.',
 };
 */
@@ -20,7 +20,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
        <head>
-        <title>EZBus</title>
+        <title>NibTeraBuss</title>
         <meta name="description" content="The easiest way to book your bus tickets." />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

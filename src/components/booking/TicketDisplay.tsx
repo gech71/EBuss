@@ -30,7 +30,7 @@ export function TicketDisplay({ booking }: TicketDisplayProps) {
     if (ticketRef.current) {
       html2canvas(ticketRef.current, { useCORS: true }).then((canvas) => {
         const link = document.createElement("a");
-        link.download = `EZBus-Ticket-${booking?.id}.png`;
+        link.download = `NibTeraBuss-Ticket-${booking?.id}.png`;
         link.href = canvas.toDataURL("image/png");
         link.click();
       });
@@ -68,7 +68,7 @@ export function TicketDisplay({ booking }: TicketDisplayProps) {
         <Card ref={ticketRef} className="bg-card shadow-2xl rounded-lg overflow-hidden">
             <CardHeader className="bg-primary text-primary-foreground p-6">
                 <CardTitle className="font-headline text-3xl">Boarding Pass</CardTitle>
-                <CardDescription className="text-primary-foreground/80">Your ticket for EZBus</CardDescription>
+                <CardDescription className="text-primary-foreground/80">Your ticket for NibTeraBuss</CardDescription>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
                 <div className="flex items-center justify-center">
@@ -114,7 +114,7 @@ export function TicketDisplay({ booking }: TicketDisplayProps) {
                 </div>
             </CardContent>
             <CardFooter className="bg-muted/50 p-4">
-                <p className="text-xs text-muted-foreground text-center w-full">Please have this QR code ready for scanning before boarding. Thank you for choosing EZBus!</p>
+                <p className="text-xs text-muted-foreground text-center w-full">Please have this QR code ready for scanning before boarding. Thank you for choosing NibTeraBuss!</p>
             </CardFooter>
         </Card>
 
