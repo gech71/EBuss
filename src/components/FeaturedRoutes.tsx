@@ -111,7 +111,7 @@ export function FeaturedRoutes({ routes, owners }: FeaturedRoutesProps) {
   );
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-2">
       {discountedRoutes.length > 0 && (
         <section>
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">

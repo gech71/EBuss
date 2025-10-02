@@ -72,7 +72,7 @@ export default async function Home() {
         </div>
 
         {/* Featured Routes Section */}
-        <div className="container mx-auto px-4 py-12 md:py-16">
+        <div className="container mx-auto px-4 py-12 md:py-2">
           <FeaturedRoutes routes={routes} owners={owners} />
         </div>
       </main>
