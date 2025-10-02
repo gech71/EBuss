@@ -13,15 +13,12 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
-import type { Booking, Route, Bus } from "@prisma/client";
+import type { Booking, Route, Bus, Location } from "@prisma/client";
 
-interface SanitizedRoute {
-    id: string;
-    origin: string;
-    destination: string;
-    departureTime: string;
-    price: number;
-    busId: string;
+interface AnalyticsProps {
+    bookings: (Booking & { bookedSeats: { seatNumber: string }[] })[];
+    routes: (Route & { origin: Location, destination: Location })[];
+    buses: Bus[];
 }
 
 interface RouteStat {
@@ -32,12 +29,6 @@ interface RouteStat {
     ticketsSold: number;
     revenue: number;
     potentialRevenue: number;
-}
-
-interface AnalyticsProps {
-    bookings: (Booking & { bookedSeats: { seatNumber: string }[] })[];
-    routes: SanitizedRoute[];
-    buses: Bus[];
 }
 
 export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
@@ -60,7 +51,7 @@ export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
         const potentialRevenue = todayRoutes.reduce((acc, route) => {
             const bus = buses.find(b => b.id === route.busId);
             const capacity = bus?.capacity || 0;
-            return acc + (capacity * route.price);
+            return acc + (capacity * Number(route.price));
         }, 0);
 
         const actualRevenue = todayBookings.reduce((acc, booking) => acc + booking.totalPrice, 0);
@@ -90,16 +81,17 @@ export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
             
             const bus = buses.find(b => b.id === route.busId);
             const capacity = bus?.capacity || 0;
+            const price = Number(route.price);
 
             if (!stats[route.id]) {
                 stats[route.id] = {
                     routeId: route.id,
-                    origin: route.origin,
-                    destination: route.destination,
-                    price: route.price,
+                    origin: route.origin.name,
+                    destination: route.destination.name,
+                    price: price,
                     ticketsSold: 0,
                     revenue: 0,
-                    potentialRevenue: capacity * route.price,
+                    potentialRevenue: capacity * price,
                 };
             }
 
@@ -231,7 +223,7 @@ export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
                                     <TableCell className="text-right text-muted-foreground">${stat.potentialRevenue.toFixed(2)}</TableCell>
                                     <TableCell className="text-right">
                                         <Badge className="bg-green-600 hover:bg-green-700">
-                                            {totalRevenue > 0 ? ((stat.revenue / totalRevenue) * 100).toFixed(1) : 0}%
+                                            {totalRevenue > 0 ? ((stat.revenue / totalRevenue) * 100).toFixed(1) : '0.0'}%
                                         </Badge>
                                     </TableCell>
                                 </TableRow>
