@@ -98,6 +98,7 @@ async function main() {
   // 4. Create Users
   await prisma.user.create({
     data: {
+      id: 'user-super-admin',
       name: 'Super Admin',
       email: 'super@example.com',
       hashed_password: await new Argon2id().hash('password'),
@@ -107,6 +108,7 @@ async function main() {
 
   await prisma.user.create({
     data: {
+      id: 'user-admin-1',
       name: 'Admin User',
       email: 'admin@example.com',
       hashed_password: await new Argon2id().hash('password'),
@@ -119,6 +121,7 @@ async function main() {
 
    await prisma.user.create({
     data: {
+      id: 'user-admin-2',
       name: 'RoadRunner Admin',
       email: 'runner@example.com',
       hashed_password: await new Argon2id().hash('password'),
