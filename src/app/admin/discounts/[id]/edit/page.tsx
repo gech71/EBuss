@@ -27,7 +27,7 @@ export default async function EditDiscountPage({ params }: EditDiscountPageProps
     // Prisma returns Decimal for 'value', which needs to be serialized for the client.
     const sanitizedDiscount = {
       ...discount,
-      tiers: discount.tiers.map(tier => ({...tier, percentage: tier.percentage}))
+      tiers: discount.tiers.map(tier => ({...tier, percentage: Number(tier.percentage)}))
     }
 
     return (

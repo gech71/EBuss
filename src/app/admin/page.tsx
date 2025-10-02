@@ -45,18 +45,20 @@ export default async function AdminDashboard() {
     },
   });
 
-  const totalRevenue = bookingsData.reduce((acc, booking) => acc + booking.totalPrice.toNumber(), 0);
+  const totalRevenue = bookingsData.reduce((acc, booking) => acc + Number(booking.totalPrice), 0);
   
   const bookings = bookingsData.map(booking => ({
     ...booking,
-    totalPrice: booking.totalPrice.toNumber(),
+    totalPrice: Number(booking.totalPrice),
   }));
+
+  const sanitizedRoutes = routes.map(r => ({ ...r, price: Number(r.price)}));
 
 
   return (
     <div className="space-y-8">
 
-      <Analytics bookings={bookings} routes={routes} buses={buses} />
+      <Analytics bookings={bookings} routes={sanitizedRoutes} buses={buses} />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>

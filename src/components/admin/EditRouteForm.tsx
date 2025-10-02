@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -161,7 +162,7 @@ export function EditRouteForm({ route, locations, buses, discounts }: EditRouteF
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="price">Price</Label>
-                                <Input id="price" name="price" type="number" step="0.01" placeholder="e.g., 45.00" required defaultValue={route.price} />
+                                <Input id="price" name="price" type="number" step="0.01" placeholder="e.g., 45.00" required defaultValue={Number(route.price)} />
                             </div>
                              <div className="space-y-2">
                                 <Label htmlFor="discount">Discount Offer</Label>

@@ -15,9 +15,11 @@ import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import type { Booking, Route, Bus, Location } from "@prisma/client";
 
+type SanitizedRoute = Route & { price: number; origin: Location, destination: Location };
+
 interface AnalyticsProps {
     bookings: (Booking & { bookedSeats: { seatNumber: string }[] })[];
-    routes: (Route & { origin: Location, destination: Location })[];
+    routes: SanitizedRoute[];
     buses: Bus[];
 }
 
@@ -51,10 +53,10 @@ export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
         const potentialRevenue = todayRoutes.reduce((acc, route) => {
             const bus = buses.find(b => b.id === route.busId);
             const capacity = bus?.capacity || 0;
-            return acc + (capacity * Number(route.price));
+            return acc + (capacity * route.price);
         }, 0);
 
-        const actualRevenue = todayBookings.reduce((acc, booking) => acc + booking.totalPrice, 0);
+        const actualRevenue = todayBookings.reduce((acc, booking) => acc + Number(booking.totalPrice), 0);
 
         const effectiveness = potentialRevenue > 0 ? (actualRevenue / potentialRevenue) * 100 : 0;
 
@@ -81,7 +83,7 @@ export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
             
             const bus = buses.find(b => b.id === route.busId);
             const capacity = bus?.capacity || 0;
-            const price = Number(route.price);
+            const price = route.price;
 
             if (!stats[route.id]) {
                 stats[route.id] = {
@@ -96,7 +98,7 @@ export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
             }
 
             stats[route.id].ticketsSold += booking.bookedSeats.length;
-            stats[route.id].revenue += booking.totalPrice;
+            stats[route.id].revenue += Number(booking.totalPrice);
         });
 
         return Object.values(stats).sort((a, b) => b.revenue - a.revenue);

@@ -13,7 +13,7 @@ export default async function SuperAdminDashboard() {
     },
   });
 
-  const routes = await prisma.route.findMany({
+  const routesData = await prisma.route.findMany({
     include: {
       origin: true,
       destination: true,
@@ -24,8 +24,10 @@ export default async function SuperAdminDashboard() {
   
   const bookings = bookingsData.map(booking => ({
     ...booking,
-    totalPrice: booking.totalPrice.toNumber(),
+    totalPrice: Number(booking.totalPrice),
   }));
+
+  const routes = routesData.map(r => ({ ...r, price: Number(r.price)}));
 
   return (
     <div className="space-y-8">
