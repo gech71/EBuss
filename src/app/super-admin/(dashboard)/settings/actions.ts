@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { Argon2id } from 'oslo/password';
 import { Role } from '@prisma/client';
+import { generateId } from 'lucia';
 
 const createUserSchema = z.object({
   name: z.string().min(1, "Full name is required."),
@@ -38,9 +39,11 @@ export async function createUserAction(formData: FormData) {
         }
 
         const hashedPassword = await new Argon2id().hash(password);
+        const userId = generateId(15);
 
         await prisma.user.create({
             data: {
+                id: userId,
                 name,
                 email: email.toLowerCase(),
                 hashed_password: hashedPassword,
