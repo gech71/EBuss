@@ -39,10 +39,9 @@ export function QRScanner() {
     setScannedData(null);
   };
   
-  useEffect(() => {
-    const getCameraPermission = async () => {
+   const getCameraPermission = useCallback(async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
         streamRef.current = stream;
         setHasCameraPermission(true);
         setStatus("scanning");
@@ -60,17 +59,7 @@ export function QRScanner() {
           description: 'Please enable camera permissions in your browser settings to use this feature.',
         });
       }
-    };
-
-    if (status === 'scanning') {
-      getCameraPermission();
-    }
-
-    // Cleanup function to stop the stream when component unmounts or status changes
-    return () => {
-      stopStream();
-    };
-  }, [status, stopStream, toast]);
+    }, [toast]);
 
 
   const handleScanResult = useCallback(async (decodedQR: string) => {
@@ -149,15 +138,17 @@ export function QRScanner() {
        if (animationFrameId.current) {
         cancelAnimationFrame(animationFrameId.current);
       }
+      stopStream();
     };
-  }, [status, hasCameraPermission, tick]);
+  }, [status, hasCameraPermission, tick, stopStream]);
   
 
   const handleButtonClick = () => {
       if (status === 'scanning') {
           setStatus('idle');
+          stopStream();
       } else {
-          setStatus('scanning');
+          getCameraPermission();
       }
   }
 
@@ -214,7 +205,7 @@ export function QRScanner() {
       <Card className="w-full max-w-sm aspect-video flex items-center justify-center bg-muted/50 border-dashed overflow-hidden relative">
         <video ref={videoRef} className="w-full aspect-video rounded-md" autoPlay muted playsInline />
         <canvas ref={canvasRef} className="hidden" />
-         { status !== 'scanning' && hasCameraPermission !== true && (
+         { status !== 'scanning' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 text-center p-4">
                {hasCameraPermission === false ? (
                     <Alert variant="destructive" className="text-left">
