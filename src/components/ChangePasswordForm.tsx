@@ -14,8 +14,35 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Check, X } from "lucide-react";
 import { changePasswordAction } from "@/app/lib/actions";
+import { cn } from "@/lib/utils";
+
+const passwordRules = [
+    { text: "At least 8 characters long", regex: /.{8,}/ },
+    { text: "At least one uppercase letter", regex: /[A-Z]/ },
+    { text: "At least one lowercase letter", regex: /[a-z]/ },
+    { text: "At least one number", regex: /[0-9]/ },
+    { text: "At least one special character", regex: /[^A-Za-z0-9]/ },
+];
+
+function PasswordStrength({ password }: { password?: string }) {
+    if (!password) return null;
+    
+    return (
+        <ul className="text-sm text-muted-foreground space-y-1 mt-2">
+            {passwordRules.map((rule, index) => {
+                const isValid = rule.regex.test(password);
+                return (
+                    <li key={index} className={cn("flex items-center gap-2", isValid ? "text-green-600" : "text-destructive")}>
+                        {isValid ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                        <span>{rule.text}</span>
+                    </li>
+                );
+            })}
+        </ul>
+    );
+}
 
 export function ChangePasswordForm() {
   const { toast } = useToast();
@@ -24,12 +51,13 @@ export function ChangePasswordForm() {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+  const [newPassword, setNewPassword] = useState("");
 
   const handleSubmit = (formData: FormData) => {
-    const newPassword = formData.get("newPassword") as string;
+    const newPasswordValue = formData.get("newPassword") as string;
     const confirmPassword = formData.get("confirmPassword") as string;
 
-    if (newPassword !== confirmPassword) {
+    if (newPasswordValue !== confirmPassword) {
       toast({
         title: "Passwords do not match",
         description: "Please ensure the new passwords match.",
@@ -46,6 +74,7 @@ export function ChangePasswordForm() {
           description: result.message,
         });
         formRef.current?.reset();
+        setNewPassword("");
       } else {
         toast({
           title: "Update Failed",
@@ -93,6 +122,8 @@ export function ChangePasswordForm() {
                       name="newPassword"
                       type={showNew ? "text" : "password"}
                       required
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
                     />
                      <Button
                       type="button" variant="ghost" size="icon"
@@ -102,6 +133,7 @@ export function ChangePasswordForm() {
                       {showNew ? <EyeOff /> : <Eye />}
                     </Button>
                 </div>
+                 <PasswordStrength password={newPassword} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm New Password</Label>

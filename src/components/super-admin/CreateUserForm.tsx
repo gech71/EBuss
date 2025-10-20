@@ -21,13 +21,40 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Eye, EyeOff } from "lucide-react";
+import { UserPlus, Eye, EyeOff, Check, X } from "lucide-react";
 import type { BusOwner } from "@prisma/client";
 import { createUserAction } from "@/app/super-admin/(dashboard)/settings/actions";
+import { cn } from "@/lib/utils";
 
 interface CreateUserFormProps {
   owners: BusOwner[];
   existingEmails: string[];
+}
+
+const passwordRules = [
+    { text: "At least 8 characters long", regex: /.{8,}/ },
+    { text: "At least one uppercase letter", regex: /[A-Z]/ },
+    { text: "At least one lowercase letter", regex: /[a-z]/ },
+    { text: "At least one number", regex: /[0-9]/ },
+    { text: "At least one special character", regex: /[^A-Za-z0-9]/ },
+];
+
+function PasswordStrength({ password }: { password?: string }) {
+    if (!password) return null;
+    
+    return (
+        <ul className="text-sm text-muted-foreground space-y-1 mt-2">
+            {passwordRules.map((rule, index) => {
+                const isValid = rule.regex.test(password);
+                return (
+                    <li key={index} className={cn("flex items-center gap-2", isValid ? "text-green-600" : "text-destructive")}>
+                        {isValid ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                        <span>{rule.text}</span>
+                    </li>
+                );
+            })}
+        </ul>
+    );
 }
 
 export function CreateUserForm({ owners, existingEmails }: CreateUserFormProps) {
@@ -35,6 +62,7 @@ export function CreateUserForm({ owners, existingEmails }: CreateUserFormProps) 
   const [isPending, startTransition] = useTransition();
   const [showPassword, setShowPassword] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+  const [password, setPassword] = useState("");
 
   const handleSubmit = (formData: FormData) => {
     const email = formData.get("email") as string;
@@ -55,6 +83,7 @@ export function CreateUserForm({ owners, existingEmails }: CreateUserFormProps) 
           description: result.message,
         });
         formRef.current?.reset();
+        setPassword("");
       } else {
         toast({
           title: "Creation Failed",
@@ -106,6 +135,8 @@ export function CreateUserForm({ owners, existingEmails }: CreateUserFormProps) 
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter a secure password"
                   required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
                 <Button
                   type="button"
@@ -124,6 +155,7 @@ export function CreateUserForm({ owners, existingEmails }: CreateUserFormProps) 
                   </span>
                 </Button>
               </div>
+              <PasswordStrength password={password} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="ownerId">Assign to Bus Owner</Label>
