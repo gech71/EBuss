@@ -3,67 +3,53 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
-import { QrCode, CheckCircle, XCircle, VideoOff, RotateCw, Camera } from "lucide-react";
+import { QrCode, CheckCircle, XCircle, Camera, RotateCw, AlertTriangle } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter } from "@/components/ui/alert-dialog";
-import { Card } from '../ui/card';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card } from '../ui/card';
 import { useToast } from '@/hooks/use-toast';
 import jsQR from "jsqr";
 import type { Booking, Route, Bus, Location, BookedSeat } from "@prisma/client";
 
-type ScanStatus = "idle" | "scanning" | "valid" | "invalid";
+type ScanStatus = "idle" | "scanning" | "success" | "error";
 type ScannedData = Booking & { route: Route & { origin: Location, destination: Location }, bookedSeats: BookedSeat[] };
 
 export function QRScanner() {
   const { toast } = useToast();
-  const [status, setStatus] = useState<ScanStatus>("idle");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [scannedData, setScannedData] = useState<ScannedData | null>(null);
-  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationFrameId = useRef<number>();
   const streamRef = useRef<MediaStream | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
 
-  const stopStream = useCallback(() => {
-    if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [scanStatus, setScanStatus] = useState<ScanStatus>("idle");
+  const [scannedData, setScannedData] = useState<ScannedData | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const stopScan = useCallback(() => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
     }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setScanStatus("idle");
   }, []);
 
-  const resetScanner = () => {
-    setStatus("idle");
-    setIsDialogOpen(false);
-    setScannedData(null);
-  };
+  useEffect(() => {
+    // Cleanup on component unmount
+    return () => {
+      stopScan();
+    };
+  }, [stopScan]);
   
-   const getCameraPermission = useCallback(async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        streamRef.current = stream;
-        setHasCameraPermission(true);
-        setStatus("scanning");
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-      } catch (error) {
-        console.error('Error accessing camera:', error);
-        setHasCameraPermission(false);
-        setStatus("idle");
-        toast({
-          variant: 'destructive',
-          title: 'Camera Access Denied',
-          description: 'Please enable camera permissions in your browser settings to use this feature.',
-        });
-      }
-    }, [toast]);
-
-
   const handleScanResult = useCallback(async (decodedQR: string) => {
-    stopStream();
+    stopScan();
     try {
         const { ticketId } = JSON.parse(decodedQR);
         if (!ticketId) throw new Error("Invalid QR code format.");
@@ -72,89 +58,87 @@ export function QRScanner() {
         const result = await response.json();
 
         if (response.ok && result.booking) {
-            setStatus("valid");
+            setScanStatus("success");
             setScannedData(result.booking);
         } else {
-            setStatus("invalid");
-            setScannedData(null); // Explicitly clear data on invalid
-             toast({
-                title: 'Scan Failed',
-                description: result.message || 'This ticket is not valid.',
-                variant: 'destructive',
-            });
+            setScanStatus("error");
+            setErrorMessage(result.message || 'This ticket is not valid.');
         }
     } catch (error) {
-        console.error("Error processing QR code:", error);
-        setStatus("invalid");
-        setScannedData(null);
-         toast({
-            title: 'Scan Error',
-            description: 'Could not read the QR code.',
-            variant: 'destructive',
-        });
-    } finally {
-        setIsDialogOpen(true);
+        setScanStatus("error");
+        setErrorMessage('Could not read the QR code or the format is invalid.');
     }
-  }, [toast, stopStream]);
+  }, [stopScan]);
 
-
-  const tick = useCallback(() => {
-    if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA && canvasRef.current) {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext("2d");
-
-      if (ctx) {
+  const scanFrame = useCallback(() => {
+    if (scanStatus !== 'scanning' || !videoRef.current || !canvasRef.current) return;
+    
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
         canvas.height = video.videoHeight;
         canvas.width = video.videoWidth;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: "dontInvert",
-        });
+        const ctx = canvas.getContext("2d");
+        
+        if (ctx) {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            try {
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: "dontInvert",
+                });
 
-        if (code) {
-          handleScanResult(code.data);
-          // Stop scanning
-          return;
+                if (code) {
+                    handleScanResult(code.data);
+                    return; 
+                }
+            } catch (e) {
+                console.error("jsQR error:", e);
+            }
         }
-      }
     }
-    animationFrameId.current = requestAnimationFrame(tick);
-  }, [handleScanResult]);
-
-
-  // Effect for handling the animation frame loop
-  useEffect(() => {
-    if (status === 'scanning' && hasCameraPermission) {
-      animationFrameId.current = requestAnimationFrame(tick);
-    } else {
-      if (animationFrameId.current) {
-        cancelAnimationFrame(animationFrameId.current);
-      }
-    }
-
-    return () => {
-       if (animationFrameId.current) {
-        cancelAnimationFrame(animationFrameId.current);
-      }
-      stopStream();
-    };
-  }, [status, hasCameraPermission, tick, stopStream]);
+    animationFrameRef.current = requestAnimationFrame(scanFrame);
+  }, [scanStatus, handleScanResult]);
   
-
-  const handleButtonClick = () => {
-      if (status === 'scanning') {
-          setStatus('idle');
-          stopStream();
-      } else {
-          getCameraPermission();
+  const startScan = async () => {
+    setErrorMessage(null);
+    setScannedData(null);
+    setScanStatus("scanning");
+    
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      streamRef.current = stream;
+      setHasCameraPermission(true);
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play();
+          animationFrameRef.current = requestAnimationFrame(scanFrame);
+        };
       }
-  }
+    } catch (error) {
+      console.error('Error accessing camera:', error);
+      setHasCameraPermission(false);
+      setScanStatus('idle');
+      toast({
+        variant: 'destructive',
+        title: 'Camera Access Denied',
+        description: 'Please enable camera permissions in your browser settings to use this feature.',
+      });
+    }
+  };
 
-
+  const resetScanner = () => {
+    setScannedData(null);
+    setErrorMessage(null);
+    setScanStatus("idle");
+    setHasCameraPermission(null);
+  };
+  
   const renderScanResult = () => {
-    if (status === "valid" && scannedData) {
+    if (scanStatus === "success" && scannedData) {
       return (
         <>
           <AlertDialogHeader>
@@ -174,7 +158,7 @@ export function QRScanner() {
         </>
       );
     }
-    if (status === "invalid") {
+    if (scanStatus === "error") {
       return (
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2 text-destructive">
@@ -182,7 +166,7 @@ export function QRScanner() {
             <span>Ticket Invalid</span>
           </AlertDialogTitle>
           <AlertDialogDescription>
-            This ticket could not be validated. Please check the details and try again.
+            {errorMessage || "This ticket could not be validated. Please check the details and try again."}
           </AlertDialogDescription>
         </AlertDialogHeader>
       );
@@ -190,52 +174,45 @@ export function QRScanner() {
     return null;
   };
 
-  const getButtonText = () => {
-      if (status === 'scanning') {
-          return "Stop Scanning";
-      }
-      if (hasCameraPermission === false) {
-          return "Retry Camera Access";
-      }
-      return "Start Scanning";
-  }
-
   return (
     <div className="flex flex-col items-center justify-center space-y-6 p-4">
       <Card className="w-full max-w-sm aspect-video flex items-center justify-center bg-muted/50 border-dashed overflow-hidden relative">
-        <video ref={videoRef} className="w-full aspect-video rounded-md" autoPlay muted playsInline />
+        <video ref={videoRef} className="w-full h-full object-cover" autoPlay playsInline muted />
         <canvas ref={canvasRef} className="hidden" />
-         { status !== 'scanning' && (
+         {scanStatus === 'idle' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 text-center p-4">
-               {hasCameraPermission === false ? (
-                    <Alert variant="destructive" className="text-left">
-                        <VideoOff className="h-4 w-4" />
-                        <AlertTitle>Camera Access Denied</AlertTitle>
-                        <AlertDescription>
-                            Please allow camera access in your browser settings to use this feature.
-                        </AlertDescription>
-                    </Alert>
-               ) : (
-                    <>
-                        <QrCode className="w-16 h-16 text-muted-foreground" />
-                        <p className="mt-4 text-muted-foreground font-semibold">Ready to Scan</p>
-                    </>
-               )}
+             {hasCameraPermission === false ? (
+                 <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Camera Access Denied</AlertTitle>
+                    <AlertDescription>
+                        Please allow camera access in your browser settings and try again.
+                    </AlertDescription>
+                </Alert>
+             ) : (
+                <>
+                    <QrCode className="w-16 h-16 text-muted-foreground" />
+                    <p className="mt-4 text-muted-foreground font-semibold">Ready to Scan</p>
+                </>
+             )}
           </div>
         )}
       </Card>
 
       <Button
-        onClick={handleButtonClick}
+        onClick={scanStatus === 'scanning' ? stopScan : startScan}
         size="lg"
         className="w-full max-w-sm"
-        variant={status === 'scanning' ? 'destructive' : 'default'}
+        variant={scanStatus === 'scanning' ? 'destructive' : 'default'}
       >
-        {status === 'scanning' ? <RotateCw className="mr-2 h-4 w-4 animate-spin" /> : <Camera className="mr-2 h-4 w-4" />}
-        {getButtonText()}
+        {scanStatus === 'scanning' ? (
+          <><RotateCw className="mr-2 h-4 w-4 animate-spin" /> Stop Scanning</>
+        ) : (
+          <><Camera className="mr-2 h-4 w-4" /> Start Scanning</>
+        )}
       </Button>
 
-      <AlertDialog open={isDialogOpen} onOpenChange={(open) => !open && resetScanner()}>
+      <AlertDialog open={scanStatus === 'success' || scanStatus === 'error'} onOpenChange={(open) => !open && resetScanner()}>
         <AlertDialogContent>
           {renderScanResult()}
           <AlertDialogFooter>
@@ -246,3 +223,5 @@ export function QRScanner() {
     </div>
   );
 }
+
+    
