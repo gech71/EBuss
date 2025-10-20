@@ -1,3 +1,4 @@
+
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "@/components/ui/sidebar";
@@ -5,6 +6,7 @@ import { LayoutDashboard, Route as RouteIcon, Bus, QrCode, MapPin, Percent, Sett
 import { UserNav } from "@/components/UserNav";
 import { validateRequest } from "@/app/lib/auth";
 import { redirect } from "next/navigation";
+import prisma from "@/lib/prisma";
 
 export default async function AdminLayout({
   children,
@@ -17,6 +19,15 @@ export default async function AdminLayout({
   }
   if (user.role !== 'ADMIN') {
     return redirect('/unauthorized');
+  }
+
+  let ownerName = null;
+  if (user.busOwnerId) {
+    const owner = await prisma.busOwner.findUnique({
+      where: { id: user.busOwnerId },
+      select: { name: true }
+    });
+    ownerName = owner?.name;
   }
   
   return (
@@ -86,7 +97,7 @@ export default async function AdminLayout({
               </SidebarMenu>
             </SidebarContent>
             <SidebarFooter>
-                <UserNav user={user} />
+                <UserNav user={user} ownerName={ownerName} />
             </SidebarFooter>
           </Sidebar>
           <main className="flex-1 container mx-auto p-4 md:p-6">
