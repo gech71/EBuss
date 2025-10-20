@@ -26,7 +26,7 @@ export default function LoginPage() {
   useEffect(() => {
     async function fetchCsrfToken() {
       try {
-        const response = await fetch('/api/csrf');
+        const response = await fetch(new URL('/api/csrf', window.location.origin));
         const { token } = await response.json();
         setCsrfToken(token);
       } catch (error) {

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { authenticate } from "@/app/lib/actions";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,10 +23,10 @@ export default function SuperAdminLoginPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  useState(() => {
+  useEffect(() => {
     async function fetchCsrfToken() {
       try {
-        const response = await fetch('/api/csrf');
+        const response = await fetch(new URL('/api/csrf', window.location.origin));
         const { token } = await response.json();
         setCsrfToken(token);
       } catch (error) {
@@ -35,9 +35,9 @@ export default function SuperAdminLoginPage() {
       }
     }
     fetchCsrfToken();
-  });
+  }, []);
 
-  useState(() => {
+  useEffect(() => {
     if (lockoutTime > 0) {
       const timer = setTimeout(() => {
         setLockoutTime(lockoutTime - 1);
@@ -46,7 +46,7 @@ export default function SuperAdminLoginPage() {
     } else {
         setErrorMessage(undefined);
     }
-  });
+  }, [lockoutTime]);
 
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
