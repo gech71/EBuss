@@ -31,7 +31,7 @@ function Seat({ seat }: SeatProps) {
       className={seatClasses}
       title={seat.type === 'SEAT' ? `Seat ${seat.seatNumber} - ${seat.status}` : ''}
     >
-      {seat.type === 'SEAT' && <Armchair className="w-5 h-5" />}
+      {seat.type === 'SEAT' ? seat.seatNumber : ''}
     </div>
   );
 }
@@ -63,6 +63,19 @@ export function BusActions({ bus }: BusActionsProps) {
       });
     }
   };
+  
+  const sortedSeats = bus.layout?.seats.sort((a, b) => {
+    const rowA = a.seatNumber.charCodeAt(0);
+    const colA = parseInt(a.seatNumber.substring(1));
+    const rowB = b.seatNumber.charCodeAt(0);
+    const colB = parseInt(b.seatNumber.substring(1));
+
+    if (rowA !== rowB) {
+      return rowA - rowB;
+    }
+    return colA - colB;
+  }) || [];
+
 
   return (
     <Dialog>
@@ -105,7 +118,6 @@ export function BusActions({ bus }: BusActionsProps) {
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
        <DialogContent className="max-w-max">
         <DialogHeader>
           <DialogTitle>Seat Layout for {bus.name}</DialogTitle>
@@ -119,7 +131,7 @@ export function BusActions({ bus }: BusActionsProps) {
               className="grid gap-2 p-4 bg-muted/30 rounded-lg border-2 border-dashed" 
               style={{ gridTemplateColumns: `repeat(${bus.layout.cols}, minmax(0, 1fr))` }}
             >
-              {bus.layout.seats.sort((a,b) => a.seatNumber.localeCompare(b.seatNumber, undefined, { numeric: true })).map(seat => (
+              {sortedSeats.map(seat => (
                 <Seat key={seat.id} seat={seat} />
               ))}
             </div>
@@ -135,3 +147,5 @@ export function BusActions({ bus }: BusActionsProps) {
     </Dialog>
   );
 }
+
+

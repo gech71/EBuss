@@ -21,7 +21,7 @@ const generateSeats = (rows: number, cols: number, aisleCols: number[], lastRowF
       const isAisle = aisleCols.includes(c) && !(lastRowFull && isLastRow);
       
       seats.push({
-        seatNumber: `${c + 1}${String.fromCharCode(65 + r)}`,
+        seatNumber: `${String.fromCharCode(65 + r)}${c + 1}`,
         status: 'AVAILABLE',
         type: isAisle ? 'AISLE' : 'SEAT',
       });
@@ -40,7 +40,7 @@ export default function NewBusPage() {
     const [name, setName] = useState('');
     const [rows, setRows] = useState(12);
     const [cols, setCols] = useState(5);
-    const [aisleCols, setAisleCols] = useState('2');
+    const [aisleCols, setAisleCols] = useState('3');
     const [lastRowFull, setLastRowFull] = useState(false);
     
     const parsedAisleCols = useMemo(() => {
