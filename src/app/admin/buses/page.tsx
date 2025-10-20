@@ -1,4 +1,5 @@
 
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -18,6 +19,13 @@ export default async function AdminBusesPage() {
   const buses = await prisma.bus.findMany({
     where: {
       ownerId: user.busOwnerId
+    },
+    include: {
+      layout: {
+        include: {
+          seats: true
+        }
+      }
     },
     orderBy: {
       name: 'asc'
@@ -54,7 +62,7 @@ export default async function AdminBusesPage() {
                 <TableCell className="font-medium">{bus.name}</TableCell>
                 <TableCell>{bus.capacity}</TableCell>
                 <TableCell className="text-right">
-                  <BusActions busId={bus.id} />
+                  <BusActions bus={bus} />
                 </TableCell>
               </TableRow>
             ))}
