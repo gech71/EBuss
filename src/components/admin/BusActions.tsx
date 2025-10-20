@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { deleteBusAction } from "@/app/admin/buses/actions";
 import type { Bus, SeatLayout, Seat as PrismaSeat } from '@prisma/client';
 import { cn } from "@/lib/utils";
+import { ScrollArea } from "../ui/scroll-area";
 
 interface SeatProps {
   seat: PrismaSeat;
@@ -119,7 +120,7 @@ export function BusActions({ bus }: BusActionsProps) {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-        <DialogContent className="max-w-max">
+        <DialogContent className="max-w-fit">
           <DialogHeader>
             <DialogTitle>Seat Layout for {bus.name}</DialogTitle>
             <DialogDescription>
@@ -128,14 +129,16 @@ export function BusActions({ bus }: BusActionsProps) {
           </DialogHeader>
           {bus.layout ? (
             <div className="flex flex-col items-center pt-4">
-              <div 
-                className="grid gap-2 p-4 bg-muted/30 rounded-lg border-2 border-dashed" 
-                style={{ gridTemplateColumns: `repeat(${bus.layout.cols}, minmax(0, 1fr))` }}
-              >
-                {sortedSeats.map(seat => (
-                  <Seat key={seat.id} seat={seat} />
-                ))}
-              </div>
+               <ScrollArea className="h-[60vh] w-full">
+                <div 
+                  className="grid gap-2 p-4 bg-muted/30 rounded-lg border-2 border-dashed w-full" 
+                  style={{ gridTemplateColumns: `repeat(${bus.layout.cols}, minmax(0, 1fr))` }}
+                >
+                  {sortedSeats.map(seat => (
+                    <Seat key={seat.id} seat={seat} />
+                  ))}
+                </div>
+              </ScrollArea>
               <div className="flex justify-center space-x-4 mt-4 text-sm">
                   <div className="flex items-center"><Armchair className="w-4 h-4 mr-2 text-green-600 dark:text-green-400"/>Available</div>
                   <div className="flex items-center"><Armchair className="w-4 h-4 mr-2 text-muted-foreground"/>Occupied</div>
