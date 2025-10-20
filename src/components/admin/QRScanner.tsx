@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { QrCode, CheckCircle, XCircle, VideoOff, RotateCw, Camera } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter } from "@/components/ui/alert-dialog";
 import { Card } from '../ui/card';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from '@/hooks/use-toast';
 import jsQR from "jsqr";
 import type { Booking, Route, Bus, Location, BookedSeat } from "@prisma/client";
@@ -25,12 +26,12 @@ export function QRScanner() {
   const animationFrameId = useRef<number>();
   const streamRef = useRef<MediaStream | null>(null);
 
-  const stopStream = () => {
+  const stopStream = useCallback(() => {
     if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
         streamRef.current = null;
     }
-  }
+  }, []);
 
   const resetScanner = () => {
     setStatus("idle");
@@ -38,10 +39,10 @@ export function QRScanner() {
     setScannedData(null);
   };
   
-  const requestCameraPermission = useCallback(async () => {
-      stopStream(); // Stop any existing stream
+  useEffect(() => {
+    const getCameraPermission = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         streamRef.current = stream;
         setHasCameraPermission(true);
         setStatus("scanning");
@@ -59,7 +60,18 @@ export function QRScanner() {
           description: 'Please enable camera permissions in your browser settings to use this feature.',
         });
       }
-  }, [toast]);
+    };
+
+    if (status === 'scanning') {
+      getCameraPermission();
+    }
+
+    // Cleanup function to stop the stream when component unmounts or status changes
+    return () => {
+      stopStream();
+    };
+  }, [status, stopStream, toast]);
+
 
   const handleScanResult = useCallback(async (decodedQR: string) => {
     stopStream();
@@ -94,7 +106,7 @@ export function QRScanner() {
     } finally {
         setIsDialogOpen(true);
     }
-  }, [toast]);
+  }, [toast, stopStream]);
 
 
   const tick = useCallback(() => {
@@ -140,17 +152,12 @@ export function QRScanner() {
     };
   }, [status, hasCameraPermission, tick]);
   
-  // Cleanup effect
-  useEffect(() => {
-      return () => stopStream();
-  }, []);
 
   const handleButtonClick = () => {
       if (status === 'scanning') {
-          stopStream();
           setStatus('idle');
       } else {
-          requestCameraPermission();
+          setStatus('scanning');
       }
   }
 
@@ -197,7 +204,7 @@ export function QRScanner() {
           return "Stop Scanning";
       }
       if (hasCameraPermission === false) {
-          return "Allow Camera Access";
+          return "Retry Camera Access";
       }
       return "Start Scanning";
   }
@@ -207,14 +214,16 @@ export function QRScanner() {
       <Card className="w-full max-w-sm aspect-video flex items-center justify-center bg-muted/50 border-dashed overflow-hidden relative">
         <video ref={videoRef} className="w-full aspect-video rounded-md" autoPlay muted playsInline />
         <canvas ref={canvasRef} className="hidden" />
-         { status !== 'scanning' && (
+         { status !== 'scanning' && hasCameraPermission !== true && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 text-center p-4">
                {hasCameraPermission === false ? (
-                    <>
-                        <VideoOff className="w-12 h-12 text-destructive" />
-                        <p className="mt-4 font-semibold">Camera Access Required</p>
-                        <p className="text-sm text-muted-foreground">Please grant camera permissions to use the scanner.</p>
-                    </>
+                    <Alert variant="destructive" className="text-left">
+                        <VideoOff className="h-4 w-4" />
+                        <AlertTitle>Camera Access Denied</AlertTitle>
+                        <AlertDescription>
+                            Please allow camera access in your browser settings to use this feature.
+                        </AlertDescription>
+                    </Alert>
                ) : (
                     <>
                         <QrCode className="w-16 h-16 text-muted-foreground" />
