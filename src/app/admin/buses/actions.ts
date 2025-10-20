@@ -78,6 +78,11 @@ export async function createBusAction(formData: FormData) {
 }
 
 export async function deleteBusAction(busId: string): Promise<{ success: boolean; message: string }> {
+  const { user } = await validateRequest();
+  if (!user || !user.busOwnerId) {
+    return { success: false, message: 'Unauthorized' };
+  }
+  
   try {
     const routeCount = await prisma.route.count({ where: { busId: busId } });
 
@@ -88,20 +93,22 @@ export async function deleteBusAction(busId: string): Promise<{ success: boolean
       };
     }
 
-    const bus = await prisma.bus.findUnique({ where: { id: busId }, include: { layout: true } });
-    if (bus && bus.layout) {
-      await prisma.seat.deleteMany({ where: { layoutId: bus.layout.id } });
-      await prisma.seatLayout.delete({ where: { id: bus.layout.id } });
-    }
-    
-    await prisma.bus.delete({ 
-        where: { id: busId },
+    // First check if the bus belongs to the user, then delete.
+    // The schema is set up with cascading deletes, so deleting the bus
+    // will also delete the associated SeatLayout and Seats.
+    await prisma.bus.delete({
+      where: {
+        id: busId,
+        ownerId: user.busOwnerId,
+      },
     });
-    
+
     revalidatePath('/admin/buses');
     return { success: true, message: 'Bus has been deleted.' };
   } catch (error) {
     console.error('Error deleting bus:', error);
-    return { success: false, message: 'An unexpected error occurred.' };
+    // This could be a P2025 error if the bus is not found (e.g., wrong owner)
+    // or another DB error.
+    return { success: false, message: 'An unexpected error occurred or you do not have permission.' };
   }
 }
