@@ -8,10 +8,17 @@ import { Argon2id } from 'oslo/password';
 import { Role } from '@prisma/client';
 import { generateId } from 'lucia';
 
+const passwordPolicy = z.string()
+    .min(8, "Password must be at least 8 characters long.")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter.")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter.")
+    .regex(/[0-9]/, "Password must contain at least one number.")
+    .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character.");
+
 const createUserSchema = z.object({
   name: z.string().min(1, "Full name is required."),
   email: z.string().email("Invalid email address."),
-  password: z.string().min(6, "Password must be at least 6 characters long."),
+  password: passwordPolicy,
   ownerId: z.string().min(1, "Bus Owner is required."),
 });
 
@@ -21,9 +28,15 @@ export async function createUserAction(formData: FormData) {
     const validatedData = createUserSchema.safeParse(rawData);
 
     if (!validatedData.success) {
+        const messages = validatedData.error.errors.map(e => {
+            if (e.path.includes('password')) {
+                return `Password: ${e.message}`;
+            }
+            return e.message;
+        }).join('\n');
         return {
             success: false,
-            message: validatedData.error.errors.map(e => e.message).join(', ')
+            message: messages,
         };
     }
 
