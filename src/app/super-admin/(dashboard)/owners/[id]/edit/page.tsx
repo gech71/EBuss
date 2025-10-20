@@ -9,7 +9,7 @@ interface EditOwnerPageProps {
 }
 
 export default async function EditOwnerPage({ params }: EditOwnerPageProps) {
-    const owner = await prisma.busOwner.findUnique({
+    const ownerData = await prisma.busOwner.findUnique({
         where: { id: params.id },
         include: {
             commissionTiers: {
@@ -31,23 +31,23 @@ export default async function EditOwnerPage({ params }: EditOwnerPageProps) {
         }
     });
 
-    if (!owner) {
+    if (!ownerData) {
         notFound();
     }
 
     const otherOwnerNames = allOwners.map(o => o.name);
 
-    // Prisma returns Decimal for 'value', which is serialized as a number. No conversion is needed.
-    const sanitizedOwner = {
-        ...owner,
-        commissionTiers: owner.commissionTiers.map(tier => ({
+    // Sanitize Decimal fields for client components
+    const owner = {
+        ...ownerData,
+        commissionTiers: ownerData.commissionTiers.map(tier => ({
             ...tier,
-            value: tier.value // This is already a number
+            value: Number(tier.value)
         }))
-    } as BusOwner & { commissionTiers: CommissionTier[] }
+    };
 
 
     return (
-        <EditOwnerForm owner={sanitizedOwner} otherOwnerNames={otherOwnerNames} />
+        <EditOwnerForm owner={owner} otherOwnerNames={otherOwnerNames} />
     );
 }

@@ -1,4 +1,5 @@
 
+
 import { RecentBookings } from "@/components/admin/RecentBookings";
 import { Analytics } from "@/components/admin/Analytics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

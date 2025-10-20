@@ -1,4 +1,5 @@
 
+
 import { RecentBookings } from "@/components/admin/RecentBookings";
 import { Analytics } from "@/components/admin/Analytics";
 import prisma from "@/lib/prisma";
