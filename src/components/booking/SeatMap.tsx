@@ -45,11 +45,27 @@ interface SeatMapProps {
   onSelectionChange: (selectedSeats: SeatType[]) => void;
 }
 
+const sortSeats = (seats: ClientSeat[]): ClientSeat[] => {
+    return [...seats].sort((a, b) => {
+        const rowA = a.seatNumber.charCodeAt(0);
+        const colA = parseInt(a.seatNumber.substring(1), 10);
+        const rowB = b.seatNumber.charCodeAt(0);
+        const colB = parseInt(b.seatNumber.substring(1), 10);
+
+        if (rowA < rowB) return -1;
+        if (rowA > rowB) return 1;
+        if (colA < colB) return -1;
+        if (colA > colB) return 1;
+        return 0;
+    });
+};
+
+
 export function SeatMap({ bus, onSelectionChange }: SeatMapProps) {
   const { toast } = useToast();
   // Initialize internal state with the bus's seats
   const [seats, setSeats] = useState<ClientSeat[]>(() => 
-    bus.layout.seats.map(s => ({ ...s }))
+    sortSeats(bus.layout.seats.map(s => ({ ...s })))
   );
 
   useEffect(() => {
