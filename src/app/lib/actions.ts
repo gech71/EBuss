@@ -7,16 +7,7 @@ import { cookies, headers } from 'next/headers';
 import { Argon2id } from 'oslo/password';
 import { lucia, validateRequest } from '@/app/lib/auth';
 import type { ActionResult } from 'next/dist/server/app-render/types';
-import { SignJWT } from 'jose';
 import { z } from 'zod';
-
-const getJwtSecret = () => {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    throw new Error('JWT_SECRET environment variable is not set');
-  }
-  return new TextEncoder().encode(secret);
-};
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_ATTEMPT_WINDOW_SECONDS = 60;

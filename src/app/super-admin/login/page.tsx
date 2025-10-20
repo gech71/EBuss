@@ -1,44 +1,90 @@
 
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useData } from "@/lib/store";
-import { useToast } from "@/hooks/use-toast";
+import { useState, useTransition } from "react";
+import { authenticate } from "@/app/lib/actions";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/Logo";
-import { Gem, Eye, EyeOff } from "lucide-react";
+import Link from "next/link";
+import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle, Gem } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 
 export default function SuperAdminLoginPage() {
-  const [email, setEmail] = useState("super@example.com");
-  const [password, setPassword] = useState("password");
-  const [showPassword, setShowPassword] = useState(false);
-  const { login } = useData();
+  const [errorMessage, setErrorMessage] = useState<string | undefined>();
+  const [csrfToken, setCsrfToken] = useState<string>("");
+  const [isPending, startTransition] = useTransition();
+  const [lockoutTime, setLockoutTime] = useState(0);
   const router = useRouter();
   const { toast } = useToast();
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    const result = login(email, password);
-    
-    if (result && result.user.ownerId === 'super-admin') {
-      toast({
-        title: "Login Successful",
-        description: `Welcome back, ${result.user.name}!`,
-      });
-      localStorage.setItem('authToken', result.token);
-      router.push("/super-admin");
-    } else {
-      toast({
-        title: "Access Denied",
-        description: "You do not have permission to access this area.",
-        variant: "destructive",
-      });
+  useState(() => {
+    async function fetchCsrfToken() {
+      try {
+        const response = await fetch('/api/csrf');
+        const { token } = await response.json();
+        setCsrfToken(token);
+      } catch (error) {
+        console.error("Failed to fetch CSRF token", error);
+        setErrorMessage("Could not initialize secure session. Please try again.");
+      }
     }
+    fetchCsrfToken();
+  });
+
+  useState(() => {
+    if (lockoutTime > 0) {
+      const timer = setTimeout(() => {
+        setLockoutTime(lockoutTime - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else {
+        setErrorMessage(undefined);
+    }
+  });
+
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (lockoutTime > 0) return;
+
+    const formData = new FormData(event.currentTarget);
+    
+    startTransition(async () => {
+      const resultMessage = await authenticate(undefined, formData);
+      if (resultMessage === 'success') {
+        // Successful login is handled by redirect inside the action
+        toast({ title: "Login Successful!" });
+        // The redirect in the action will navigate the user.
+      } else {
+        setErrorMessage(resultMessage);
+        const lockoutMatch = resultMessage?.match(/try again in (\d+) seconds/);
+        if (lockoutMatch && lockoutMatch[1]) {
+          setLockoutTime(parseInt(lockoutMatch[1], 10));
+        }
+      }
+    });
   };
+
+  function LoginButton() {
+    const isButtonDisabled = isPending || lockoutTime > 0;
+    const buttonText = () => {
+        if (isPending) return 'Logging in...';
+        if (lockoutTime > 0) return `Try again in ${lockoutTime}s`;
+        return 'Login';
+    }
+
+    return (
+      <Button className="w-full" aria-disabled={isButtonDisabled} disabled={isButtonDisabled} type="submit">
+        {buttonText()}
+      </Button>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
@@ -53,50 +99,45 @@ export default function SuperAdminLoginPage() {
           </CardTitle>
           <CardDescription>Enter your credentials for platform administration.</CardDescription>
         </CardHeader>
-        <form onSubmit={handleLogin}>
+        <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
+            <input type="hidden" name="csrfToken" value={csrfToken} />
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
+                name="email"
                 type="email"
-                placeholder="super@example.com"
+                placeholder="m@example.com"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                defaultValue="super@example.com"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input 
-                  id="password" 
-                  type={showPassword ? "text" : "password"} 
-                  required 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                 <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute top-0 right-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                >
-                    {showPassword ? (
-                        <EyeOff className="h-4 w-4" aria-hidden="true" />
-                    ) : (
-                        <Eye className="h-4 w-4" aria-hidden="true" />
-                    )}
-                    <span className="sr-only">
-                        {showPassword ? "Hide password" : "Show password"}
-                    </span>
-                </Button>
-              </div>
+              <Input 
+                id="password" 
+                name="password"
+                type="password"
+                required 
+                defaultValue="password"
+              />
             </div>
+            {errorMessage && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  {errorMessage}
+                </AlertDescription>
+              </Alert>
+            )}
           </CardContent>
-          <CardFooter>
-            <Button className="w-full" type="submit">Login</Button>
+          <CardFooter className="flex-col gap-4">
+            <LoginButton />
+            <Separator className="my-2" />
+             <Button variant="outline" asChild className="w-full">
+                <Link href="/login">Switch to Admin Login</Link>
+            </Button>
           </CardFooter>
         </form>
       </Card>

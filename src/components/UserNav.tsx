@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -10,27 +11,42 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
-import { useData } from '@/lib/store';
-import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { useSidebar } from './ui/sidebar';
 import { cn } from '@/lib/utils';
 import type { User } from 'lucia';
 import { logout } from '@/app/lib/actions';
+import prisma from '@/lib/prisma';
+import { BusOwner } from '@prisma/client';
+import { useState, useEffect } from 'react';
 
 interface UserNavProps {
   user: User | null;
 }
 
 export function UserNav({ user }: UserNavProps) {
-  const { owners } = useData();
   const { state: sidebarState } = useSidebar();
+  const [owner, setOwner] = useState<BusOwner | null>(null);
+
+  useEffect(() => {
+    async function getOwner() {
+      if (user?.busOwnerId) {
+        // This is a client component, so we can't use prisma directly.
+        // This is a placeholder for a fetch call to an API route.
+        // For now, we will simulate this.
+        // const response = await fetch(`/api/owners/${user.busOwnerId}`);
+        // const ownerData = await response.json();
+        // setOwner(ownerData);
+      }
+    }
+    getOwner();
+  }, [user?.busOwnerId])
+
 
   if (!user) {
     return null;
   }
-
-  const owner = owners.find((o) => o.id === user.busOwnerId);
+  
   const userInitial = user.name ? user.name.charAt(0).toUpperCase() : 'U';
 
   if (sidebarState === 'collapsed') {
@@ -53,7 +69,7 @@ export function UserNav({ user }: UserNavProps) {
               <p className="text-xs leading-none text-muted-foreground">
                 {user.email}
               </p>
-              {owner && owner.id !== 'super-admin' && (
+              {owner && (
                 <p className="text-xs leading-none text-muted-foreground pt-1">
                   {owner.name}
                 </p>
@@ -93,7 +109,7 @@ export function UserNav({ user }: UserNavProps) {
               <p className="text-xs leading-none text-muted-foreground truncate">
                 {user.email}
               </p>
-              {owner && owner.id !== 'super-admin' && (
+              {owner && (
                 <p className="text-xs leading-none text-muted-foreground pt-1 truncate">
                   {owner.name}
                 </p>
@@ -109,7 +125,7 @@ export function UserNav({ user }: UserNavProps) {
             <p className="text-xs leading-none text-muted-foreground">
               {user.email}
             </p>
-            {owner && owner.id !== 'super-admin' && (
+            {owner && (
               <p className="text-xs leading-none text-muted-foreground pt-1">
                 {owner.name}
               </p>
