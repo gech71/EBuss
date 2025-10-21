@@ -7,44 +7,14 @@ import { usePathname } from 'next/navigation';
 import { Shield, Gem, LogIn } from 'lucide-react';
 import { SidebarTrigger } from './ui/sidebar';
 import type { User } from 'lucia';
-import { useEffect, useState } from 'react';
 
 interface HeaderProps {
     user: User | null;
+    isMiniApp?: boolean;
 }
 
-function getCookie(name: string): string | undefined {
-    if (typeof window === 'undefined') {
-        return undefined;
-    }
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop()?.split(';').shift();
-}
-
-
-export function Header({ user }: HeaderProps) {
+export function Header({ user, isMiniApp = false }: HeaderProps) {
   const pathname = usePathname();
-  const [isMiniApp, setIsMiniApp] = useState(false);
-  
-  useEffect(() => {
-    // This check runs on the client-side after hydration
-    const sessionCookie = getCookie('miniapp_session');
-    if (sessionCookie) {
-        try {
-            const decodedSession = atob(sessionCookie);
-            const sessionData = JSON.parse(decodedSession);
-            if (sessionData.isAuthenticated) {
-                setIsMiniApp(true);
-            }
-        } catch (error) {
-            console.error("Failed to decode session cookie:", error);
-            setIsMiniApp(false);
-        }
-    } else {
-        setIsMiniApp(false);
-    }
-  }, [pathname]);
 
   const isAdminPage = pathname.startsWith('/admin') && !pathname.startsWith('/super-admin');
   const isSuperAdminPage = pathname.startsWith('/super-admin');

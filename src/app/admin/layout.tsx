@@ -7,6 +7,22 @@ import { UserNav } from "@/components/UserNav";
 import { validateRequest } from "@/app/lib/auth";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
+import { cookies } from "next/headers";
+
+function getIsMiniApp() {
+  const cookieStore = cookies();
+  const sessionCookie = cookieStore.get('miniapp_session');
+  if (sessionCookie) {
+    try {
+      const decodedSession = Buffer.from(sessionCookie.value, 'base64').toString('ascii');
+      const sessionData = JSON.parse(decodedSession);
+      return sessionData.isAuthenticated;
+    } catch (error) {
+      return false;
+    }
+  }
+  return false;
+}
 
 export default async function AdminLayout({
   children,
@@ -20,6 +36,7 @@ export default async function AdminLayout({
   if (user.role !== 'ADMIN') {
     return redirect('/unauthorized');
   }
+  const isMiniApp = getIsMiniApp();
 
   let ownerName = null;
   if (user.busOwnerId) {
@@ -33,7 +50,7 @@ export default async function AdminLayout({
   return (
     <SidebarProvider>
       <div className="flex flex-col min-h-screen w-full">
-        <Header user={user} />
+        <Header user={user} isMiniApp={isMiniApp} />
         <div className="flex flex-1">
           <Sidebar>
             <SidebarContent>

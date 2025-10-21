@@ -4,13 +4,30 @@ import { Header } from '@/components/Header';
 import { BookingForm } from '@/components/booking/BookingForm';
 import prisma from '@/lib/prisma';
 import { validateRequest } from '@/app/lib/auth';
+import { cookies } from 'next/headers';
 
 interface BookPageProps {
   params: { id: string };
 }
 
+function getIsMiniApp() {
+  const cookieStore = cookies();
+  const sessionCookie = cookieStore.get('miniapp_session');
+  if (sessionCookie) {
+    try {
+      const decodedSession = Buffer.from(sessionCookie.value, 'base64').toString('ascii');
+      const sessionData = JSON.parse(decodedSession);
+      return sessionData.isAuthenticated;
+    } catch (error) {
+      return false;
+    }
+  }
+  return false;
+}
+
 export default async function BookPage({ params }: BookPageProps) {
   const { user } = await validateRequest();
+  const isMiniApp = getIsMiniApp();
   const routeId = params.id;
 
   const routeData = await prisma.route.findUnique({
@@ -69,7 +86,7 @@ export default async function BookPage({ params }: BookPageProps) {
 
   return (
     <div className="flex flex-col min-h-screen bg-muted/20">
-      <Header user={user} />
+      <Header user={user} isMiniApp={isMiniApp} />
       <main className="flex-1 container mx-auto py-8 px-4">
         <div className="max-w-3xl mx-auto">
           <BookingForm 

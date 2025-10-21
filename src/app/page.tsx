@@ -7,9 +7,26 @@ import prisma from "@/lib/prisma";
 import { FeaturedRoutes } from "@/components/FeaturedRoutes";
 import Image from "next/image";
 import { Card } from "@/components/ui/card";
+import { cookies } from "next/headers";
+
+function getIsMiniApp() {
+  const cookieStore = cookies();
+  const sessionCookie = cookieStore.get('miniapp_session');
+  if (sessionCookie) {
+    try {
+      const decodedSession = Buffer.from(sessionCookie.value, 'base64').toString('ascii');
+      const sessionData = JSON.parse(decodedSession);
+      return sessionData.isAuthenticated;
+    } catch (error) {
+      return false;
+    }
+  }
+  return false;
+}
 
 export default async function Home() {
   const { user } = await validateRequest();
+  const isMiniApp = getIsMiniApp();
   
   const routesData = await prisma.route.findMany({
     include: {
@@ -48,7 +65,7 @@ export default async function Home() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <Header user={user} />
+      <Header user={user} isMiniApp={isMiniApp} />
        <main className="flex-1">
         {/* Hero Section */}
         <section className="relative h-[400px] md:h-[500px] flex items-center justify-center text-center text-white">
