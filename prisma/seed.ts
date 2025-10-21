@@ -30,6 +30,7 @@ async function main() {
   console.log('Clearing existing data...');
   await prisma.loginAttempt.deleteMany();
   await prisma.session.deleteMany();
+  await prisma.payment.deleteMany();
   await prisma.bookedSeat.deleteMany();
   await prisma.booking.deleteMany();
   await prisma.discountTier.deleteMany();
@@ -299,6 +300,7 @@ async function main() {
         totalPrice: allCreatedRoutes[0].price,
         routeId: allCreatedRoutes[0].id,
         status: 'VALID',
+        paymentStatus: 'PAID',
         bookedSeats: {
           create: [
             { seatNumber: 'A1' },
@@ -314,6 +316,7 @@ async function main() {
         totalPrice: allCreatedRoutes[1].price * 2,
         routeId: allCreatedRoutes[1].id,
         status: 'VALID',
+        paymentStatus: 'PAID',
         bookedSeats: {
           create: [
             { seatNumber: 'B2' },

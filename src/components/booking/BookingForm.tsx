@@ -14,6 +14,7 @@ import { Armchair, ArrowRight, Bus as BusIcon, Calendar, Clock, DollarSign, Perc
 import { useToast } from "@/hooks/use-toast";
 import { SeatMap } from "./SeatMap";
 import { createBookingAction, createPaymentRequestAction } from "@/app/book/actions";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 type RouteWithDetails = Route & {
     origin: Location;
@@ -39,6 +40,9 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken 
   const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
   const [passengerName, setPassengerName] = useState("");
   const [passengerEmail, setPassengerEmail] = useState("");
+  
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [lastBookingId, setLastBookingId] = useState<string | null>(null);
 
   const ticketCount = selectedSeats.length;
 
@@ -95,12 +99,12 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken 
     startTransition(async () => {
       const result = await createBookingAction(bookingData);
       if (result.success && result.bookingId) {
-        toast({ title: "Booking Successful!", description: "Proceeding to payment..." });
+        setLastBookingId(result.bookingId);
+        toast({ title: "Booking Successful!", description: "Please complete the payment process." });
 
         if (!authToken) {
-            toast({ title: "Payment Error", description: "Mini-app authentication token not found.", variant: "destructive"});
-            // Redirect to ticket page anyway so user is not stuck
-            router.push(`/ticket/${result.bookingId}`);
+            toast({ title: "Payment Skipped", description: "Mini-app authentication token not found. Cannot initiate payment.", variant: "destructive"});
+            setShowConfirmation(true);
             return;
         }
 
@@ -108,129 +112,145 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken 
 
         if (paymentResult.success && paymentResult.paymentToken) {
             toast({ title: "Payment Initiated", description: "Please complete the payment on your device." });
-            // Here you would typically use the `paymentToken` to trigger the mini-app's payment UI.
-            // For now, we will just redirect to the ticket page.
             console.log("Received Payment Token:", paymentResult.paymentToken);
-            // In a real mini-app, you might do something like:
-            // window.myChannel.postMessage({ type: 'PAYMENT_REQUEST', token: paymentResult.paymentToken });
-            router.push(`/ticket/${result.bookingId}`);
         } else {
             toast({ title: "Payment Initiation Failed", description: paymentResult.message, variant: "destructive" });
-            router.push(`/ticket/${result.bookingId}`);
         }
+        
+        setShowConfirmation(true);
 
       } else {
         toast({ title: "Booking Failed", description: result.message, variant: "destructive" });
-        // Optionally, refetch route data to show which seats are gone
       }
     });
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-headline text-3xl">Confirm Your Booking</CardTitle>
-          <CardDescription>Review your trip details and select your seats.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-8">
-          {/* Route Details */}
-          <div className="p-4 border rounded-lg bg-muted/30">
-             <div className="flex justify-between items-center">
-                <div className="flex items-center gap-4 text-xl font-bold">
-                    <span>{selectedRoute.origin.name}</span>
-                    <ArrowRight className="h-5 w-5 text-primary" />
-                    <span>{selectedRoute.destination.name}</span>
-                </div>
-                 {alternativeRoutes.length > 1 && (
-                    <Select onValueChange={handleRouteChange} defaultValue={selectedRoute.id}>
-                        <SelectTrigger className="w-[200px]">
-                            <SelectValue placeholder="Change bus..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                        {alternativeRoutes.map(altRoute => (
-                            <SelectItem key={altRoute.id} value={altRoute.id}>
-                                {altRoute.bus.name}
-                            </SelectItem>
-                        ))}
-                        </SelectContent>
-                    </Select>
-                 )}
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm mt-4 text-muted-foreground">
-                <div className="flex items-center gap-2"><Calendar className="h-4 w-4" /> <span>{new Date(selectedRoute.departureTime).toLocaleDateString()}</span></div>
-                <div className="flex items-center gap-2"><Clock className="h-4 w-4" /> <span>{new Date(selectedRoute.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
-                <div className="flex items-center gap-2"><BusIcon className="h-4 w-4" /> <span>{selectedRoute.bus.name}</span></div>
-            </div>
-          </div>
-          
-          {/* Seat Map */}
-          <div>
-            <h3 className="font-semibold text-lg flex items-center gap-2 mb-2"><Armchair /> Select Your Seats</h3>
-            <SeatMap 
-              key={selectedRoute.id} // Add key to force re-render on route change
-              bus={selectedRoute.bus} 
-              onSelectionChange={setSelectedSeats} 
-            />
-          </div>
-
-          <Separator />
-          
-          {/* Passenger Info */}
-          <div>
-            <h3 className="font-semibold text-lg flex items-center gap-2 mb-4"><User /> Passenger Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="passengerName">Full Name</Label>
-                <Input id="passengerName" placeholder="e.g., John Doe" required value={passengerName} onChange={e => setPassengerName(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="passengerEmail">Email Address</Label>
-                <Input id="passengerEmail" type="email" placeholder="e.g., john.doe@example.com" required value={passengerEmail} onChange={e => setPassengerEmail(e.target.value)} />
-              </div>
-            </div>
-          </div>
-
-          <Separator />
-          
-          {/* Price Summary */}
-          <div>
-            <h3 className="font-semibold text-lg flex items-center gap-2 mb-4"><DollarSign /> Price Summary</h3>
-            <div className="space-y-2 p-4 border rounded-lg bg-muted/30">
-                <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground flex items-center gap-2"><Users />Tickets</span>
-                    <span>{ticketCount} x ${selectedRoute.price.toFixed(2)}</span>
-                </div>
-                {ticketCount > 0 && (
-                  <div className="flex justify-between items-start text-sm">
-                      <span className="text-muted-foreground flex items-center gap-2 pt-1"><Armchair />Selected Seats</span>
-                      <span className="font-semibold text-right max-w-[50%]">{selectedSeats.map(s => s.seatNumber).join(', ')}</span>
+    <>
+      <form onSubmit={handleSubmit}>
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-headline text-3xl">Confirm Your Booking</CardTitle>
+            <CardDescription>Review your trip details and select your seats.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-8">
+            {/* Route Details */}
+            <div className="p-4 border rounded-lg bg-muted/30">
+               <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-4 text-xl font-bold">
+                      <span>{selectedRoute.origin.name}</span>
+                      <ArrowRight className="h-5 w-5 text-primary" />
+                      <span>{selectedRoute.destination.name}</span>
                   </div>
-                )}
-                 <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span>${subtotal.toFixed(2)}</span>
-                </div>
-                {appliedTier && (
-                    <div className="flex justify-between items-center text-sm text-green-600 font-semibold">
-                        <span className="flex items-center gap-2"><Percent />{selectedRoute.discount?.name} ({appliedTier.percentage}%)</span>
-                        <span>-${discountAmount.toFixed(2)}</span>
-                    </div>
-                )}
-                <Separator className="my-2" />
-                 <div className="flex justify-between items-center font-bold text-lg">
-                    <span>Total Price</span>
-                    <span>${finalPrice.toFixed(2)}</span>
-                </div>
+                   {alternativeRoutes.length > 1 && (
+                      <Select onValueChange={handleRouteChange} defaultValue={selectedRoute.id}>
+                          <SelectTrigger className="w-[200px]">
+                              <SelectValue placeholder="Change bus..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                          {alternativeRoutes.map(altRoute => (
+                              <SelectItem key={altRoute.id} value={altRoute.id}>
+                                  {altRoute.bus.name}
+                              </SelectItem>
+                          ))}
+                          </SelectContent>
+                      </Select>
+                   )}
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm mt-4 text-muted-foreground">
+                  <div className="flex items-center gap-2"><Calendar className="h-4 w-4" /> <span>{new Date(selectedRoute.departureTime).toLocaleDateString()}</span></div>
+                  <div className="flex items-center gap-2"><Clock className="h-4 w-4" /> <span>{new Date(selectedRoute.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
+                  <div className="flex items-center gap-2"><BusIcon className="h-4 w-4" /> <span>{selectedRoute.bus.name}</span></div>
+              </div>
             </div>
-          </div>
-          
-          <Button type="submit" size="lg" className="w-full" disabled={isPending}>
-            {isPending ? 'Processing...' : 'Book Now & Pay'}
-          </Button>
+            
+            {/* Seat Map */}
+            <div>
+              <h3 className="font-semibold text-lg flex items-center gap-2 mb-2"><Armchair /> Select Your Seats</h3>
+              <SeatMap 
+                key={selectedRoute.id} // Add key to force re-render on route change
+                bus={selectedRoute.bus} 
+                onSelectionChange={setSelectedSeats} 
+              />
+            </div>
 
-        </CardContent>
-      </Card>
-    </form>
+            <Separator />
+            
+            {/* Passenger Info */}
+            <div>
+              <h3 className="font-semibold text-lg flex items-center gap-2 mb-4"><User /> Passenger Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="passengerName">Full Name</Label>
+                  <Input id="passengerName" placeholder="e.g., John Doe" required value={passengerName} onChange={e => setPassengerName(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="passengerEmail">Email Address</Label>
+                  <Input id="passengerEmail" type="email" placeholder="e.g., john.doe@example.com" required value={passengerEmail} onChange={e => setPassengerEmail(e.target.value)} />
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+            
+            {/* Price Summary */}
+            <div>
+              <h3 className="font-semibold text-lg flex items-center gap-2 mb-4"><DollarSign /> Price Summary</h3>
+              <div className="space-y-2 p-4 border rounded-lg bg-muted/30">
+                  <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground flex items-center gap-2"><Users />Tickets</span>
+                      <span>{ticketCount} x ${selectedRoute.price.toFixed(2)}</span>
+                  </div>
+                  {ticketCount > 0 && (
+                    <div className="flex justify-between items-start text-sm">
+                        <span className="text-muted-foreground flex items-center gap-2 pt-1"><Armchair />Selected Seats</span>
+                        <span className="font-semibold text-right max-w-[50%]">{selectedSeats.map(s => s.seatNumber).join(', ')}</span>
+                    </div>
+                  )}
+                   <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">Subtotal</span>
+                      <span>${subtotal.toFixed(2)}</span>
+                  </div>
+                  {appliedTier && (
+                      <div className="flex justify-between items-center text-sm text-green-600 font-semibold">
+                          <span className="flex items-center gap-2"><Percent />{selectedRoute.discount?.name} ({appliedTier.percentage}%)</span>
+                          <span>-${discountAmount.toFixed(2)}</span>
+                      </div>
+                  )}
+                  <Separator className="my-2" />
+                   <div className="flex justify-between items-center font-bold text-lg">
+                      <span>Total Price</span>
+                      <span>${finalPrice.toFixed(2)}</span>
+                  </div>
+              </div>
+            </div>
+            
+            <Button type="submit" size="lg" className="w-full" disabled={isPending}>
+              {isPending ? 'Processing...' : 'Book Now & Pay'}
+            </Button>
+
+          </CardContent>
+        </Card>
+      </form>
+
+      <AlertDialog open={showConfirmation} onOpenChange={setShowConfirmation}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Booking Confirmed!</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your seats are reserved. Please complete the payment to receive your QR code ticket. The ticket page will only be accessible after successful payment.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              New Booking
+            </Button>
+            <Button onClick={() => router.push(`/ticket/${lastBookingId}`)}>
+              View Ticket Status
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
