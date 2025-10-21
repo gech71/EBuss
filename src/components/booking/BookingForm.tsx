@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo, useTransition, useEffect } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import type { Route, Bus, SeatLayout, Seat, Discount, DiscountTier, Location } from "@prisma/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,27 +27,18 @@ type AlternativeRoute = Route & { bus: Bus };
 interface BookingFormProps {
   route: RouteWithDetails;
   alternativeRoutes: AlternativeRoute[];
+  authToken?: string;
 }
 
-export function BookingForm({ route: initialRoute, alternativeRoutes }: BookingFormProps) {
+export function BookingForm({ route: initialRoute, alternativeRoutes, authToken }: BookingFormProps) {
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 
-  const [authToken, setAuthToken] = useState<string | undefined>();
   const [selectedRoute, setSelectedRoute] = useState<RouteWithDetails>(initialRoute);
   const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
   const [passengerName, setPassengerName] = useState("");
   const [passengerEmail, setPassengerEmail] = useState("");
-
-  useEffect(() => {
-    const urlToken = searchParams.get('token');
-    if (urlToken) {
-      setAuthToken(urlToken);
-    }
-  }, [searchParams]);
 
   const ticketCount = selectedSeats.length;
 

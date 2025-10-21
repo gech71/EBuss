@@ -10,24 +10,27 @@ interface BookPageProps {
   params: { id: string };
 }
 
-function getIsMiniApp() {
+function getMiniAppData() {
   const cookieStore = cookies();
   const sessionCookie = cookieStore.get('miniapp_session');
   if (sessionCookie) {
     try {
       const decodedSession = Buffer.from(sessionCookie.value, 'base64').toString('ascii');
       const sessionData = JSON.parse(decodedSession);
-      return sessionData.isAuthenticated;
+      return { 
+        isMiniApp: sessionData.isAuthenticated, 
+        authToken: sessionData.authToken 
+      };
     } catch (error) {
-      return false;
+      return { isMiniApp: false, authToken: undefined };
     }
   }
-  return false;
+  return { isMiniApp: false, authToken: undefined };
 }
 
 export default async function BookPage({ params }: BookPageProps) {
   const { user } = await validateRequest();
-  const isMiniApp = getIsMiniApp();
+  const { isMiniApp, authToken } = getMiniAppData();
   const routeId = params.id;
 
   const routeData = await prisma.route.findUnique({
@@ -92,6 +95,7 @@ export default async function BookPage({ params }: BookPageProps) {
           <BookingForm 
             route={route} 
             alternativeRoutes={alternativeRoutes}
+            authToken={authToken}
           />
         </div>
       </main>

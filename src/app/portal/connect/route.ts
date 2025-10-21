@@ -80,7 +80,8 @@ export async function GET(request: Request) {
     // On successful validation, create an encoded session cookie and redirect.
     const sessionData = {
         isAuthenticated: true,
-        phoneNumber: phoneNumber
+        phoneNumber: phoneNumber,
+        authToken: token,
     };
     const encodedSession = Buffer.from(JSON.stringify(sessionData)).toString('base64');
 
