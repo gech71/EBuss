@@ -8,7 +8,6 @@ import { Shield, Gem, LogIn } from 'lucide-react';
 import { SidebarTrigger } from './ui/sidebar';
 import type { User } from 'lucia';
 import { useEffect, useState } from 'react';
-import { cookies } from 'next/dist/client/components/hooks-server';
 
 interface HeaderProps {
     user: User | null;
@@ -30,7 +29,21 @@ export function Header({ user }: HeaderProps) {
   
   useEffect(() => {
     // This check runs on the client-side after hydration
-    setIsMiniApp(!!getCookie('miniapp_session'));
+    const sessionCookie = getCookie('auth_session');
+    if (sessionCookie) {
+        try {
+            const decodedSession = atob(sessionCookie);
+            const sessionData = JSON.parse(decodedSession);
+            if (sessionData.isAuthenticated) {
+                setIsMiniApp(true);
+            }
+        } catch (error) {
+            console.error("Failed to decode session cookie:", error);
+            setIsMiniApp(false);
+        }
+    } else {
+        setIsMiniApp(false);
+    }
   }, [pathname]);
 
   const isAdminPage = pathname.startsWith('/admin') && !pathname.startsWith('/super-admin');
@@ -85,3 +98,4 @@ export function Header({ user }: HeaderProps) {
     </header>
   );
 }
+

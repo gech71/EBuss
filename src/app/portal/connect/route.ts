@@ -74,9 +74,18 @@ export async function GET(request: Request) {
         );
     }
     
-    // On successful validation, set a session cookie and redirect.
+    const validationResult = await externalResponse.json();
+    const phoneNumber = validationResult.phone_number;
+
+    // On successful validation, create an encoded session cookie and redirect.
+    const sessionData = {
+        isAuthenticated: true,
+        phoneNumber: phoneNumber
+    };
+    const encodedSession = Buffer.from(JSON.stringify(sessionData)).toString('base64');
+
     const cookieStore = cookies();
-    cookieStore.set('miniapp_session', 'true', {
+    cookieStore.set('auth_session', encodedSession, {
       path: '/',
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -98,3 +107,4 @@ export async function GET(request: Request) {
     );
   }
 }
+
