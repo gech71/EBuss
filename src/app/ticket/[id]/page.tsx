@@ -1,5 +1,4 @@
 
-
 import { Header } from '@/components/Header';
 import { TicketDisplay } from '@/components/booking/TicketDisplay';
 import { validateRequest } from '@/app/lib/auth';
@@ -42,6 +41,12 @@ export default async function TicketPage({ params }: TicketPageProps) {
           bus: true,
         },
       },
+      payments: {
+        orderBy: {
+            createdAt: 'desc',
+        },
+        take: 1,
+      }
     },
   });
 
