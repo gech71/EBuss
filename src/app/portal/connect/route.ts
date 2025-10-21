@@ -41,7 +41,6 @@ export async function GET(request: Request) {
       );
     }
     
-    // Step 2: Validate the token with the external service
     const validationUrl = process.env.VALIDATE_TOKEN_URL;
     if (!validationUrl) {
       console.error('VALIDATE_TOKEN_URL environment variable is not set.');
@@ -57,7 +56,7 @@ export async function GET(request: Request) {
     const externalResponse = await fetch(validationUrl, {
       method: 'GET',
       headers: {
-        Authorization: authHeader, // Forward the original Authorization header
+        Authorization: authHeader,
         Accept: 'application/json',
       },
       cache: 'no-store',
@@ -74,26 +73,11 @@ export async function GET(request: Request) {
             { status: externalResponse.status }
         );
     }
-
-    const responseData = await externalResponse.json();
-    const phoneNumber = responseData.phone;
-
-    if (!phoneNumber) {
-        return NextResponse.json(
-            {
-                status: 'error',
-                message: 'Phone number not found in validation response.',
-            },
-            { status: 404 }
-        );
-    }
-
-    return NextResponse.json({
-        status: 'success',
-        message: 'Token successfully validated.',
-        phoneNumber: phoneNumber,
-    });
-
+    
+    // On successful validation, redirect to the customer homepage.
+    const url = new URL(request.url);
+    const redirectUrl = `${url.protocol}//${url.host}/`;
+    return NextResponse.redirect(redirectUrl);
 
   } catch (error) {
     console.error('Error processing connect request:', error);
