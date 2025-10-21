@@ -10,8 +10,8 @@ interface BookPageProps {
   params: { id: string };
 }
 
-function getMiniAppData() {
-  const cookieStore = cookies();
+async function getMiniAppData() {
+  const cookieStore = await cookies();
   const sessionCookie = cookieStore.get('miniapp_session');
   if (sessionCookie) {
     try {
@@ -31,7 +31,7 @@ function getMiniAppData() {
 
 export default async function BookPage({ params }: BookPageProps) {
   const { user } = await validateRequest();
-  const { isMiniApp, authToken, phoneNumber } = getMiniAppData();
+  const { isMiniApp, authToken, phoneNumber } = await getMiniAppData();
   const routeId = params.id;
 
   const routeData = await prisma.route.findUnique({
