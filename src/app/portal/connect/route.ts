@@ -1,5 +1,5 @@
 
-import { headers } from 'next/headers';
+import { headers, cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
@@ -74,7 +74,15 @@ export async function GET(request: Request) {
         );
     }
     
-    // On successful validation, redirect to the customer homepage.
+    // On successful validation, set a session cookie and redirect.
+    const cookieStore = cookies();
+    cookieStore.set('miniapp_session', 'true', {
+      path: '/',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    });
+
     const url = new URL(request.url);
     const redirectUrl = `${url.protocol}//${url.host}/`;
     return NextResponse.redirect(redirectUrl);
