@@ -32,6 +32,15 @@ interface BookingFormProps {
   phoneNumber?: string;
 }
 
+// For Mini App communication
+declare global {
+    interface Window {
+        myJsChannel?: {
+            postMessage: (message: { token: string }) => void;
+        };
+    }
+}
+
 export function BookingForm({ route: initialRoute, alternativeRoutes, authToken, phoneNumber }: BookingFormProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -118,8 +127,13 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
         const paymentResult = await createPaymentRequestAction(result.bookingId, finalPrice, authToken);
 
         if (paymentResult.success && paymentResult.paymentToken) {
-            toast({ title: "Payment Initiated", description: "Please complete the payment on your device." });
-            console.log("Received Payment Token:", paymentResult.paymentToken);
+             if (typeof window !== 'undefined' && window.myJsChannel?.postMessage) {
+                window.myJsChannel.postMessage({ token: paymentResult.paymentToken });
+                toast({ title: "Payment Initiated", description: "Please complete the payment on your device." });
+             } else {
+                console.error("NIB Super App channel (window.myJsChannel) not found.");
+                toast({ title: "Payment Channel Error", description: "Could not communicate with the payment app.", variant: "destructive" });
+             }
         } else {
             toast({ title: "Payment Initiation Failed", description: paymentResult.message, variant: "destructive" });
         }
@@ -261,3 +275,5 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
     </>
   );
 }
+
+    
