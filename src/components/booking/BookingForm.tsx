@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useState, useMemo, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useMemo, useTransition, useEffect } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import type { Route, Bus, SeatLayout, Seat, Discount, DiscountTier, Location } from "@prisma/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { Armchair, ArrowRight, Bus as BusIcon, Calendar, Clock, DollarSign, Percent, User, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SeatMap } from "./SeatMap";
-import { createBookingAction } from "@/app/book/actions";
+import { createBookingAction, createPaymentRequestAction } from "@/app/book/actions";
 
 type RouteWithDetails = Route & {
     origin: Location;
@@ -31,13 +31,23 @@ interface BookingFormProps {
 
 export function BookingForm({ route: initialRoute, alternativeRoutes }: BookingFormProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 
+  const [authToken, setAuthToken] = useState<string | undefined>();
   const [selectedRoute, setSelectedRoute] = useState<RouteWithDetails>(initialRoute);
   const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
   const [passengerName, setPassengerName] = useState("");
   const [passengerEmail, setPassengerEmail] = useState("");
+
+  useEffect(() => {
+    const urlToken = searchParams.get('token');
+    if (urlToken) {
+      setAuthToken(urlToken);
+    }
+  }, [searchParams]);
 
   const ticketCount = selectedSeats.length;
 
@@ -94,8 +104,30 @@ export function BookingForm({ route: initialRoute, alternativeRoutes }: BookingF
     startTransition(async () => {
       const result = await createBookingAction(bookingData);
       if (result.success && result.bookingId) {
-        toast({ title: "Booking Successful!", description: "Your ticket has been confirmed." });
-        router.push(`/ticket/${result.bookingId}`);
+        toast({ title: "Booking Successful!", description: "Proceeding to payment..." });
+
+        if (!authToken) {
+            toast({ title: "Payment Error", description: "Mini-app authentication token not found.", variant: "destructive"});
+            // Redirect to ticket page anyway so user is not stuck
+            router.push(`/ticket/${result.bookingId}`);
+            return;
+        }
+
+        const paymentResult = await createPaymentRequestAction(result.bookingId, finalPrice, authToken);
+
+        if (paymentResult.success && paymentResult.paymentToken) {
+            toast({ title: "Payment Initiated", description: "Please complete the payment on your device." });
+            // Here you would typically use the `paymentToken` to trigger the mini-app's payment UI.
+            // For now, we will just redirect to the ticket page.
+            console.log("Received Payment Token:", paymentResult.paymentToken);
+            // In a real mini-app, you might do something like:
+            // window.myChannel.postMessage({ type: 'PAYMENT_REQUEST', token: paymentResult.paymentToken });
+            router.push(`/ticket/${result.bookingId}`);
+        } else {
+            toast({ title: "Payment Initiation Failed", description: paymentResult.message, variant: "destructive" });
+            router.push(`/ticket/${result.bookingId}`);
+        }
+
       } else {
         toast({ title: "Booking Failed", description: result.message, variant: "destructive" });
         // Optionally, refetch route data to show which seats are gone

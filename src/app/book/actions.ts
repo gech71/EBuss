@@ -4,6 +4,8 @@
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import crypto from 'crypto';
+import { format } from 'date-fns';
 
 const createBookingSchema = z.object({
   routeId: z.string().min(1),
@@ -103,4 +105,86 @@ export async function createBookingAction(data: unknown) {
   }
 }
 
+export async function createPaymentRequestAction(bookingId: string, amount: number, authToken: string | undefined) {
+    if (!authToken) {
+        return { success: false, message: 'Authentication token is missing.' };
+    }
+
+    const NIB_PAYMENT_URL = process.env.NIB_PAYMENT_URL;
+    const NIB_PAYMENT_KEY = process.env.NIB_PAYMENT_KEY;
+    const ACCOUNT_NO = process.env.NIB_ACCOUNT_NO;
+    const COMPANY_NAME = process.env.NIB_COMPANY_NAME || 'EBUSS';
+    const CALLBACK_URL = `${process.env.NEXT_PUBLIC_BASE_URL}/api/portal/payment-callback`;
     
+    if (!NIB_PAYMENT_URL || !NIB_PAYMENT_KEY || !ACCOUNT_NO) {
+        console.error("Payment environment variables are not set.");
+        return { success: false, message: 'Server is not configured for payments.' };
+    }
+
+    const transactionId = crypto.randomUUID();
+    const transactionTime = format(new Date(), 'yyyyMMddHHmmss');
+
+    try {
+        await prisma.payment.create({
+            data: {
+                bookingId,
+                amount,
+                transactionId,
+                status: 'PENDING',
+            }
+        });
+
+        const signatureString = [
+            `accountNo=${ACCOUNT_NO}`,
+            `amount=${amount}`,
+            `callBackURL=${CALLBACK_URL}`,
+            `companyName=${COMPANY_NAME}`,
+            `Key=${NIB_PAYMENT_KEY}`,
+            `token=${authToken}`,
+            `transactionId=${transactionId}`,
+            `transactionTime=${transactionTime}`
+        ].join('&');
+
+        const signature = crypto.createHash('sha256').update(signatureString, 'utf8').digest('hex');
+
+        const payload = {
+            accountNo: ACCOUNT_NO,
+            amount: String(amount),
+            callBackURL: CALLBACK_URL,
+            companyName: COMPANY_NAME,
+            token: authToken,
+            transactionId: transactionId,
+            transactionTime: transactionTime,
+            signature: signature
+        };
+
+        const response = await fetch(NIB_PAYMENT_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify(payload),
+        });
+
+        const responseData = await response.json();
+
+        if (response.ok && responseData.token) {
+            await prisma.payment.update({
+                where: { transactionId },
+                data: { paymentToken: responseData.token }
+            });
+            return { success: true, paymentToken: responseData.token };
+        } else {
+            await prisma.payment.update({
+                where: { transactionId },
+                data: { status: 'FAILED' }
+            });
+            return { success: false, message: responseData.message || 'Failed to get payment token.' };
+        }
+    } catch (error) {
+        console.error("Payment request failed:", error);
+        const message = error instanceof Error ? error.message : 'An unexpected error occurred during payment initiation.';
+        return { success: false, message };
+    }
+}
