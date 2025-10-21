@@ -75,7 +75,7 @@ export async function GET(request: Request) {
     }
     
     const validationResult = await externalResponse.json();
-    const phoneNumber = validationResult.phone_number;
+    const phoneNumber = validationResult.phone;
 
     // On successful validation, create an encoded session cookie and redirect.
     const sessionData = {
