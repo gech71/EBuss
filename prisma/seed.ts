@@ -1,5 +1,5 @@
 
-import { PrismaClient, SeatStatus, SeatType, CommissionType, Role } from '@prisma/client';
+import { PrismaClient, SeatStatus, SeatType, CommissionType, Role, PaymentStatus, BookingStatus } from '@prisma/client';
 import { Argon2id } from 'oslo/password';
 
 const prisma = new PrismaClient();
@@ -296,11 +296,12 @@ async function main() {
     const booking1 = await prisma.booking.create({
       data: {
         passengerName: 'Alice Johnson',
+        passengerPhone: '123-456-7890',
         passengerEmail: 'alice@example.com',
         totalPrice: allCreatedRoutes[0].price,
         routeId: allCreatedRoutes[0].id,
-        status: 'VALID',
-        paymentStatus: 'PAID',
+        status: BookingStatus.VALID,
+        paymentStatus: PaymentStatus.PAID,
         bookedSeats: {
           create: [
             { seatNumber: 'A1' },
@@ -312,11 +313,12 @@ async function main() {
     const booking2 = await prisma.booking.create({
       data: {
         passengerName: 'Bob Williams',
+        passengerPhone: '098-765-4321',
         passengerEmail: 'bob@example.com',
         totalPrice: allCreatedRoutes[1].price * 2,
         routeId: allCreatedRoutes[1].id,
-        status: 'VALID',
-        paymentStatus: 'PAID',
+        status: BookingStatus.VALID,
+        paymentStatus: PaymentStatus.PAID,
         bookedSeats: {
           create: [
             { seatNumber: 'B2' },
@@ -340,3 +342,5 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+
+    
