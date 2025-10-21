@@ -29,7 +29,7 @@ export function Header({ user }: HeaderProps) {
   
   useEffect(() => {
     // This check runs on the client-side after hydration
-    const sessionCookie = getCookie('auth_session');
+    const sessionCookie = getCookie('miniapp_session');
     if (sessionCookie) {
         try {
             const decodedSession = atob(sessionCookie);

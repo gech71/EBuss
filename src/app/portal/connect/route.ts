@@ -85,7 +85,7 @@ export async function GET(request: Request) {
     const encodedSession = Buffer.from(JSON.stringify(sessionData)).toString('base64');
 
     const cookieStore = cookies();
-    cookieStore.set('auth_session', encodedSession, {
+    cookieStore.set('miniapp_session', encodedSession, {
       path: '/',
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -107,4 +107,3 @@ export async function GET(request: Request) {
     );
   }
 }
-
