@@ -29,9 +29,10 @@ interface BookingFormProps {
   route: RouteWithDetails;
   alternativeRoutes: AlternativeRoute[];
   authToken?: string;
+  phoneNumber?: string;
 }
 
-export function BookingForm({ route: initialRoute, alternativeRoutes, authToken }: BookingFormProps) {
+export function BookingForm({ route: initialRoute, alternativeRoutes, authToken, phoneNumber }: BookingFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -39,10 +40,16 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken 
   const [selectedRoute, setSelectedRoute] = useState<RouteWithDetails>(initialRoute);
   const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
   const [passengerName, setPassengerName] = useState("");
-  const [passengerEmail, setPassengerEmail] = useState("");
+  const [passengerPhone, setPassengerPhone] = useState(phoneNumber || "");
   
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [lastBookingId, setLastBookingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if(phoneNumber) {
+        setPassengerPhone(phoneNumber);
+    }
+  }, [phoneNumber])
 
   const ticketCount = selectedSeats.length;
 
@@ -83,8 +90,8 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken 
       toast({ title: "No seats selected", description: "Please select at least one seat.", variant: "destructive" });
       return;
     }
-    if (!passengerName || !passengerEmail) {
-      toast({ title: "Passenger details required", description: "Please enter your name and email.", variant: "destructive" });
+    if (!passengerName || !passengerPhone) {
+      toast({ title: "Passenger details required", description: "Please enter your name and phone number.", variant: "destructive" });
       return;
     }
 
@@ -93,7 +100,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken 
       selectedSeatNumbers: selectedSeats.map(s => s.seatNumber),
       totalPrice: finalPrice,
       passengerName,
-      passengerEmail
+      passengerPhone
     };
 
     startTransition(async () => {
@@ -185,8 +192,8 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken 
                   <Input id="passengerName" placeholder="e.g., John Doe" required value={passengerName} onChange={e => setPassengerName(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="passengerEmail">Email Address</Label>
-                  <Input id="passengerEmail" type="email" placeholder="e.g., john.doe@example.com" required value={passengerEmail} onChange={e => setPassengerEmail(e.target.value)} />
+                  <Label htmlFor="passengerPhone">Phone Number</Label>
+                  <Input id="passengerPhone" type="tel" placeholder="e.g., 0912345678" required value={passengerPhone} onChange={e => setPassengerPhone(e.target.value)} disabled={!!phoneNumber} />
                 </div>
               </div>
             </div>

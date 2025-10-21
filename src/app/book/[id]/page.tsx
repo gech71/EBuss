@@ -19,18 +19,19 @@ function getMiniAppData() {
       const sessionData = JSON.parse(decodedSession);
       return { 
         isMiniApp: sessionData.isAuthenticated, 
-        authToken: sessionData.authToken 
+        authToken: sessionData.authToken,
+        phoneNumber: sessionData.phoneNumber,
       };
     } catch (error) {
-      return { isMiniApp: false, authToken: undefined };
+      return { isMiniApp: false, authToken: undefined, phoneNumber: undefined };
     }
   }
-  return { isMiniApp: false, authToken: undefined };
+  return { isMiniApp: false, authToken: undefined, phoneNumber: undefined };
 }
 
 export default async function BookPage({ params }: BookPageProps) {
   const { user } = await validateRequest();
-  const { isMiniApp, authToken } = getMiniAppData();
+  const { isMiniApp, authToken, phoneNumber } = getMiniAppData();
   const routeId = params.id;
 
   const routeData = await prisma.route.findUnique({
@@ -96,6 +97,7 @@ export default async function BookPage({ params }: BookPageProps) {
             route={route} 
             alternativeRoutes={alternativeRoutes}
             authToken={authToken}
+            phoneNumber={phoneNumber}
           />
         </div>
       </main>
