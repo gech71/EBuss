@@ -1,10 +1,11 @@
 
+
 "use client";
 
 import { useRef } from "react";
 import type { Booking, Route, Bus, Location, BookedSeat, Payment } from "@prisma/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { ArrowRight, Bus as BusIcon, Clock, MapPin, User, Ticket as TicketIcon, Download, Send, MessageCircle, Hourglass, XCircle } from "lucide-react";
+import { ArrowRight, Bus as BusIcon, Clock, MapPin, User, Ticket as TicketIcon, Download, Send, MessageCircle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
 import html2canvas from "html2canvas";
@@ -51,10 +52,8 @@ export function TicketDisplay({ booking }: TicketDisplayProps) {
     );
   }
   
-  const { route, paymentStatus } = booking;
+  const { route } = booking;
   const { bus } = route;
-  
-  const isPaid = paymentStatus === 'PAID';
 
   const qrCodeData = encodeURIComponent(JSON.stringify({ ticketId: booking.id, routeId: booking.routeId, passenger: booking.passengerName }));
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${qrCodeData}&bgcolor=F0F8FF`;
@@ -66,34 +65,6 @@ export function TicketDisplay({ booking }: TicketDisplayProps) {
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`;
   const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
 
-  const PaymentStatusDisplay = () => {
-    if (isPaid) return null;
-
-    let Icon, text, colorClass;
-
-    switch(paymentStatus) {
-        case 'PENDING':
-            Icon = Hourglass;
-            text = "Payment Pending";
-            colorClass = "text-amber-500";
-            break;
-        case 'FAILED':
-            Icon = XCircle;
-            text = "Payment Failed";
-            colorClass = "text-destructive";
-            break;
-        default:
-            return null;
-    }
-    
-    return (
-        <div className={`flex flex-col items-center justify-center h-[200px] w-[200px] rounded-lg border-4 border-dashed bg-muted/50 ${colorClass}`}>
-            <Icon className="h-16 w-16 mb-2" />
-            <p className="font-semibold text-lg">{text}</p>
-        </div>
-    )
-  }
-
   return (
     <div className="w-full max-w-md">
         <Card ref={ticketRef} className="bg-card shadow-2xl rounded-lg overflow-hidden">
@@ -103,18 +74,14 @@ export function TicketDisplay({ booking }: TicketDisplayProps) {
             </CardHeader>
             <CardContent className="p-6 space-y-4">
                 <div className="flex items-center justify-center">
-                    {isPaid ? (
-                        <Image 
-                            src={qrCodeUrl} 
-                            alt="Ticket QR Code" 
-                            width={200} 
-                            height={200}
-                            className="rounded-lg border-4 border-muted"
-                            data-ai-hint="qr code"
-                        />
-                    ) : (
-                       <PaymentStatusDisplay />
-                    )}
+                    <Image 
+                        src={qrCodeUrl} 
+                        alt="Ticket QR Code" 
+                        width={200} 
+                        height={200}
+                        className="rounded-lg border-4 border-muted"
+                        data-ai-hint="qr code"
+                    />
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between text-lg font-semibold">
@@ -149,11 +116,7 @@ export function TicketDisplay({ booking }: TicketDisplayProps) {
                 </div>
             </CardContent>
             <CardFooter className="bg-muted/50 p-4">
-                {isPaid ? (
-                    <p className="text-xs text-muted-foreground text-center w-full">Please have this QR code ready for scanning before boarding. Thank you for choosing NibTeraBuss!</p>
-                ) : (
-                    <p className="text-xs text-amber-600 font-semibold text-center w-full">Your booking is confirmed but requires payment. The QR code will be available once payment is complete.</p>
-                )}
+                <p className="text-xs text-muted-foreground text-center w-full">Please have this QR code ready for scanning before boarding. Thank you for choosing NibTeraBuss!</p>
             </CardFooter>
         </Card>
 
