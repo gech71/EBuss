@@ -3,12 +3,8 @@
 
 import { Header } from "@/components/Header";
 import { RouteSearch } from "@/components/RouteSearch";
-import { validateRequest } from "@/app/lib/auth";
-import prisma from "@/lib/prisma";
 import { FeaturedRoutes } from "@/components/FeaturedRoutes";
 import Image from "next/image";
-import { Card } from "@/components/ui/card";
-import { cookies } from "next/headers";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Route, Bus, Location, BusOwner, Discount, User } from '@prisma/client';
@@ -89,8 +85,10 @@ export default function Home() {
     useEffect(() => {
         const fetchProps = async () => {
             const res = await fetch('/api/home-props');
-            const data = await res.json();
-            setProps(data);
+            if (res.ok) {
+                const data = await res.json();
+                setProps(data);
+            }
         }
         fetchProps();
     }, []);
@@ -98,7 +96,7 @@ export default function Home() {
     if (!props) {
         return (
             <div className="flex flex-col min-h-screen bg-background">
-              {/* You can add a more sophisticated loading skeleton here */}
+              <Header user={null} isMiniApp={false} />
               <div className="flex-1 flex items-center justify-center">
                 <p>Loading...</p>
               </div>
