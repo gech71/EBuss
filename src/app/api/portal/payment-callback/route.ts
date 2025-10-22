@@ -64,11 +64,11 @@ async function POST(request: NextRequest) {
     // 3. Process the payment and update database
     try {
         const payment = await prisma.payment.findUnique({
-            where: { transactionId: transactionId }
+            where: { transactionId: txnRef }
         });
 
         if (!payment) {
-            console.error(`Callback Error: Payment with transactionId ${transactionId} not found.`);
+            console.error(`Callback Error: Payment with transactionId ${txnRef} not found.`);
             return NextResponse.json({ message: 'Payment record not found.' }, { status: 404 });
         }
 
@@ -82,7 +82,7 @@ async function POST(request: NextRequest) {
                 where: { id: payment.id },
                 data: { 
                     status: PaymentStatus.PAID,
-                    referenceNumber: txnRef,
+                    referenceNumber: transactionId,
                 }
             });
 
