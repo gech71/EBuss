@@ -2,21 +2,14 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import React from 'react';
 import { DataProvider } from '@/components/DataProvider';
-
-// Note: Metadata is commented out but kept here to show it would be in a server component.
-/*
-import type {Metadata} from 'next';
-export const metadata: Metadata = {
-  title: 'NibTeraBuss',
-  description: 'The easiest way to book your bus tickets.',
-};
-*/
+import { headers } from 'next/headers';
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const nonce = headers().get('x-nonce') || '';
   return (
     <html lang="en" suppressHydrationWarning>
        <head>
