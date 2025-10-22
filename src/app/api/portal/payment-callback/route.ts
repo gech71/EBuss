@@ -73,7 +73,7 @@ async function POST(request: NextRequest) {
         }
 
         if (payment.status === PaymentStatus.PAID) {
-            return NextResponse.json({ message: 'Payment already processed.' }, { status: 200 });
+            return NextResponse.json({ message: 'Payment already processed.', bookingId: payment.bookingId }, { status: 200 });
         }
         
         await prisma.$transaction(async (tx) => {
@@ -93,7 +93,7 @@ async function POST(request: NextRequest) {
             });
         });
         
-        return NextResponse.json({ message: "Payment confirmed and updated." }, { status: 200 });
+        return NextResponse.json({ message: "Payment confirmed and updated.", bookingId: payment.bookingId }, { status: 200 });
 
     } catch (error) {
         console.error('Callback Error: Failed to update database.', error);

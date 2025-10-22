@@ -141,7 +141,14 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
             toast({ title: "Payment Initiation Failed", description: paymentResult.message, variant: "destructive" });
         }
         
-        setShowConfirmation(true);
+        // Instead of showing a dialog, we let the user be redirected back to the home page, where the TicketRedirector will handle it.
+        // For non-superapp flows, they can click a button to view their ticket.
+        if (!authToken) {
+            setShowConfirmation(true);
+        } else {
+            // In the super-app, the user will be taken away to the payment screen.
+            // When they return, the TicketRedirector on the homepage will take them to the ticket.
+        }
 
       } else {
         toast({ title: "Booking Failed", description: result.message, variant: "destructive" });
@@ -262,12 +269,12 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
           <AlertDialogHeader>
             <AlertDialogTitle>Booking Confirmed!</AlertDialogTitle>
             <AlertDialogDescription>
-              Your seats are reserved. Please complete the payment to receive your QR code ticket. The ticket page will only be accessible after successful payment.
+              Your seats are reserved. You can view your ticket status now, but the QR code will only be available after successful payment.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <Button variant="outline" onClick={() => {
-                localStorage.removeItem('lastBookingId');
+                setShowConfirmation(false);
                 window.location.reload();
             }}>
               New Booking
@@ -281,5 +288,3 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
     </>
   );
 }
-
-    

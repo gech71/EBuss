@@ -9,7 +9,6 @@ import { cookies } from 'next/headers';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Ticket, Info } from 'lucide-react';
 
-export const dynamic = 'force-dynamic';
 
 interface TicketPageProps {
   params: { id: string };
