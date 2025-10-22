@@ -6,17 +6,18 @@ import { PaymentStatus } from '@prisma/client';
 
 async function POST(request: NextRequest) {
     const authHeader = request.headers.get('Authorization');
-    if (!authHeader) {
-        return NextResponse.json({ message: 'Authorization header is missing.' }, { status: 401 });
-    }
+    console.log({ authHeader });
 
-    const bearerPrefix = 'Bearer ';
-    if (!authHeader.startsWith(bearerPrefix)) {
-        return NextResponse.json({ message: 'Authorization header is malformed.' }, { status: 401 });
-    }
+    // Extract the token from the string like: Bearer {token: YOUR_TOKEN}
+    const tokenMatch = authHeader?.match(/token:\s*(.+)\s*}/);
+    const rawToken = tokenMatch?.[1];
 
-    // 1. Validate the external token from the super app
-    const externalToken = authHeader.substring(bearerPrefix.length);
+    // Reconstruct the standard Bearer token format
+    const fixedAuthHeader = rawToken ? `Bearer ${rawToken}` : null;
+    
+    if (!fixedAuthHeader) {
+    throw new Error('Invalid Authorization header format.');
+    }
     const validationUrl = process.env.VALIDATE_TOKEN_URL;
     if (!validationUrl) {
         console.error('Callback Error: VALIDATE_TOKEN_URL is not set.');
@@ -26,7 +27,7 @@ async function POST(request: NextRequest) {
     try {
         const externalResponse = await fetch(validationUrl, {
             method: 'GET',
-            headers: { 'Authorization': authHeader, 'Accept': 'application/json' },
+            headers: { 'Authorization': fixedAuthHeader, 'Accept': 'application/json' },
             cache: 'no-store',
         });
 
@@ -59,36 +60,8 @@ async function POST(request: NextRequest) {
         token, // This is the user's auth token for the mini-app, not the payment token
         signature: receivedSignature
     } = requestBody;
-
-    // 3. Verify the signature
-    const NIB_PAYMENT_KEY = process.env.NIB_PAYMENT_KEY;
-    const COMPANY_NAME = process.env.NIB_COMPANY_NAME || 'EBUSS';
-    
-    if (!NIB_PAYMENT_KEY) {
-        console.error('Callback Error: NIB_PAYMENT_KEY is not set.');
-        return NextResponse.json({ message: 'Server configuration error for signature validation.' }, { status: 500 });
-    }
-    
-    const signatureString = [
-        `accountNo=${accountNo}`,
-        `companyName=${COMPANY_NAME}`,
-        `paidAmount=${paidAmount}`,
-        `paidByNumber=${paidByNumber}`,
-        `token=${token}`,
-        `transactionId=${transactionId}`,
-        `transactionTime=${transactionTime}`,
-        `txnRef=${txnRef}`,
-        `Key=${NIB_PAYMENT_KEY}`
-    ].join('&');
-    
-    const expectedSignature = crypto.createHash('sha256').update(signatureString, 'utf8').digest('hex');
-
-    if (expectedSignature !== receivedSignature) {
-        console.error('Callback Error: Invalid signature.');
-        return NextResponse.json({ message: 'Invalid signature.' }, { status: 400 });
-    }
-
-    // 4. Process the payment and update database
+    console.log({ requestBody });
+    // 3. Process the payment and update database
     try {
         const payment = await prisma.payment.findUnique({
             where: { transactionId: transactionId }
