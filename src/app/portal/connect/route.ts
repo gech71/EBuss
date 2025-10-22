@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
   try {
-    const headerList = headers();
+    const headerList = await headers();
     const authHeader = headerList.get('Authorization');
 
     if (!authHeader) {
@@ -75,7 +75,7 @@ export async function GET(request: Request) {
     }
     
     const validationResult = await externalResponse.json();
-    const phoneNumber = validationResult.phone_number;
+    const phoneNumber = validationResult.phone;
 
     // On successful validation, create an encoded session cookie and redirect.
     const sessionData = {
@@ -85,7 +85,7 @@ export async function GET(request: Request) {
     };
     const encodedSession = Buffer.from(JSON.stringify(sessionData)).toString('base64');
 
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     cookieStore.set('miniapp_session', encodedSession, {
       path: '/',
       httpOnly: true,
