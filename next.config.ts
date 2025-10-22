@@ -3,6 +3,9 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  experimental: {
+    csp: true, // Enable Content Security Policy
+  },
   poweredByHeader: false, // remove "X-Powered-By" header
   async headers() {
     return [

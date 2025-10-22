@@ -6,11 +6,6 @@ import type { NextRequest } from 'next/server';
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1. Generate a nonce (safe for Edge Runtime)
-  const array = new Uint8Array(16);
-  crypto.getRandomValues(array);
-  const nonce = btoa(String.fromCharCode(...array));
-
   // 2. Session check
   const sessionCookie = request.cookies.get('auth_session')?.value;
   const isAuthenticated = !!sessionCookie;
@@ -33,29 +28,7 @@ export async function middleware(request: NextRequest) {
   } else {
     response = NextResponse.next();
   }
-
-  // 4. Strong security headers (with missing directives added)
-  response.headers.set(
-    'Content-Security-Policy',
-    `
-      default-src 'self';
-      script-src 'self' 'nonce-${nonce}';
-      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-      font-src 'self' https://fonts.gstatic.com;
-      img-src 'self' https://api.qrserver.com data:;
-      connect-src 'self';
-      frame-ancestors 'self';
-      frame-src 'none';
-      child-src 'none';
-      worker-src 'self';
-      media-src 'self';
-      manifest-src 'self';
-      object-src 'none';
-      base-uri 'self';
-      form-action 'self';
-    `.replace(/\s+/g, ' ').trim()
-  );
-
+  
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
