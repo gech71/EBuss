@@ -36,6 +36,8 @@ export default async function TicketPage({ params }: TicketPageProps) {
   const ticketId = params.id;
 
   const booking = await prisma.booking.findUnique({
+    // @ts-ignore
+    cache: 'no-store',
     where: { id: ticketId },
     include: {
       bookedSeats: true,
