@@ -1,4 +1,5 @@
 
+'use client';
 
 import { Header } from "@/components/Header";
 import { RouteSearch } from "@/components/RouteSearch";
@@ -8,63 +9,42 @@ import { FeaturedRoutes } from "@/components/FeaturedRoutes";
 import Image from "next/image";
 import { Card } from "@/components/ui/card";
 import { cookies } from "next/headers";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import type { Route, Bus, Location, BusOwner, Discount, User } from '@prisma/client';
 
-function getIsMiniApp() {
-  const cookieStore = cookies();
-  const sessionCookie = cookieStore.get('miniapp_session');
-  if (sessionCookie) {
-    try {
-      const decodedSession = Buffer.from(sessionCookie.value, 'base64').toString('ascii');
-      const sessionData = JSON.parse(decodedSession);
-      return sessionData.isAuthenticated;
-    } catch (error) {
-      return false;
-    }
-  }
-  return false;
+type EnrichedRoute = Route & { 
+  bus: Bus & { owner: BusOwner }, 
+  origin: Location, 
+  destination: Location, 
+  discount: Discount | null 
+};
+
+interface HomeProps {
+  user: User | null;
+  isMiniApp: boolean;
+  routes: EnrichedRoute[];
+  locations: Location[];
+  owners: BusOwner[];
 }
 
-export default async function Home() {
-  const { user } = await validateRequest();
-  const isMiniApp = getIsMiniApp();
-  
-  const routesData = await prisma.route.findMany({
-    include: {
-        origin: true,
-        destination: true,
-        bus: {
-          include: {
-            owner: true,
-          }
-        },
-        discount: true,
-    },
-    orderBy: {
-      departureTime: 'asc',
-    },
-    take: 100, // Fetch more routes to accommodate pagination
-  });
+function TicketRedirector() {
+    const router = useRouter();
+    useEffect(() => {
+        const lastBookingId = localStorage.getItem('lastBookingId');
+        if (lastBookingId) {
+            localStorage.removeItem('lastBookingId');
+            router.push(`/ticket/${lastBookingId}`);
+        }
+    }, [router]);
 
-  // Sanitize Decimal fields for client components
-  const routes = routesData.map(route => ({
-    ...route,
-    price: Number(route.price),
-  }));
-  
-  const locations = await prisma.location.findMany({
-    orderBy: {
-      name: 'asc'
-    }
-  });
+    return null;
+}
 
-  const owners = await prisma.busOwner.findMany({
-    orderBy: {
-      name: 'asc'
-    }
-  });
-
+function HomePageContent({ user, isMiniApp, routes, locations, owners }: HomeProps) {
   return (
     <div className="flex flex-col min-h-screen bg-background">
+      <TicketRedirector />
       <Header user={user} isMiniApp={isMiniApp} />
        <main className="flex-1">
         {/* Hero Section */}
@@ -100,4 +80,31 @@ export default async function Home() {
       </main>
     </div>
   );
+}
+
+
+export default function Home() {
+    const [props, setProps] = useState<HomeProps | null>(null);
+
+    useEffect(() => {
+        const fetchProps = async () => {
+            const res = await fetch('/api/home-props');
+            const data = await res.json();
+            setProps(data);
+        }
+        fetchProps();
+    }, []);
+
+    if (!props) {
+        return (
+            <div className="flex flex-col min-h-screen bg-background">
+              {/* You can add a more sophisticated loading skeleton here */}
+              <div className="flex-1 flex items-center justify-center">
+                <p>Loading...</p>
+              </div>
+            </div>
+        )
+    }
+
+    return <HomePageContent {...props} />;
 }

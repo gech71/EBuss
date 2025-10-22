@@ -116,6 +116,9 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
       const result = await createBookingAction(bookingData);
       if (result.success && result.bookingId) {
         setLastBookingId(result.bookingId);
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('lastBookingId', result.bookingId);
+        }
         toast({ title: "Booking Successful!", description: "Please complete the payment process." });
 
         if (!authToken) {
@@ -263,7 +266,10 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <Button variant="outline" onClick={() => window.location.reload()}>
+            <Button variant="outline" onClick={() => {
+                localStorage.removeItem('lastBookingId');
+                window.location.reload();
+            }}>
               New Booking
             </Button>
             <Button onClick={() => router.push(`/ticket/${lastBookingId}`)}>
