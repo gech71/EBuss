@@ -5,11 +5,9 @@
 import { useRef } from "react";
 import type { Booking, Route, Bus, Location, BookedSeat, Payment } from "@prisma/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { ArrowRight, Bus as BusIcon, Clock, MapPin, User, Ticket as TicketIcon, Download, Send, MessageCircle } from "lucide-react";
+import { ArrowRight, Bus as BusIcon, Clock, MapPin, User, Ticket as TicketIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
-import html2canvas from "html2canvas";
-import { Button } from "../ui/button";
 
 type BookingWithDetails = Booking & {
   bookedSeats: BookedSeat[];
@@ -27,17 +25,6 @@ interface TicketDisplayProps {
 
 export function TicketDisplay({ booking }: TicketDisplayProps) {
   const ticketRef = useRef<HTMLDivElement>(null);
-
-  const handleDownload = () => {
-    if (ticketRef.current) {
-      html2canvas(ticketRef.current, { useCORS: true }).then((canvas) => {
-        const link = document.createElement("a");
-        link.download = `NibTeraBuss-Ticket-${booking?.id}.png`;
-        link.href = canvas.toDataURL("image/png");
-        link.click();
-      });
-    }
-  };
 
   if (!booking || !booking.route) {
     return (
@@ -59,12 +46,6 @@ export function TicketDisplay({ booking }: TicketDisplayProps) {
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${qrCodeData}&bgcolor=F0F8FF`;
   const seatNumbers = booking.bookedSeats.map(s => s.seatNumber).join(', ');
   
-  const shareText = `Check out my bus ticket from ${route.origin.name} to ${route.destination.name} on ${new Date(route.departureTime).toLocaleDateString()}!`;
-  const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
-
-  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`;
-  const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
-
   return (
     <div className="w-full max-w-md">
         <Card ref={ticketRef} className="bg-card shadow-2xl rounded-lg overflow-hidden">
@@ -118,27 +99,6 @@ export function TicketDisplay({ booking }: TicketDisplayProps) {
             <CardFooter className="bg-muted/50 p-4">
                 <p className="text-xs text-muted-foreground text-center w-full">Please have this QR code ready for scanning before boarding. Thank you for choosing NibTeraBuss!</p>
             </CardFooter>
-        </Card>
-
-        <Card className="mt-4">
-            <CardContent className="p-4 flex justify-around items-center">
-                 <Button variant="outline" onClick={handleDownload}>
-                    <Download className="mr-2 h-4 w-4" />
-                    Download
-                </Button>
-                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-                    <Button variant="outline">
-                        <MessageCircle className="mr-2 h-4 w-4" />
-                        WhatsApp
-                    </Button>
-                </a>
-                 <a href={telegramUrl} target="_blank" rel="noopener noreferrer">
-                    <Button variant="outline">
-                        <Send className="mr-2 h-4 w-4" />
-                        Telegram
-                    </Button>
-                </a>
-            </CardContent>
         </Card>
     </div>
   );
