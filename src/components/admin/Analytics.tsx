@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import type { Booking, Route, Bus, Location } from "@prisma/client";
+import { ScrollArea } from "../ui/scroll-area";
 
 type SanitizedRoute = Route & { price: number; origin: Location, destination: Location };
 
@@ -208,46 +209,48 @@ export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
                 </CardHeader>
                 <CardContent>
                 {routeStats.length > 0 ? (
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Route</TableHead>
-                                <TableHead className="text-center">Tickets Sold</TableHead>
-                                <TableHead className="text-right">Revenue (ETB)</TableHead>
-                                <TableHead className="text-right">Potential (ETB)</TableHead>
-                                <TableHead className="text-right">% of Total</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {routeStats.map(stat => (
-                                <TableRow key={stat.routeId}>
-                                    <TableCell className="font-medium">{stat.origin} → {stat.destination}</TableCell>
-                                    <TableCell className="text-center">
-                                        <Badge variant="outline">{stat.ticketsSold}</Badge>
-                                    </TableCell>
-                                    <TableCell className="text-right font-semibold">{stat.revenue.toFixed(2)}</TableCell>
-                                    <TableCell className="text-right text-muted-foreground">{stat.potentialRevenue.toFixed(2)}</TableCell>
-                                    <TableCell className="text-right">
-                                        <Badge className="bg-green-600 hover:bg-green-700">
-                                            {totalRevenue > 0 ? ((stat.revenue / totalRevenue) * 100).toFixed(1) : '0.0'}%
+                    <ScrollArea className="w-full">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Route</TableHead>
+                                    <TableHead className="text-center">Tickets Sold</TableHead>
+                                    <TableHead className="text-right">Revenue (ETB)</TableHead>
+                                    <TableHead className="text-right">Potential (ETB)</TableHead>
+                                    <TableHead className="text-right">% of Total</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {routeStats.map(stat => (
+                                    <TableRow key={stat.routeId}>
+                                        <TableCell className="font-medium">{stat.origin} → {stat.destination}</TableCell>
+                                        <TableCell className="text-center">
+                                            <Badge variant="outline">{stat.ticketsSold}</Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right font-semibold">{stat.revenue.toFixed(2)}</TableCell>
+                                        <TableCell className="text-right text-muted-foreground">{stat.potentialRevenue.toFixed(2)}</TableCell>
+                                        <TableCell className="text-right">
+                                            <Badge className="bg-green-600 hover:bg-green-700">
+                                                {totalRevenue > 0 ? ((stat.revenue / totalRevenue) * 100).toFixed(1) : '0.0'}%
+                                            </Badge>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                            <TableFooter>
+                                <TableRow>
+                                    <TableCell colSpan={2} className="font-bold">Totals</TableCell>
+                                    <TableCell className="text-right font-bold">{totalRevenue.toFixed(2)}</TableCell>
+                                    <TableCell className="text-right font-bold text-muted-foreground">{totalPotentialRevenue.toFixed(2)}</TableCell>
+                                    <TableCell className="text-right font-bold">
+                                        <Badge className="bg-blue-600 hover:bg-blue-700 text-base">
+                                            {totalEffectiveness.toFixed(1)}%
                                         </Badge>
                                     </TableCell>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                        <TableFooter>
-                            <TableRow>
-                                <TableCell colSpan={2} className="font-bold">Totals</TableCell>
-                                <TableCell className="text-right font-bold">{totalRevenue.toFixed(2)}</TableCell>
-                                <TableCell className="text-right font-bold text-muted-foreground">{totalPotentialRevenue.toFixed(2)}</TableCell>
-                                <TableCell className="text-right font-bold">
-                                     <Badge className="bg-blue-600 hover:bg-blue-700 text-base">
-                                        {totalEffectiveness.toFixed(1)}%
-                                    </Badge>
-                                </TableCell>
-                            </TableRow>
-                        </TableFooter>
-                    </Table>
+                            </TableFooter>
+                        </Table>
+                    </ScrollArea>
                 ) : (
                     <div className="col-span-full">
                         <div className="p-10 flex flex-col items-center justify-center text-center">

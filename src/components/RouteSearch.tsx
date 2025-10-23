@@ -104,7 +104,7 @@ export function RouteSearch({ routes, locations, owners }: RouteSearchProps) {
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                        <div className="space-y-2 lg:col-span-2">
+                        <div className="space-y-2 md:col-span-2">
                             <label className="text-sm font-medium text-muted-foreground">Bus Companies</label>
                             <Popover open={openOwners} onOpenChange={setOpenOwners}>
                                 <PopoverTrigger asChild>
@@ -202,7 +202,7 @@ export function RouteSearch({ routes, locations, owners }: RouteSearchProps) {
                                 </PopoverContent>
                             </Popover>
                         </div>
-                        <Button onClick={handleSearch} className="lg:col-span-1">
+                        <Button onClick={handleSearch} className="w-full lg:w-auto lg:col-span-1">
                             <Search className="mr-2 h-4 w-4" /> Search
                         </Button>
                     </div>
@@ -212,9 +212,9 @@ export function RouteSearch({ routes, locations, owners }: RouteSearchProps) {
       
       {hasSearched && (
         <div>
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
             <h2 className="font-headline text-3xl font-semibold text-primary">Search Results</h2>
-            <Button variant="outline" onClick={handleModifySearch}>
+            <Button variant="outline" onClick={handleModifySearch} className="w-full sm:w-auto">
               <ArrowLeft className="mr-2 h-4 w-4"/>
               Modify Search
             </Button>

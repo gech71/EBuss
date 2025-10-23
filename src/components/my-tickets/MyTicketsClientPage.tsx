@@ -43,9 +43,9 @@ function TicketCard({ booking }: { booking: EnrichedBooking }) {
                 <div className="flex-grow p-4">
                     <div className="flex justify-between items-start">
                         <div>
-                             <CardTitle className="text-xl flex items-center gap-2">
+                             <CardTitle className="text-xl flex flex-col sm:flex-row sm:items-center gap-x-2 gap-y-1">
                                 <span>{route.origin.name}</span>
-                                <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                                <ArrowRight className="h-5 w-5 text-muted-foreground hidden sm:inline" />
                                 <span>{route.destination.name}</span>
                             </CardTitle>
                             <CardDescription className="flex items-center gap-2 mt-1">
