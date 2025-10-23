@@ -1,12 +1,13 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Loader2, Ticket, Info, AlertTriangle } from 'lucide-react';
 import type { Booking, PaymentStatus } from "@prisma/client";
+import { releaseSeatsOnPaymentTimeoutAction } from '@/app/book/actions';
 
 const POLLING_INTERVAL = 5000; // 5 seconds
 const POLLING_DURATION = 30000; // 30 seconds
@@ -21,6 +22,14 @@ export function PaymentStatusChecker({ booking }: PaymentStatusCheckerProps) {
     const [isPolling, setIsPolling] = useState(true);
     const [isTimedOut, setIsTimedOut] = useState(false);
 
+    const handleTimeout = useCallback(async () => {
+        setIsPolling(false);
+        setIsTimedOut(true);
+        if (booking.id) {
+            await releaseSeatsOnPaymentTimeoutAction(booking.id);
+        }
+    }, [booking.id]);
+
     useEffect(() => {
         if (status === 'PAID') {
             setIsPolling(false);
@@ -32,8 +41,7 @@ export function PaymentStatusChecker({ booking }: PaymentStatusCheckerProps) {
         const intervalId = setInterval(async () => {
             if (Date.now() - startTime > POLLING_DURATION) {
                 clearInterval(intervalId);
-                setIsPolling(false);
-                setIsTimedOut(true);
+                handleTimeout();
                 return;
             }
 
@@ -55,7 +63,7 @@ export function PaymentStatusChecker({ booking }: PaymentStatusCheckerProps) {
         }, POLLING_INTERVAL);
 
         return () => clearInterval(intervalId);
-    }, [booking.id, status, router]);
+    }, [booking.id, status, router, handleTimeout]);
 
     if (status === 'PAID') {
         // This state should be quickly replaced by the router refresh showing the real ticket.
@@ -94,10 +102,11 @@ export function PaymentStatusChecker({ booking }: PaymentStatusCheckerProps) {
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Payment Check Timed Out</AlertTitle>
                 <AlertDescription>
-                   We could not confirm your payment automatically. If you have paid, please click the button below to check again or contact support.
+                   We could not confirm your payment. The seats you selected have been released. If you believe you have paid, please contact support. Otherwise, you can try booking again.
                 </AlertDescription>
-                 <div className="pt-4 flex justify-end">
-                    <Button onClick={() => router.refresh()}>Check Status Manually</Button>
+                 <div className="pt-4 flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => router.push('/')}>Go to Homepage</Button>
+                    <Button onClick={() => router.push(`/book/${booking.routeId}`)}>Try Again</Button>
                 </div>
             </Alert>
         )

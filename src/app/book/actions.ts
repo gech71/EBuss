@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { format } from 'date-fns';
+import { BookingStatus } from '@prisma/client';
 
 const createBookingSchema = z.object({
   routeId: z.string().min(1),
@@ -70,12 +71,12 @@ export async function createBookingAction(data: unknown) {
       // 3. Create the booking
       const booking = await tx.booking.create({
         data: {
-          routeId,
-          totalPrice,
           passengerName,
           passengerPhone,
           passengerEmail: passengerEmail || null,
-          status: 'PENDING', // Set initial status to PENDING
+          totalPrice,
+          routeId,
+          status: BookingStatus.PENDING,
           paymentStatus: 'PENDING',
           bookedSeats: {
             create: selectedSeatNumbers.map(seatNumber => ({
@@ -161,6 +162,10 @@ async function releaseSeatsForBooking(bookingId: string) {
         console.error(`Failed to release seats for booking ${bookingId}:`, error);
         // We don't throw here to avoid crashing the payment failure flow
     }
+}
+
+export async function releaseSeatsOnPaymentTimeoutAction(bookingId: string) {
+    await releaseSeatsForBooking(bookingId);
 }
 
 
