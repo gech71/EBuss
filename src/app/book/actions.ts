@@ -13,6 +13,7 @@ const createBookingSchema = z.object({
   totalPrice: z.coerce.number(),
   passengerName: z.string().min(1, 'Passenger name is required.'),
   passengerPhone: z.string().min(1, 'Passenger phone is required.'),
+  passengerEmail: z.string().email().optional().or(z.literal('')),
 });
 
 export async function createBookingAction(data: unknown) {
@@ -30,7 +31,8 @@ export async function createBookingAction(data: unknown) {
     selectedSeatNumbers,
     totalPrice,
     passengerName,
-    passengerPhone
+    passengerPhone,
+    passengerEmail
   } = validatedData.data;
 
   try {
@@ -72,6 +74,7 @@ export async function createBookingAction(data: unknown) {
           totalPrice,
           passengerName,
           passengerPhone,
+          passengerEmail: passengerEmail || null,
           status: 'VALID',
           bookedSeats: {
             create: selectedSeatNumbers.map(seatNumber => ({

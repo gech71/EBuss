@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Logo } from './Logo';
 import { Button } from './ui/button';
 import { usePathname } from 'next/navigation';
-import { Shield, Gem, LogIn } from 'lucide-react';
+import { Shield, Gem, LogIn, Ticket } from 'lucide-react';
 import { SidebarTrigger } from './ui/sidebar';
 import type { User } from 'lucia';
 
@@ -36,6 +36,12 @@ export function Header({ user, isMiniApp = false }: HeaderProps) {
         </div>
         
         <nav className="flex items-center gap-4">
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/my-tickets">
+              <Ticket className="mr-2 h-4 w-4" />
+              My Tickets
+            </Link>
+          </Button>
           {!user && !isMiniApp && (
              <Button asChild variant="outline" size="sm">
                 <Link href="/login">
