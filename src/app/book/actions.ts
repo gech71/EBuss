@@ -114,11 +114,22 @@ async function releaseSeatsForBooking(bookingId: string) {
         await prisma.$transaction(async (tx) => {
             const booking = await tx.booking.findUnique({
                 where: { id: bookingId },
-                include: { bookedSeats: true, route: true }
+                include: { 
+                    bookedSeats: true, 
+                    route: {
+                        include: {
+                            bus: {
+                                include: {
+                                    layout: true
+                                }
+                            }
+                        }
+                    } 
+                }
             });
 
-            if (!booking || !booking.route) {
-                console.error(`Cannot release seats: Booking or route not found for ID ${bookingId}`);
+            if (!booking || !booking.route?.bus?.layoutId) {
+                console.error(`Cannot release seats: Booking, route, bus, or layout not found for ID ${bookingId}`);
                 return;
             }
             
@@ -129,23 +140,11 @@ async function releaseSeatsForBooking(bookingId: string) {
                 return; // Nothing to release
             }
             
-            // Find the seat IDs in the bus layout that match the seat numbers
-             const busLayout = await tx.seatLayout.findUnique({
-                where: { id: booking.route.bus.layoutId },
-                include: { seats: true }
-            });
-
-            if (!busLayout) return;
-            
-            const seatIdsToRelease = busLayout.seats
-                .filter(seat => seatNumbersToRelease.includes(seat.seatNumber))
-                .map(seat => seat.id);
-
             // Revert seat status to AVAILABLE
             await tx.seat.updateMany({
                 where: {
-                    id: { in: seatIdsToRelease },
-                    layoutId: busLayout.id,
+                    layoutId: booking.route.bus.layoutId,
+                    seatNumber: { in: seatNumbersToRelease }
                 },
                 data: { status: 'AVAILABLE' }
             });
