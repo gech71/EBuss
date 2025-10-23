@@ -49,12 +49,12 @@ async function main() {
   // 2. Create Bus Owners
   const owner1 = await prisma.busOwner.create({
     data: {
-      name: 'FleetFirst Inc.',
+      name: 'Selam Bus',
       commissionTiers: {
         create: [
-          { minSales: 1, maxSales: 100, type: CommissionType.PERCENTAGE, value: 5 },
-          { minSales: 101, maxSales: 500, type: CommissionType.PERCENTAGE, value: 4 },
-          { minSales: 501, maxSales: 999999, type: CommissionType.PERCENTAGE, value: 3 },
+          { minSales: 1, maxSales: 10000, type: CommissionType.PERCENTAGE, value: 5 },
+          { minSales: 10001, maxSales: 50000, type: CommissionType.PERCENTAGE, value: 4 },
+          { minSales: 50001, maxSales: 9999999, type: CommissionType.PERCENTAGE, value: 3 },
         ],
       },
     },
@@ -62,10 +62,10 @@ async function main() {
 
   const owner2 = await prisma.busOwner.create({
     data: {
-      name: 'RoadRunner Co.',
+      name: 'Abyssinia Bus',
       commissionTiers: {
         create: [
-          { minSales: 1, maxSales: 999999, type: CommissionType.FIXED, value: 2.50 },
+          { minSales: 1, maxSales: 9999999, type: CommissionType.FIXED, value: 50.00 },
         ],
       },
     },
@@ -76,18 +76,18 @@ async function main() {
 
   // 3. Create Locations
   const locationsData = [
-      { name: 'New York, NY', ownerId: owner1.id },
-      { name: 'Boston, MA', ownerId: owner1.id },
-      { name: 'Los Angeles, CA', ownerId: owner2.id },
-      { name: 'San Francisco, CA', ownerId: owner2.id },
-      { name: 'Chicago, IL', ownerId: owner1.id },
-      { name: 'Detroit, MI', ownerId: owner1.id },
-      { name: 'Miami, FL', ownerId: owner2.id },
-      { name: 'Orlando, FL', ownerId: owner2.id },
-      { name: 'Washington, D.C.', ownerId: owner1.id },
-      { name: 'Philadelphia, PA', ownerId: owner1.id },
-      { name: 'Dallas, TX', ownerId: owner2.id },
-      { name: 'Houston, TX', ownerId: owner2.id },
+      { name: 'Addis Ababa', ownerId: owner1.id },
+      { name: 'Adama', ownerId: owner1.id },
+      { name: 'Hawassa', ownerId: owner2.id },
+      { name: 'Bahir Dar', ownerId: owner2.id },
+      { name: 'Gondar', ownerId: owner1.id },
+      { name: 'Mekelle', ownerId: owner1.id },
+      { name: 'Dire Dawa', ownerId: owner2.id },
+      { name: 'Jimma', ownerId: owner2.id },
+      { name: 'Dessie', ownerId: owner1.id },
+      { name: 'Arba Minch', ownerId: owner1.id },
+      { name: 'Shashemene', ownerId: owner2.id },
+      { name: 'Harar', ownerId: owner2.id },
   ];
   await prisma.location.createMany({
     data: locationsData,
@@ -111,7 +111,7 @@ async function main() {
   await prisma.user.create({
     data: {
       id: 'user-admin-1',
-      name: 'Admin User',
+      name: 'Selam Admin',
       email: 'admin@example.com',
       hashed_password: await new Argon2id().hash('password'),
       role: Role.ADMIN,
@@ -124,7 +124,7 @@ async function main() {
    await prisma.user.create({
     data: {
       id: 'user-admin-2',
-      name: 'RoadRunner Admin',
+      name: 'Abyssinia Admin',
       email: 'runner@example.com',
       hashed_password: await new Argon2id().hash('password'),
       role: Role.ADMIN,
@@ -200,7 +200,7 @@ async function main() {
   // 6. Create Discounts
   const summerDiscount = await prisma.discount.create({
     data: {
-        name: 'Summer Group Offer',
+        name: 'Holiday Group Offer',
         startDate: new Date(),
         endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
         owner: {
@@ -236,28 +236,28 @@ async function main() {
   // 7. Create Routes
   const routesToCreate = [
     // 10 with discounts
-    { origin: 'New York, NY', destination: 'Boston, MA', departureHour: 9, price: 45.00, busId: bus1.id, discountId: summerDiscount.id, dayOffset: 1 },
-    { origin: 'Los Angeles, CA', destination: 'San Francisco, CA', departureHour: 11, price: 60.00, busId: bus2.id, discountId: weekendDiscount.id, dayOffset: 1 },
-    { origin: 'New York, NY', destination: 'Boston, MA', departureHour: 15, price: 55.00, busId: bus3.id, discountId: summerDiscount.id, dayOffset: 1 },
-    { origin: 'Washington, D.C.', destination: 'Philadelphia, PA', departureHour: 10, price: 30.00, busId: bus1.id, discountId: summerDiscount.id, dayOffset: 2 },
-    { origin: 'Dallas, TX', destination: 'Houston, TX', departureHour: 13, price: 40.00, busId: bus2.id, discountId: weekendDiscount.id, dayOffset: 2 },
-    { origin: 'Boston, MA', destination: 'New York, NY', departureHour: 9, price: 45.00, busId: bus1.id, discountId: summerDiscount.id, dayOffset: 3 },
-    { origin: 'San Francisco, CA', destination: 'Los Angeles, CA', departureHour: 11, price: 60.00, busId: bus2.id, discountId: weekendDiscount.id, dayOffset: 3 },
-    { origin: 'Philadelphia, PA', destination: 'Washington, D.C.', departureHour: 16, price: 30.00, busId: bus3.id, discountId: summerDiscount.id, dayOffset: 4 },
-    { origin: 'Houston, TX', destination: 'Dallas, TX', departureHour: 14, price: 40.00, busId: bus2.id, discountId: weekendDiscount.id, dayOffset: 4 },
-    { origin: 'Chicago, IL', destination: 'Detroit, MI', departureHour: 12, price: 38.00, busId: bus1.id, discountId: summerDiscount.id, dayOffset: 5 },
+    { origin: 'Addis Ababa', destination: 'Hawassa', departureHour: 9, price: 450.00, busId: bus1.id, discountId: summerDiscount.id, dayOffset: 1 },
+    { origin: 'Addis Ababa', destination: 'Bahir Dar', departureHour: 11, price: 750.00, busId: bus2.id, discountId: weekendDiscount.id, dayOffset: 1 },
+    { origin: 'Addis Ababa', destination: 'Hawassa', departureHour: 15, price: 550.00, busId: bus3.id, discountId: summerDiscount.id, dayOffset: 1 },
+    { origin: 'Gondar', destination: 'Bahir Dar', departureHour: 10, price: 300.00, busId: bus1.id, discountId: summerDiscount.id, dayOffset: 2 },
+    { origin: 'Dire Dawa', destination: 'Harar', departureHour: 13, price: 150.00, busId: bus2.id, discountId: weekendDiscount.id, dayOffset: 2 },
+    { origin: 'Hawassa', destination: 'Addis Ababa', departureHour: 9, price: 450.00, busId: bus1.id, discountId: summerDiscount.id, dayOffset: 3 },
+    { origin: 'Bahir Dar', destination: 'Addis Ababa', departureHour: 11, price: 750.00, busId: bus2.id, discountId: weekendDiscount.id, dayOffset: 3 },
+    { origin: 'Bahir Dar', destination: 'Gondar', departureHour: 16, price: 300.00, busId: bus3.id, discountId: summerDiscount.id, dayOffset: 4 },
+    { origin: 'Harar', destination: 'Dire Dawa', departureHour: 14, price: 150.00, busId: bus2.id, discountId: weekendDiscount.id, dayOffset: 4 },
+    { origin: 'Addis Ababa', destination: 'Adama', departureHour: 12, price: 200.00, busId: bus1.id, discountId: summerDiscount.id, dayOffset: 5 },
     
     // 10 without discounts
-    { origin: 'Chicago, IL', destination: 'Detroit, MI', departureHour: 8, price: 35.00, busId: bus1.id, discountId: null, dayOffset: 2 },
-    { origin: 'Miami, FL', destination: 'Orlando, FL', departureHour: 14, price: 25.00, busId: bus2.id, discountId: null, dayOffset: 2 },
-    { origin: 'Detroit, MI', destination: 'Chicago, IL', departureHour: 18, price: 35.00, busId: bus3.id, discountId: null, dayOffset: 3 },
-    { origin: 'Orlando, FL', destination: 'Miami, FL', departureHour: 9, price: 25.00, busId: bus2.id, discountId: null, dayOffset: 3 },
-    { origin: 'New York, NY', destination: 'Washington, D.C.', departureHour: 7, price: 50.00, busId: bus1.id, discountId: null, dayOffset: 4 },
-    { origin: 'Washington, D.C.', destination: 'New York, NY', departureHour: 19, price: 50.00, busId: bus3.id, discountId: null, dayOffset: 5 },
-    { origin: 'Los Angeles, CA', destination: 'Dallas, TX', departureHour: 6, price: 120.00, busId: bus2.id, discountId: null, dayOffset: 6 },
-    { origin: 'Dallas, TX', destination: 'Los Angeles, CA', departureHour: 20, price: 120.00, busId: bus2.id, discountId: null, dayOffset: 7 },
-    { origin: 'Boston, MA', destination: 'Philadelphia, PA', departureHour: 13, price: 48.00, busId: bus1.id, discountId: null, dayOffset: 8 },
-    { origin: 'Philadelphia, PA', destination: 'Boston, MA', departureHour: 13, price: 48.00, busId: bus3.id, discountId: null, dayOffset: 9 },
+    { origin: 'Dessie', destination: 'Mekelle', departureHour: 8, price: 500.00, busId: bus1.id, discountId: null, dayOffset: 2 },
+    { origin: 'Jimma', destination: 'Addis Ababa', departureHour: 14, price: 600.00, busId: bus2.id, discountId: null, dayOffset: 2 },
+    { origin: 'Mekelle', destination: 'Dessie', departureHour: 18, price: 500.00, busId: bus3.id, discountId: null, dayOffset: 3 },
+    { origin: 'Addis Ababa', destination: 'Jimma', departureHour: 9, price: 600.00, busId: bus2.id, discountId: null, dayOffset: 3 },
+    { origin: 'Addis Ababa', destination: 'Arba Minch', departureHour: 7, price: 800.00, busId: bus1.id, discountId: null, dayOffset: 4 },
+    { origin: 'Arba Minch', destination: 'Addis Ababa', departureHour: 19, price: 800.00, busId: bus3.id, discountId: null, dayOffset: 5 },
+    { origin: 'Hawassa', destination: 'Shashemene', departureHour: 6, price: 120.00, busId: bus2.id, discountId: null, dayOffset: 6 },
+    { origin: 'Shashemene', destination: 'Hawassa', departureHour: 20, price: 120.00, busId: bus2.id, discountId: null, dayOffset: 7 },
+    { origin: 'Adama', destination: 'Addis Ababa', departureHour: 13, price: 200.00, busId: bus1.id, discountId: null, dayOffset: 8 },
+    { origin: 'Addis Ababa', destination: 'Dire Dawa', departureHour: 13, price: 900.00, busId: bus3.id, discountId: null, dayOffset: 9 },
   ];
 
   const today = new Date();
@@ -295,9 +295,9 @@ async function main() {
   if (allCreatedRoutes.length >= 3) {
     const booking1 = await prisma.booking.create({
       data: {
-        passengerName: 'Alice Johnson',
+        passengerName: 'Abebe Kebede',
         passengerPhone: '123-456-7890',
-        passengerEmail: 'alice@example.com',
+        passengerEmail: 'abebe@example.com',
         totalPrice: allCreatedRoutes[0].price,
         routeId: allCreatedRoutes[0].id,
         status: BookingStatus.VALID,
@@ -312,9 +312,9 @@ async function main() {
 
     const booking2 = await prisma.booking.create({
       data: {
-        passengerName: 'Bob Williams',
+        passengerName: 'Birtukan Tadesse',
         passengerPhone: '098-765-4321',
-        passengerEmail: 'bob@example.com',
+        passengerEmail: 'birtukan@example.com',
         totalPrice: allCreatedRoutes[1].price * 2,
         routeId: allCreatedRoutes[1].id,
         status: BookingStatus.VALID,
