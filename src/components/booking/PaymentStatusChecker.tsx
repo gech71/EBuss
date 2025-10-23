@@ -9,7 +9,7 @@ import { Loader2, Ticket, Info, AlertTriangle } from 'lucide-react';
 import type { Booking, PaymentStatus } from "@prisma/client";
 
 const POLLING_INTERVAL = 5000; // 5 seconds
-const POLLING_DURATION = 60000; // 1 minute
+const POLLING_DURATION = 30000; // 30 seconds
 
 interface PaymentStatusCheckerProps {
     booking: Booking;

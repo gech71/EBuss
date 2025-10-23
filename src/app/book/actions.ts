@@ -75,7 +75,8 @@ export async function createBookingAction(data: unknown) {
           passengerName,
           passengerPhone,
           passengerEmail: passengerEmail || null,
-          status: 'VALID',
+          status: 'PENDING', // Set initial status to PENDING
+          paymentStatus: 'PENDING',
           bookedSeats: {
             create: selectedSeatNumbers.map(seatNumber => ({
               seatNumber,
@@ -107,6 +108,62 @@ export async function createBookingAction(data: unknown) {
     return { success: false, message };
   }
 }
+
+async function releaseSeatsForBooking(bookingId: string) {
+    try {
+        await prisma.$transaction(async (tx) => {
+            const booking = await tx.booking.findUnique({
+                where: { id: bookingId },
+                include: { bookedSeats: true, route: true }
+            });
+
+            if (!booking || !booking.route) {
+                console.error(`Cannot release seats: Booking or route not found for ID ${bookingId}`);
+                return;
+            }
+            
+            // Get the seat numbers that were booked
+            const seatNumbersToRelease = booking.bookedSeats.map(bs => bs.seatNumber);
+            
+            if (seatNumbersToRelease.length === 0) {
+                return; // Nothing to release
+            }
+            
+            // Find the seat IDs in the bus layout that match the seat numbers
+             const busLayout = await tx.seatLayout.findUnique({
+                where: { id: booking.route.bus.layoutId },
+                include: { seats: true }
+            });
+
+            if (!busLayout) return;
+            
+            const seatIdsToRelease = busLayout.seats
+                .filter(seat => seatNumbersToRelease.includes(seat.seatNumber))
+                .map(seat => seat.id);
+
+            // Revert seat status to AVAILABLE
+            await tx.seat.updateMany({
+                where: {
+                    id: { in: seatIdsToRelease },
+                    layoutId: busLayout.id,
+                },
+                data: { status: 'AVAILABLE' }
+            });
+
+            // Mark booking as cancelled
+            await tx.booking.update({
+                where: { id: bookingId },
+                data: { status: 'CANCELLED', paymentStatus: 'FAILED' }
+            });
+            
+             revalidatePath(`/book/${booking.routeId}`);
+        });
+    } catch(error) {
+        console.error(`Failed to release seats for booking ${bookingId}:`, error);
+        // We don't throw here to avoid crashing the payment failure flow
+    }
+}
+
 
 export async function createPaymentRequestAction(bookingId: string, amount: number, authToken: string | undefined) {
     if (!authToken) {
@@ -179,14 +236,17 @@ export async function createPaymentRequestAction(bookingId: string, amount: numb
             });
             return { success: true, paymentToken: responseData.token };
         } else {
+             // If getting the payment token fails, release the seats.
             await prisma.payment.update({
                 where: { transactionId },
                 data: { status: 'FAILED' }
             });
+            await releaseSeatsForBooking(bookingId);
             return { success: false, message: responseData.message || 'Failed to get payment token.' };
         }
     } catch (error) {
         console.error("Payment request failed:", error);
+         await releaseSeatsForBooking(bookingId);
         const message = error instanceof Error ? error.message : 'An unexpected error occurred during payment initiation.';
         return { success: false, message };
     }

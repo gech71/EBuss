@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import crypto from 'crypto';
-import { PaymentStatus } from '@prisma/client';
+import { PaymentStatus, BookingStatus } from '@prisma/client';
 
 async function POST(request: NextRequest) {
     const authHeader = request.headers.get('Authorization');
@@ -89,7 +89,10 @@ async function POST(request: NextRequest) {
             // Update Booking payment status
             await tx.booking.update({
                 where: { id: payment.bookingId },
-                data: { paymentStatus: PaymentStatus.PAID }
+                data: { 
+                    paymentStatus: PaymentStatus.PAID,
+                    status: BookingStatus.VALID, // Mark booking as valid
+                }
             });
         });
         
