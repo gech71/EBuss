@@ -204,19 +204,6 @@ export async function releaseSeatsOnPaymentTimeoutAction(bookingId: string) {
                 });
             }
 
-            // Delete non-paid payments for this booking
-            await tx.payment.deleteMany({
-                where: {
-                    bookingId: booking.id,
-                    status: { not: PaymentStatus.PAID }
-                }
-            });
-            
-            // Delete the booking itself
-            await tx.booking.delete({
-                where: { id: booking.id }
-            });
-
             if (booking.routeId) {
                 revalidatePath(`/book/${booking.routeId}`);
             }
