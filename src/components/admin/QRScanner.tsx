@@ -27,6 +27,7 @@ export function QRScanner() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const stopScan = useCallback(() => {
+    console.log("Stopping scan...");
     setIsScanning(false);
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
@@ -35,22 +36,28 @@ export function QRScanner() {
   }, []);
 
   const handleScanResult = useCallback(async (decodedQR: string) => {
+    console.log("Handling scan result:", decodedQR);
     stopScan();
     try {
         const { ticketId } = JSON.parse(decodedQR);
         if (!ticketId) throw new Error("Invalid QR code format.");
 
+        console.log(`Found ticketId: ${ticketId}. Calling API...`);
         const response = await fetch(`/api/ticket/${ticketId}`);
         const result = await response.json();
+        console.log("API Response:", result);
 
         if (response.ok && result.booking) {
+            console.log("Scan successful:", result.booking);
             setScanStatus("success");
             setScannedData(result.booking);
         } else {
+            console.error("Scan error from API:", result.message);
             setScanStatus("error");
             setErrorMessage(result.message || 'This ticket is not valid.');
         }
     } catch (error) {
+        console.error("Error processing QR code:", error);
         setScanStatus("error");
         setErrorMessage('Could not read the QR code or the format is invalid.');
     }
@@ -58,6 +65,8 @@ export function QRScanner() {
 
   const scanFrame = useCallback(() => {
     if (!isScanning || !videoRef.current || !canvasRef.current) return;
+    
+    animationFrameRef.current = requestAnimationFrame(scanFrame);
     
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -76,33 +85,53 @@ export function QRScanner() {
                 });
 
                 if (code) {
+                    console.log("QR Code detected:", code.data);
                     handleScanResult(code.data);
-                    return; 
+                } else {
+                    // This will log every frame, which can be noisy. Uncomment for deep debugging.
+                    // console.log("No QR code detected in this frame.");
                 }
             } catch (e) {
                 console.error("jsQR error:", e);
             }
         }
     }
-    animationFrameRef.current = requestAnimationFrame(scanFrame);
   }, [isScanning, handleScanResult]);
   
   const startScan = () => {
+    console.log("Starting scan...");
     setErrorMessage(null);
     setScannedData(null);
+    setScanStatus("idle");
     setIsScanning(true);
-    animationFrameRef.current = requestAnimationFrame(scanFrame);
   };
   
   useEffect(() => {
+    if(isScanning) {
+        animationFrameRef.current = requestAnimationFrame(scanFrame);
+    } else {
+        if(animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current);
+        }
+    }
+    return () => {
+        if(animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current);
+        }
+    }
+  }, [isScanning, scanFrame]);
+
+  useEffect(() => {
     const getCameraPermission = async () => {
       try {
+        console.log("Requesting camera permission...");
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
         setHasCameraPermission(true);
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
+        console.log("Camera permission granted and stream attached.");
       } catch (error) {
         console.error('Error accessing camera:', error);
         setHasCameraPermission(false);
@@ -120,6 +149,7 @@ export function QRScanner() {
         if (videoRef.current && videoRef.current.srcObject) {
             const stream = videoRef.current.srcObject as MediaStream;
             stream.getTracks().forEach(track => track.stop());
+            console.log("Camera stream stopped on cleanup.");
         }
         if (animationFrameRef.current) {
             cancelAnimationFrame(animationFrameRef.current);
@@ -129,6 +159,7 @@ export function QRScanner() {
 
 
   const resetScanner = () => {
+    console.log("Resetting scanner state.");
     setScannedData(null);
     setErrorMessage(null);
     setScanStatus("idle");
@@ -174,27 +205,26 @@ export function QRScanner() {
 
   return (
     <div className="flex flex-col items-center justify-center space-y-6 p-4">
-      <Card className="w-full max-w-sm aspect-video flex items-center justify-center bg-muted/50 border-dashed overflow-hidden relative">
-        <video ref={videoRef} className="w-full h-full object-cover" autoPlay playsInline muted />
+      <Card className="w-full max-w-sm aspect-video flex items-center justify-center bg-black border-dashed overflow-hidden relative">
+        <video ref={videoRef} className={cn("w-full h-full object-cover", {"hidden": hasCameraPermission === false})} autoPlay playsInline muted />
         <canvas ref={canvasRef} className="hidden" />
-         {!isScanning && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 text-center p-4">
-             {hasCameraPermission === false ? (
-                 <Alert variant="destructive">
+         {hasCameraPermission === false && (
+             <div className="absolute inset-0 flex flex-col items-center justify-center bg-background text-center p-4">
+                <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>Camera Access Denied</AlertTitle>
                     <AlertDescription>
-                        Please allow camera access in your browser settings and try again.
+                        Please allow camera access in your browser settings and refresh the page.
                     </AlertDescription>
                 </Alert>
-             ) : (
-                <>
-                    <QrCode className="w-16 h-16 text-muted-foreground" />
-                    <p className="mt-4 text-muted-foreground font-semibold">Ready to Scan</p>
-                </>
-             )}
-          </div>
-        )}
+             </div>
+         )}
+         {hasCameraPermission && !isScanning && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 text-center p-4">
+                <QrCode className="w-16 h-16 text-muted-foreground" />
+                <p className="mt-4 text-muted-foreground font-semibold">Ready to Scan</p>
+            </div>
+         )}
       </Card>
 
       <Button
@@ -222,3 +252,5 @@ export function QRScanner() {
     </div>
   );
 }
+
+    
