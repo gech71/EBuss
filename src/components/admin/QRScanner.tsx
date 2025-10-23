@@ -134,7 +134,7 @@ export function QRScanner() {
     setScannedData(null);
     setErrorMessage(null);
     setScanStatus("idle");
-    setHasCameraPermission(null);
+    // Don't reset hasCameraPermission, so the error message persists if needed
   };
   
   const renderScanResult = () => {
@@ -204,6 +204,7 @@ export function QRScanner() {
         size="lg"
         className="w-full max-w-sm"
         variant={scanStatus === 'scanning' ? 'destructive' : 'default'}
+        disabled={hasCameraPermission === false}
       >
         {scanStatus === 'scanning' ? (
           <><RotateCw className="mr-2 h-4 w-4 animate-spin" /> Stop Scanning</>
@@ -223,3 +224,5 @@ export function QRScanner() {
     </div>
   );
 }
+
+    
