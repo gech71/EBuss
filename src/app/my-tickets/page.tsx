@@ -11,7 +11,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import Image from 'next/image';
 import { Loader2, Search, Ticket, ArrowRight, Bus as BusIcon, Clock, MapPin, User as UserIcon, Building } from 'lucide-react';
 import type { User, Booking, Route, Bus, Location, BusOwner, BookedSeat } from '@prisma/client';
-import { useCookies } from '@/hooks/use-cookies';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -25,25 +24,31 @@ type EnrichedBooking = Booking & {
   bookedSeats: BookedSeat[];
 };
 
-function getMiniAppData(cookies: Record<string, string>) {
-  const sessionCookie = cookies['miniapp_session'];
-  if (sessionCookie) {
-    try {
-      const decodedSession = Buffer.from(sessionCookie, 'base64').toString('ascii');
-      const sessionData = JSON.parse(decodedSession);
-      return { 
-        isMiniApp: sessionData.isAuthenticated, 
-        phoneNumber: sessionData.phoneNumber,
-      };
-    } catch (error) {
-      return { isMiniApp: false, phoneNumber: undefined };
+function getMiniAppData(cookieString: string) {
+    const cookies = cookieString.split(';').reduce((acc, cookie) => {
+        const [key, value] = cookie.trim().split('=');
+        acc[key] = value;
+        return acc;
+    }, {} as Record<string, string>);
+
+    const sessionCookie = cookies['miniapp_session'];
+    if (sessionCookie) {
+        try {
+            const decodedSession = Buffer.from(sessionCookie, 'base64').toString('ascii');
+            const sessionData = JSON.parse(decodedSession);
+            return {
+                isMiniApp: sessionData.isAuthenticated,
+                phoneNumber: sessionData.phoneNumber,
+            };
+        } catch (error) {
+            return { isMiniApp: false, phoneNumber: undefined };
+        }
     }
-  }
-  return { isMiniApp: false, phoneNumber: undefined };
+    return { isMiniApp: false, phoneNumber: undefined };
 }
 
+
 export default function MyTicketsPage() {
-    const { cookies, loading: cookiesLoading } = useCookies();
     const [phoneNumber, setPhoneNumber] = useState('');
     const [searchedPhone, setSearchedPhone] = useState('');
     const [bookings, setBookings] = useState<EnrichedBooking[]>([]);
@@ -71,8 +76,8 @@ export default function MyTicketsPage() {
     }, []);
 
     useEffect(() => {
-        if (!cookiesLoading) {
-            const { isMiniApp: miniAppStatus, phoneNumber: miniAppPhone } = getMiniAppData(cookies);
+        if (typeof window !== 'undefined') {
+            const { isMiniApp: miniAppStatus, phoneNumber: miniAppPhone } = getMiniAppData(document.cookie);
             setIsMiniApp(miniAppStatus);
 
             if (miniAppStatus && miniAppPhone) {
@@ -82,8 +87,10 @@ export default function MyTicketsPage() {
             } else {
                 setLoading(false);
             }
+        } else {
+            setLoading(false);
         }
-    }, [cookies, cookiesLoading, fetchTickets]);
+    }, [fetchTickets]);
     
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
@@ -220,4 +227,3 @@ function TicketCard({ booking }: { booking: EnrichedBooking }) {
         </Card>
     );
 }
-
