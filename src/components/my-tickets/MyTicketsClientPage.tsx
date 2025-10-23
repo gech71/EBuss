@@ -1,18 +1,21 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Image from 'next/image';
-import { Loader2, Search, Ticket, ArrowRight, Bus as BusIcon, Clock, Building } from 'lucide-react';
+import { Loader2, Search, Ticket, ArrowRight, Bus as BusIcon, Clock, Building, CalendarIcon } from 'lucide-react';
 import type { Booking, Route, Bus, Location, BusOwner, BookedSeat } from '@prisma/client';
-import { format } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Calendar } from '../ui/calendar';
+import { cn } from '@/lib/utils';
 
 type EnrichedBooking = Booking & {
   route: Route & {
@@ -50,11 +53,12 @@ function TicketCard({ booking }: { booking: EnrichedBooking }) {
                         <Badge variant="secondary">{booking.status}</Badge>
                     </div>
                      <Separator className="my-3" />
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                        <div className="flex items-center gap-2"><span>{booking.passengerName}</span></div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                        <div className="flex items-center gap-2 font-medium"><span>{booking.passengerName}</span></div>
                         <div className="flex items-center gap-2"><Ticket className="h-4 w-4 text-primary" /> <span>Seats: {booking.bookedSeats.map(s => s.seatNumber).join(', ')}</span></div>
-                        <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-primary" /> <span>{format(new Date(route.departureTime), 'p')}</span></div>
-                        <div className="flex items-center gap-2"><BusIcon className="h-4 w-4 text-primary" /> <span>{route.bus.name}</span></div>
+                        <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-primary" /> <span>Depart: {format(new Date(route.departureTime), 'Pp')}</span></div>
+                        <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-primary" /> <span>Arrive: {format(new Date(route.arrivalTime), 'Pp')}</span></div>
+                        <div className="flex items-center gap-2 sm:col-span-2"><BusIcon className="h-4 w-4 text-primary" /> <span>{route.bus.name}</span></div>
                     </div>
                 </div>
                  <div className="bg-muted/40 p-4 flex flex-col items-center justify-center border-t md:border-t-0 md:border-l">
@@ -77,9 +81,10 @@ function TicketCard({ booking }: { booking: EnrichedBooking }) {
 export function MyTicketsClientPage({ isMiniApp, phoneNumberFromSession }: MyTicketsClientPageProps) {
     const [phoneNumber, setPhoneNumber] = useState(phoneNumberFromSession || '');
     const [searchedPhone, setSearchedPhone] = useState('');
-    const [bookings, setBookings] = useState<EnrichedBooking[]>([]);
+    const [allBookings, setAllBookings] = useState<EnrichedBooking[]>([]);
     const [loading, setLoading] = useState(true);
     const [hasSearched, setHasSearched] = useState(false);
+    const [filterDate, setFilterDate] = useState<Date | undefined>();
 
     const fetchTickets = useCallback(async (phone: string) => {
         if (!phone) {
@@ -93,13 +98,13 @@ export function MyTicketsClientPage({ isMiniApp, phoneNumberFromSession }: MyTic
             const response = await fetch(`/api/my-tickets?phone=${encodeURIComponent(phone)}`);
             if (response.ok) {
                 const data = await response.json();
-                setBookings(data);
+                setAllBookings(data);
             } else {
-                setBookings([]);
+                setAllBookings([]);
             }
         } catch (error) {
             console.error("Failed to fetch tickets:", error);
-            setBookings([]);
+            setAllBookings([]);
         } finally {
             setLoading(false);
         }
@@ -117,8 +122,17 @@ export function MyTicketsClientPage({ isMiniApp, phoneNumberFromSession }: MyTic
         e.preventDefault();
         fetchTickets(phoneNumber);
     };
+
+    const filteredBookings = useMemo(() => {
+        if (!filterDate) {
+            return allBookings;
+        }
+        return allBookings.filter(booking => 
+            isSameDay(new Date(booking.route.departureTime), filterDate)
+        );
+    }, [allBookings, filterDate]);
     
-    const groupedBookings = bookings.reduce((acc, booking) => {
+    const groupedBookings = filteredBookings.reduce((acc, booking) => {
         const date = format(new Date(booking.route.departureTime), 'yyyy-MM-dd');
         if (!acc[date]) {
             acc[date] = [];
@@ -153,18 +167,46 @@ export function MyTicketsClientPage({ isMiniApp, phoneNumberFromSession }: MyTic
                         {loading ? "Searching..." : "Find My Tickets"}
                     </Button>
                 </form>
+
+                 {hasSearched && (
+                    <div className="flex items-center gap-4 mb-6">
+                        <Popover>
+                            <PopoverTrigger asChild>
+                            <Button
+                                variant={"outline"}
+                                className={cn(
+                                "w-full sm:w-[280px] justify-start text-left font-normal",
+                                !filterDate && "text-muted-foreground"
+                                )}
+                            >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {filterDate ? format(filterDate, "PPP") : <span>Filter by date...</span>}
+                            </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                                <Calendar
+                                    mode="single"
+                                    selected={filterDate}
+                                    onSelect={setFilterDate}
+                                    initialFocus
+                                />
+                            </PopoverContent>
+                        </Popover>
+                         {filterDate && <Button variant="ghost" onClick={() => setFilterDate(undefined)}>Clear Filter</Button>}
+                    </div>
+                 )}
                 
                 {loading && <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}
 
                 {!loading && hasSearched && (
-                     bookings.length > 0 ? (
+                     filteredBookings.length > 0 ? (
                         <Accordion type="multiple" defaultValue={sortedDates.map(date => `date-${date}`)} className="w-full">
                           {sortedDates.map(date => (
                             <AccordionItem key={date} value={`date-${date}`}>
                               <AccordionTrigger className="font-semibold text-lg">
                                 Trips on {format(new Date(date), "PPP")}
                               </AccordionTrigger>
-                              <AccordionContent className="space-y-4">
+                              <AccordionContent className="space-y-4 pt-2">
                                 {groupedBookings[date].map(booking => (
                                   <TicketCard key={booking.id} booking={booking} />
                                 ))}
@@ -177,7 +219,10 @@ export function MyTicketsClientPage({ isMiniApp, phoneNumberFromSession }: MyTic
                             <Ticket className="mx-auto h-12 w-12 text-muted-foreground" />
                             <h3 className="mt-4 text-lg font-semibold">No Tickets Found</h3>
                             <p className="mt-1 text-sm text-muted-foreground">
-                                No paid tickets were found for the phone number <span className="font-semibold">{searchedPhone}</span>.
+                                {filterDate 
+                                    ? `No paid tickets were found for ${searchedPhone} on ${format(filterDate, "PPP")}.`
+                                    : `No paid tickets were found for the phone number ${searchedPhone}.`
+                                }
                             </p>
                         </div>
                     )
@@ -195,3 +240,5 @@ export function MyTicketsClientPage({ isMiniApp, phoneNumberFromSession }: MyTic
         </Card>
     );
 }
+
+    
