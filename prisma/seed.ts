@@ -292,7 +292,7 @@ async function main() {
   const allCreatedRoutes = await prisma.route.findMany();
 
   // 8. Create some sample Bookings
-  if (allCreatedRoutes.length >= 2) {
+  if (allCreatedRoutes.length >= 3) {
     const booking1 = await prisma.booking.create({
       data: {
         passengerName: 'Alice Johnson',
@@ -328,7 +328,24 @@ async function main() {
       }
     });
     
-    console.log(`Created bookings for ${booking1.passengerName} and ${booking2.passengerName}.`);
+    const booking3 = await prisma.booking.create({
+      data: {
+        passengerName: 'Test User',
+        passengerPhone: '251933704978',
+        passengerEmail: 'test@example.com',
+        totalPrice: allCreatedRoutes[2].price,
+        routeId: allCreatedRoutes[2].id,
+        status: BookingStatus.VALID,
+        paymentStatus: PaymentStatus.PAID,
+        bookedSeats: {
+          create: [
+            { seatNumber: 'C1' },
+          ]
+        }
+      }
+    });
+    
+    console.log(`Created bookings for ${booking1.passengerName}, ${booking2.passengerName}, and ${booking3.passengerName}.`);
   }
 
   console.log('Seeding finished.');
@@ -342,3 +359,5 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+
+    
