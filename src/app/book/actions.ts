@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { format } from 'date-fns';
-import { BookingStatus } from '@prisma/client';
+import { BookingStatus, PaymentStatus } from '@prisma/client';
 
 const createBookingSchema = z.object({
   routeId: z.string().min(1),
@@ -133,6 +133,10 @@ async function releaseSeatsForBooking(bookingId: string) {
                 console.error(`Cannot release seats: Booking, route, bus, or layout not found for ID ${bookingId}`);
                 return;
             }
+
+            if (booking.paymentStatus === 'PAID') {
+                return; // Do not release seats for paid bookings
+            }
             
             // Get the seat numbers that were booked
             const seatNumbersToRelease = booking.bookedSeats.map(bs => bs.seatNumber);
@@ -165,7 +169,62 @@ async function releaseSeatsForBooking(bookingId: string) {
 }
 
 export async function releaseSeatsOnPaymentTimeoutAction(bookingId: string) {
-    await releaseSeatsForBooking(bookingId);
+     try {
+        await prisma.$transaction(async (tx) => {
+            const booking = await tx.booking.findUnique({
+                where: { id: bookingId },
+                include: { 
+                    bookedSeats: true, 
+                    route: {
+                        include: {
+                            bus: {
+                                include: {
+                                    layout: true
+                                }
+                            }
+                        }
+                    } 
+                }
+            });
+
+            // Idempotency: If booking is already paid or doesn't exist, do nothing.
+            if (!booking || booking.paymentStatus === PaymentStatus.PAID) {
+                return;
+            }
+            
+            // Release Seats
+            const seatNumbersToRelease = booking.bookedSeats.map(bs => bs.seatNumber);
+            if (seatNumbersToRelease.length > 0 && booking.route?.bus?.layoutId) {
+                await tx.seat.updateMany({
+                    where: {
+                        layoutId: booking.route.bus.layoutId,
+                        seatNumber: { in: seatNumbersToRelease }
+                    },
+                    data: { status: 'AVAILABLE' }
+                });
+            }
+
+            // Delete non-paid payments for this booking
+            await tx.payment.deleteMany({
+                where: {
+                    bookingId: booking.id,
+                    status: { not: PaymentStatus.PAID }
+                }
+            });
+            
+            // Delete the booking itself
+            await tx.booking.delete({
+                where: { id: booking.id }
+            });
+
+            if (booking.routeId) {
+                revalidatePath(`/book/${booking.routeId}`);
+            }
+        });
+        console.log(`Successfully cleaned up timed-out booking ${bookingId}`);
+    } catch(error) {
+        console.error(`Failed to execute cleanup for timed-out booking ${bookingId}:`, error);
+    }
 }
 
 
@@ -240,17 +299,13 @@ export async function createPaymentRequestAction(bookingId: string, amount: numb
             });
             return { success: true, paymentToken: responseData.token };
         } else {
-             // If getting the payment token fails, release the seats.
-            await prisma.payment.update({
-                where: { transactionId },
-                data: { status: 'FAILED' }
-            });
-            await releaseSeatsForBooking(bookingId);
+             // If getting the payment token fails, release the seats and clean up booking.
+            await releaseSeatsOnPaymentTimeoutAction(bookingId);
             return { success: false, message: responseData.message || 'Failed to get payment token.' };
         }
     } catch (error) {
         console.error("Payment request failed:", error);
-         await releaseSeatsForBooking(bookingId);
+        await releaseSeatsOnPaymentTimeoutAction(bookingId);
         const message = error instanceof Error ? error.message : 'An unexpected error occurred during payment initiation.';
         return { success: false, message };
     }
