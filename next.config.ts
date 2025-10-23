@@ -3,9 +3,6 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  experimental: {
-    csp: false, // Disable Next.js's experimental CSP support
-  },
   poweredByHeader: false, // remove "X-Powered-By" header
   async headers() {
     return [

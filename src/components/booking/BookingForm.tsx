@@ -316,8 +316,8 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
                 Payment Information
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Thank you for your interest! Currently, our payment system is exclusively available through the mini-app. Web-based payments are coming soon.
-              Please complete your booking and payment using the mini-app for now.
+              Thank you for your interest! Currently, our payment system is exclusively available through the <strong>NibTera Super App</strong>.<br />
+              Web-based payments are coming soon. Please complete your booking and payment using the <strong>Mini App</strong> section of the <strong>NibTera Super App</strong> for now.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
