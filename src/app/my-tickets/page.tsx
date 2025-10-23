@@ -50,19 +50,6 @@ export default function MyTicketsPage() {
     const [loading, setLoading] = useState(true);
     const [hasSearched, setHasSearched] = useState(false);
 
-    useEffect(() => {
-        if (!cookiesLoading) {
-            const { phoneNumber: miniAppPhone } = getMiniAppData(cookies);
-            if (miniAppPhone) {
-                setPhoneNumber(miniAppPhone);
-                setSearchedPhone(miniAppPhone);
-                fetchTickets(miniAppPhone);
-            } else {
-                setLoading(false);
-            }
-        }
-    }, [cookies, cookiesLoading]);
-    
     const fetchTickets = useCallback(async (phone: string) => {
         setLoading(true);
         setHasSearched(true);
@@ -82,6 +69,19 @@ export default function MyTicketsPage() {
         }
     }, []);
 
+    useEffect(() => {
+        if (!cookiesLoading) {
+            const { phoneNumber: miniAppPhone } = getMiniAppData(cookies);
+            if (miniAppPhone) {
+                setPhoneNumber(miniAppPhone);
+                setSearchedPhone(miniAppPhone);
+                fetchTickets(miniAppPhone);
+            } else {
+                setLoading(false);
+            }
+        }
+    }, [cookies, cookiesLoading, fetchTickets]);
+    
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         if (phoneNumber) {
@@ -123,7 +123,7 @@ export default function MyTicketsPage() {
                                     disabled={!!getMiniAppData(cookies).phoneNumber}
                                 />
                             </div>
-                            <Button type="submit" className="w-full sm:w-auto" disabled={loading || !phoneNumber}>
+                            <Button type="submit" className="w-full sm:w-auto" disabled={loading || !phoneNumber || !!getMiniAppData(cookies).phoneNumber}>
                                 <Search className="mr-2 h-4 w-4" />
                                 {loading ? "Searching..." : "Find My Tickets"}
                             </Button>
