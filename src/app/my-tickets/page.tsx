@@ -49,6 +49,7 @@ export default function MyTicketsPage() {
     const [bookings, setBookings] = useState<EnrichedBooking[]>([]);
     const [loading, setLoading] = useState(true);
     const [hasSearched, setHasSearched] = useState(false);
+    const [isMiniApp, setIsMiniApp] = useState(false);
 
     const fetchTickets = useCallback(async (phone: string) => {
         setLoading(true);
@@ -71,8 +72,10 @@ export default function MyTicketsPage() {
 
     useEffect(() => {
         if (!cookiesLoading) {
-            const { phoneNumber: miniAppPhone } = getMiniAppData(cookies);
-            if (miniAppPhone) {
+            const { isMiniApp: miniAppStatus, phoneNumber: miniAppPhone } = getMiniAppData(cookies);
+            setIsMiniApp(miniAppStatus);
+
+            if (miniAppStatus && miniAppPhone) {
                 setPhoneNumber(miniAppPhone);
                 setSearchedPhone(miniAppPhone);
                 fetchTickets(miniAppPhone);
@@ -103,7 +106,7 @@ export default function MyTicketsPage() {
     
     return (
         <div className="flex flex-col min-h-screen bg-muted/20">
-            <Header user={null} isMiniApp={getMiniAppData(cookies).isMiniApp} />
+            <Header user={null} isMiniApp={isMiniApp} />
             <main className="flex-1 container mx-auto py-8 px-4">
                 <Card className="max-w-4xl mx-auto">
                     <CardHeader>
@@ -120,10 +123,10 @@ export default function MyTicketsPage() {
                                     placeholder="Enter your phone number..." 
                                     value={phoneNumber} 
                                     onChange={(e) => setPhoneNumber(e.target.value)}
-                                    disabled={!!getMiniAppData(cookies).phoneNumber}
+                                    disabled={isMiniApp}
                                 />
                             </div>
-                            <Button type="submit" className="w-full sm:w-auto" disabled={loading || !phoneNumber || !!getMiniAppData(cookies).phoneNumber}>
+                            <Button type="submit" className="w-full sm:w-auto" disabled={loading || !phoneNumber || isMiniApp}>
                                 <Search className="mr-2 h-4 w-4" />
                                 {loading ? "Searching..." : "Find My Tickets"}
                             </Button>
@@ -157,7 +160,7 @@ export default function MyTicketsPage() {
                                 </div>
                             )
                         )}
-                        {!loading && !hasSearched && (
+                        {!loading && !hasSearched && !isMiniApp && (
                              <div className="text-center py-10">
                                 <Search className="mx-auto h-12 w-12 text-muted-foreground" />
                                 <h3 className="mt-4 text-lg font-semibold">Search for your tickets</h3>
@@ -215,5 +218,6 @@ function TicketCard({ booking }: { booking: EnrichedBooking }) {
                 </div>
             </div>
         </Card>
-    )
+    );
 }
+
