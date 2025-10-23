@@ -10,11 +10,12 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Armchair, ArrowRight, Bus as BusIcon, Calendar, Clock, DollarSign, Percent, User, Users } from "lucide-react";
+import { Armchair, ArrowRight, Bus as BusIcon, Calendar, Clock, DollarSign, Percent, User, Users, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SeatMap } from "./SeatMap";
 import { createBookingAction, createPaymentRequestAction } from "@/app/book/actions";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 
 type RouteWithDetails = Route & {
     origin: Location;
@@ -59,6 +60,11 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
         setPassengerPhone(phoneNumber);
     }
   }, [phoneNumber])
+
+  const areSeatsAvailable = useMemo(() => {
+    return selectedRoute.bus.layout.seats.some(seat => seat.status === 'AVAILABLE');
+  }, [selectedRoute]);
+
 
   const ticketCount = selectedSeats.length;
 
@@ -198,11 +204,21 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
             {/* Seat Map */}
             <div>
               <h3 className="font-semibold text-lg flex items-center gap-2 mb-2"><Armchair /> Select Your Seats</h3>
-              <SeatMap 
-                key={selectedRoute.id} // Add key to force re-render on route change
-                bus={selectedRoute.bus} 
-                onSelectionChange={setSelectedSeats} 
-              />
+              {areSeatsAvailable ? (
+                <SeatMap 
+                  key={selectedRoute.id} // Add key to force re-render on route change
+                  bus={selectedRoute.bus} 
+                  onSelectionChange={setSelectedSeats} 
+                />
+              ) : (
+                <Alert variant="destructive">
+                    <XCircle className="h-4 w-4" />
+                    <AlertTitle>No Seats Available</AlertTitle>
+                    <AlertDescription>
+                        Unfortunately, this bus is fully booked. Please select another bus or time.
+                    </AlertDescription>
+                </Alert>
+              )}
             </div>
 
             <Separator />
@@ -256,7 +272,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
               </div>
             </div>
             
-            <Button type="submit" size="lg" className="w-full" disabled={isPending}>
+            <Button type="submit" size="lg" className="w-full" disabled={isPending || ticketCount === 0}>
               {isPending ? 'Processing...' : 'Book Now & Pay'}
             </Button>
 
