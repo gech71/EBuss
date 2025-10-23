@@ -13,6 +13,8 @@ import { Loader2, Search, Ticket, ArrowRight, Bus as BusIcon, Clock, MapPin, Use
 import type { User, Booking, Route, Bus, Location, BusOwner, BookedSeat } from '@prisma/client';
 import { useCookies } from '@/hooks/use-cookies';
 import { format } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
 type EnrichedBooking = Booking & {
   route: Route & {
