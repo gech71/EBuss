@@ -10,6 +10,7 @@ import { Card } from '../ui/card';
 import { useToast } from '@/hooks/use-toast';
 import jsQR from "jsqr";
 import type { Booking, Route, Bus, Location, BookedSeat } from "@prisma/client";
+import { cn } from "@/lib/utils";
 
 type ScanStatus = "idle" | "scanning" | "success" | "error";
 type ScannedData = Booking & { route: Route & { origin: Location, destination: Location }, bookedSeats: BookedSeat[] };

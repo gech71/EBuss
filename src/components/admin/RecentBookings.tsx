@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Search, Ticket } from "lucide-react";
 import { Badge } from "../ui/badge";
 import type { Booking, Route, Location } from "@prisma/client";
+import { ScrollArea } from "../ui/scroll-area";
 
 interface SanitizedRoute {
     id: string;
@@ -68,43 +69,45 @@ export function RecentBookings({ bookings, routes }: RecentBookingsProps) {
         </div>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Ticket ID</TableHead>
-              <TableHead>Passenger</TableHead>
-              <TableHead>Route</TableHead>
-              <TableHead>Seats</TableHead>
-              <TableHead>Booking Date</TableHead>
-              <TableHead className="text-right">Price</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sortedBookings.length > 0 ? (
-                sortedBookings.map(booking => {
-                const route = routes.find(r => r.id === booking.routeId);
-                return (
-                  <TableRow key={booking.id}>
-                    <TableCell className="font-medium">
-                       <Badge variant="outline">{booking.id.substring(0, 8)}...</Badge>
-                    </TableCell>
-                    <TableCell>{booking.passengerName}</TableCell>
-                    <TableCell>{route ? `${route.origin.name} → ${route.destination.name}` : "N/A"}</TableCell>
-                    <TableCell>{booking.bookedSeats.map(s => s.seatNumber).join(', ')}</TableCell>
-                    <TableCell>{new Date(booking.bookingTime).toLocaleDateString()}</TableCell>
-                    <TableCell className="text-right">{booking.totalPrice.toFixed(2)} ETB</TableCell>
-                  </TableRow>
-                )
-            })
-            ) : (
+        <ScrollArea className="w-full">
+            <Table>
+            <TableHeader>
                 <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                         No results found.
-                    </TableCell>
+                <TableHead>Ticket ID</TableHead>
+                <TableHead>Passenger</TableHead>
+                <TableHead>Route</TableHead>
+                <TableHead>Seats</TableHead>
+                <TableHead>Booking Date</TableHead>
+                <TableHead className="text-right">Price</TableHead>
                 </TableRow>
-            )}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+                {sortedBookings.length > 0 ? (
+                    sortedBookings.map(booking => {
+                    const route = routes.find(r => r.id === booking.routeId);
+                    return (
+                    <TableRow key={booking.id}>
+                        <TableCell className="font-medium">
+                        <Badge variant="outline">{booking.id.substring(0, 8)}...</Badge>
+                        </TableCell>
+                        <TableCell>{booking.passengerName}</TableCell>
+                        <TableCell>{route ? `${route.origin.name} → ${route.destination.name}` : "N/A"}</TableCell>
+                        <TableCell>{booking.bookedSeats.map(s => s.seatNumber).join(', ')}</TableCell>
+                        <TableCell>{new Date(booking.bookingTime).toLocaleDateString()}</TableCell>
+                        <TableCell className="text-right">{booking.totalPrice.toFixed(2)} ETB</TableCell>
+                    </TableRow>
+                    )
+                })
+                ) : (
+                    <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center">
+                            No results found.
+                        </TableCell>
+                    </TableRow>
+                )}
+            </TableBody>
+            </Table>
+        </ScrollArea>
         {bookings.length === 0 && (
              <div className="text-center p-8 text-muted-foreground">
                 <Ticket className="mx-auto h-12 w-12" />

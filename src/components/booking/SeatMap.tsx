@@ -6,6 +6,7 @@ import type { Bus, Seat as SeatType, SeatStatus } from "@prisma/client";
 import { cn } from '@/lib/utils';
 import { Armchair, CarFront } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { ScrollArea } from '../ui/scroll-area';
 
 // Define a client-side seat type that includes the 'SELECTED' status
 type ClientSeat = SeatType & { status: SeatStatus | 'SELECTED' };
@@ -19,7 +20,7 @@ function Seat({ seat, onSelect }: SeatProps) {
   const isSelectable = seat.type === 'SEAT' && (seat.status === 'AVAILABLE' || seat.status === 'SELECTED');
 
   const seatClasses = cn(
-    'flex items-center justify-center w-10 h-10 rounded-md font-semibold text-xs transition-all duration-200',
+    'flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-md font-semibold text-xs transition-all duration-200',
     seat.type === 'SEAT' && 'border-2',
     seat.status === 'AVAILABLE' && 'bg-green-100 border-green-400 text-green-800 hover:bg-green-200 hover:border-green-600 cursor-pointer dark:bg-green-900/50 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900',
     seat.status === 'OCCUPIED' && 'bg-muted border-muted-foreground/30 text-muted-foreground cursor-not-allowed opacity-70',
@@ -34,8 +35,8 @@ function Seat({ seat, onSelect }: SeatProps) {
       onClick={() => isSelectable && onSelect(seat.seatNumber)}
       title={seat.type === 'SEAT' ? `Seat ${seat.seatNumber} - ${seat.status}` : ''}
     >
-      {seat.type === 'SEAT' && <Armchair className="w-5 h-5" />}
-      {seat.type === 'DRIVER' && <CarFront className="w-5 h-5" />}
+      {seat.type === 'SEAT' && <Armchair className="w-4 h-4 md:w-5 md:h-5" />}
+      {seat.type === 'DRIVER' && <CarFront className="w-4 h-4 md:w-5 md:h-5" />}
     </div>
   );
 }
@@ -99,16 +100,18 @@ export function SeatMap({ bus, onSelectionChange }: SeatMapProps) {
   
   return (
     <div className="flex flex-col items-center pt-4">
-      <div 
-        className="grid gap-2 p-4 bg-muted/30 rounded-lg border-2 border-dashed" 
-        style={{ gridTemplateColumns: `repeat(${bus.layout.cols}, minmax(0, 1fr))` }}
-      >
-        {seats.map(seat => (
-          <Seat key={seat.id} seat={seat} onSelect={handleSelectSeat} />
-        ))}
-      </div>
+        <ScrollArea className="w-full">
+            <div 
+                className="grid gap-1 md:gap-2 p-2 md:p-4 bg-muted/30 rounded-lg border-2 border-dashed w-max" 
+                style={{ gridTemplateColumns: `repeat(${bus.layout.cols}, minmax(0, 1fr))` }}
+            >
+                {seats.map(seat => (
+                <Seat key={seat.id} seat={seat} onSelect={handleSelectSeat} />
+                ))}
+            </div>
+        </ScrollArea>
       
-      <div className="flex justify-center space-x-4 mt-4 text-sm">
+      <div className="flex justify-center flex-wrap gap-x-4 gap-y-2 mt-4 text-sm">
           <div className="flex items-center"><Armchair className="w-4 h-4 mr-2 text-green-600 dark:text-green-400"/>Available</div>
           <div className="flex items-center"><Armchair className="w-4 h-4 mr-2 text-accent"/>Selected</div>
           <div className="flex items-center"><Armchair className="w-4 h-4 mr-2 text-muted-foreground"/>Occupied</div>

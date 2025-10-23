@@ -179,15 +179,15 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
           <CardContent className="space-y-8">
             {/* Route Details */}
             <div className="p-4 border rounded-lg bg-muted/30">
-               <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-4 text-xl font-bold">
-                      <span>{selectedRoute.origin.name}</span>
-                      <ArrowRight className="h-5 w-5 text-primary" />
-                      <span>{selectedRoute.destination.name}</span>
+               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div className="flex items-center gap-2 md:gap-4 text-lg md:text-xl font-bold">
+                      <span className="truncate">{selectedRoute.origin.name}</span>
+                      <ArrowRight className="h-5 w-5 text-primary flex-shrink-0" />
+                      <span className="truncate">{selectedRoute.destination.name}</span>
                   </div>
                    {alternativeRoutes.length > 1 && (
                       <Select onValueChange={handleRouteChange} defaultValue={selectedRoute.id}>
-                          <SelectTrigger className="w-[200px]">
+                          <SelectTrigger className="w-full sm:w-[200px]">
                               <SelectValue placeholder="Change bus..." />
                           </SelectTrigger>
                           <SelectContent>
@@ -200,7 +200,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
                       </Select>
                    )}
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm mt-4 text-muted-foreground">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 text-sm mt-4 text-muted-foreground">
                   <div className="flex items-center gap-2"><Calendar className="h-4 w-4" /> <span>{new Date(selectedRoute.departureTime).toLocaleDateString()}</span></div>
                   <div className="flex items-center gap-2"><Clock className="h-4 w-4" /> <span>{new Date(selectedRoute.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
                   <div className="flex items-center gap-2"><BusIcon className="h-4 w-4" /> <span>{selectedRoute.bus.name}</span></div>
