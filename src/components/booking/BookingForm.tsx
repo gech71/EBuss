@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Armchair, ArrowRight, Bus as BusIcon, Calendar, Clock, DollarSign, Percent, User, Users, XCircle } from "lucide-react";
+import { Armchair, ArrowRight, Bus as BusIcon, Calendar, Clock, DollarSign, Percent, User, Users, XCircle, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SeatMap } from "./SeatMap";
 import { createBookingAction, createPaymentRequestAction } from "@/app/book/actions";
@@ -53,6 +53,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
   const [passengerPhone, setPassengerPhone] = useState(phoneNumber || "");
   
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showWebPaymentAlert, setShowWebPaymentAlert] = useState(false);
   const [lastBookingId, setLastBookingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -108,6 +109,11 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
     if (!passengerName || !passengerPhone) {
       toast({ title: "Passenger details required", description: "Please enter your name and phone number.", variant: "destructive" });
       return;
+    }
+
+    if (!authToken) {
+        setShowWebPaymentAlert(true);
+        return;
     }
 
     const bookingData = {
@@ -272,7 +278,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
               </div>
             </div>
             
-            <Button type="submit" size="lg" className="w-full" disabled={isPending || ticketCount === 0}>
+            <Button type="submit" size="lg" className="w-full" disabled={isPending || ticketCount === 0 || !areSeatsAvailable}>
               {isPending ? 'Processing...' : 'Book Now & Pay'}
             </Button>
 
@@ -301,6 +307,28 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={showWebPaymentAlert} onOpenChange={setShowWebPaymentAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+                <Info className="h-5 w-5 text-blue-500" />
+                Payment Information
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Thank you for your interest! Currently, our payment system is exclusively available through the mini-app. Web-based payments are coming soon.
+              Please complete your booking and payment using the mini-app for now.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowWebPaymentAlert(false)}>
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
+
+    
