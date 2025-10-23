@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Image from 'next/image';
-import { Loader2, Search, Ticket, ArrowRight, Bus as BusIcon, Clock, Building, CalendarIcon } from 'lucide-react';
+import { Loader2, Search, Ticket, ArrowRight, Bus as BusIcon, Clock, Building, CalendarIcon, Maximize } from 'lucide-react';
 import type { Booking, Route, Bus, Location, BusOwner, BookedSeat } from '@prisma/client';
 import { format, isSameDay } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,7 @@ import { Separator } from '@/components/ui/separator';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 type EnrichedBooking = Booking & {
   route: Route & {
@@ -36,6 +37,7 @@ function TicketCard({ booking }: { booking: EnrichedBooking }) {
     const qrCodeData = encodeURIComponent(JSON.stringify({ ticketId: booking.id }));
 
     return (
+      <Dialog>
         <Card className="bg-background overflow-hidden">
             <div className="flex flex-col md:flex-row">
                 <div className="flex-grow p-4">
@@ -61,19 +63,43 @@ function TicketCard({ booking }: { booking: EnrichedBooking }) {
                         <div className="flex items-center gap-2 sm:col-span-2"><BusIcon className="h-4 w-4 text-primary" /> <span>{route.bus.name}</span></div>
                     </div>
                 </div>
-                 <div className="bg-muted/40 p-4 flex flex-col items-center justify-center border-t md:border-t-0 md:border-l">
-                    <Image 
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${qrCodeData}&bgcolor=F0F8FF`} 
-                        alt="Ticket QR Code" 
-                        width={128} 
-                        height={128}
-                        className="rounded-md"
-                        data-ai-hint="qr code"
-                    />
-                     <p className="text-xs text-muted-foreground mt-2">Scan at boarding</p>
-                </div>
+                 <DialogTrigger asChild>
+                    <button className="bg-muted/40 p-4 flex flex-col items-center justify-center border-t md:border-t-0 md:border-l relative group">
+                        <Image 
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${qrCodeData}&bgcolor=F0F8FF`} 
+                            alt="Ticket QR Code" 
+                            width={128} 
+                            height={128}
+                            className="rounded-md"
+                            data-ai-hint="qr code"
+                        />
+                        <p className="text-xs text-muted-foreground mt-2">Scan at boarding</p>
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Maximize className="h-8 w-8 text-white" />
+                        </div>
+                    </button>
+                 </DialogTrigger>
             </div>
         </Card>
+        <DialogContent className="max-w-xs sm:max-w-sm">
+            <DialogHeader>
+                <DialogTitle>Scan QR Code</DialogTitle>
+                <DialogDescription>
+                    Present this QR code during boarding.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="flex items-center justify-center p-4">
+                <Image 
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${qrCodeData}&bgcolor=F0F8FF`} 
+                    alt="Enlarged Ticket QR Code" 
+                    width={300} 
+                    height={300}
+                    className="rounded-lg border-4 border-muted"
+                    data-ai-hint="qr code"
+                />
+            </div>
+        </DialogContent>
+      </Dialog>
     );
 }
 
@@ -240,5 +266,3 @@ export function MyTicketsClientPage({ isMiniApp, phoneNumberFromSession }: MyTic
         </Card>
     );
 }
-
-    
