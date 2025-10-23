@@ -92,7 +92,7 @@ export function RecentBookings({ bookings, routes }: RecentBookingsProps) {
                     <TableCell>{route ? `${route.origin.name} → ${route.destination.name}` : "N/A"}</TableCell>
                     <TableCell>{booking.bookedSeats.map(s => s.seatNumber).join(', ')}</TableCell>
                     <TableCell>{new Date(booking.bookingTime).toLocaleDateString()}</TableCell>
-                    <TableCell className="text-right">${booking.totalPrice.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{booking.totalPrice.toFixed(2)} ETB</TableCell>
                   </TableRow>
                 )
             })

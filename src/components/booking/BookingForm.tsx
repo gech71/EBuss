@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Armchair, ArrowRight, Bus as BusIcon, Calendar, Clock, DollarSign, Percent, User, Users, XCircle, Info } from "lucide-react";
+import { Armchair, ArrowRight, Bus as BusIcon, Calendar, Clock, Percent, User, Users, XCircle, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SeatMap } from "./SeatMap";
 import { createBookingAction, createPaymentRequestAction } from "@/app/book/actions";
@@ -248,11 +248,11 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
             
             {/* Price Summary */}
             <div>
-              <h3 className="font-semibold text-lg flex items-center gap-2 mb-4"><DollarSign /> Price Summary</h3>
+              <h3 className="font-semibold text-lg flex items-center gap-2 mb-4"><span className="font-bold">ETB</span> Price Summary</h3>
               <div className="space-y-2 p-4 border rounded-lg bg-muted/30">
                   <div className="flex justify-between items-center text-sm">
                       <span className="text-muted-foreground flex items-center gap-2"><Users />Tickets</span>
-                      <span>{ticketCount} x ${selectedRoute.price.toFixed(2)}</span>
+                      <span>{ticketCount} x {selectedRoute.price.toFixed(2)} ETB</span>
                   </div>
                   {ticketCount > 0 && (
                     <div className="flex justify-between items-start text-sm">
@@ -262,18 +262,18 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
                   )}
                    <div className="flex justify-between items-center text-sm">
                       <span className="text-muted-foreground">Subtotal</span>
-                      <span>${subtotal.toFixed(2)}</span>
+                      <span>{subtotal.toFixed(2)} ETB</span>
                   </div>
                   {appliedTier && (
                       <div className="flex justify-between items-center text-sm text-green-600 font-semibold">
                           <span className="flex items-center gap-2"><Percent />{selectedRoute.discount?.name} ({appliedTier.percentage}%)</span>
-                          <span>-${discountAmount.toFixed(2)}</span>
+                          <span>-{discountAmount.toFixed(2)} ETB</span>
                       </div>
                   )}
                   <Separator className="my-2" />
                    <div className="flex justify-between items-center font-bold text-lg">
                       <span>Total Price</span>
-                      <span>${finalPrice.toFixed(2)}</span>
+                      <span>{finalPrice.toFixed(2)} ETB</span>
                   </div>
               </div>
             </div>
@@ -330,5 +330,3 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
     </>
   );
 }
-
-    

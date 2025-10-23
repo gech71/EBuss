@@ -39,7 +39,7 @@ export function RouteCard({ route }: RouteCardProps) {
                         Discount
                     </Badge>
                 )}
-                <div className="text-2xl font-bold text-primary">${Number(route.price).toFixed(2)}</div>
+                <div className="text-2xl font-bold text-primary">{Number(route.price).toFixed(2)} ETB</div>
              </div>
         </div>
       </CardHeader>

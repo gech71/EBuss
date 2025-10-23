@@ -4,7 +4,7 @@
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { DollarSign, TrendingUp, Zap, Ticket, Calendar as CalendarIcon } from "lucide-react";
+import { TrendingUp, Zap, Ticket, Calendar as CalendarIcon } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Badge } from "../ui/badge";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
@@ -128,13 +128,17 @@ export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
                 <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="p-4 border rounded-lg">
-                            <h4 className="text-sm font-semibold text-muted-foreground flex items-center mb-2"><DollarSign className="w-4 h-4 mr-2"/>Actual Revenue</h4>
-                            <p className="text-3xl font-bold text-primary">${todayStats.actualRevenue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                            <h4 className="text-sm font-semibold text-muted-foreground flex items-center mb-2">
+                                <span className="font-bold mr-2">ETB</span>Actual Revenue
+                            </h4>
+                            <p className="text-3xl font-bold text-primary">{todayStats.actualRevenue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                             <p className="text-xs text-muted-foreground">Revenue from tickets sold for today.</p>
                         </div>
                          <div className="p-4 border rounded-lg">
-                            <h4 className="text-sm font-semibold text-muted-foreground flex items-center mb-2"><DollarSign className="w-4 h-4 mr-2"/>Potential Revenue</h4>
-                            <p className="text-3xl font-bold">${todayStats.potentialRevenue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                            <h4 className="text-sm font-semibold text-muted-foreground flex items-center mb-2">
+                                <span className="font-bold mr-2">ETB</span>Potential Revenue
+                            </h4>
+                            <p className="text-3xl font-bold">{todayStats.potentialRevenue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                             <p className="text-xs text-muted-foreground">If all seats for today's routes were sold.</p>
                         </div>
                         <div className="p-4 border rounded-lg">
@@ -209,8 +213,8 @@ export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
                             <TableRow>
                                 <TableHead>Route</TableHead>
                                 <TableHead className="text-center">Tickets Sold</TableHead>
-                                <TableHead className="text-right">Revenue</TableHead>
-                                <TableHead className="text-right">Potential</TableHead>
+                                <TableHead className="text-right">Revenue (ETB)</TableHead>
+                                <TableHead className="text-right">Potential (ETB)</TableHead>
                                 <TableHead className="text-right">% of Total</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -221,8 +225,8 @@ export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
                                     <TableCell className="text-center">
                                         <Badge variant="outline">{stat.ticketsSold}</Badge>
                                     </TableCell>
-                                    <TableCell className="text-right font-semibold">${stat.revenue.toFixed(2)}</TableCell>
-                                    <TableCell className="text-right text-muted-foreground">${stat.potentialRevenue.toFixed(2)}</TableCell>
+                                    <TableCell className="text-right font-semibold">{stat.revenue.toFixed(2)}</TableCell>
+                                    <TableCell className="text-right text-muted-foreground">{stat.potentialRevenue.toFixed(2)}</TableCell>
                                     <TableCell className="text-right">
                                         <Badge className="bg-green-600 hover:bg-green-700">
                                             {totalRevenue > 0 ? ((stat.revenue / totalRevenue) * 100).toFixed(1) : '0.0'}%
@@ -234,8 +238,8 @@ export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
                         <TableFooter>
                             <TableRow>
                                 <TableCell colSpan={2} className="font-bold">Totals</TableCell>
-                                <TableCell className="text-right font-bold">${totalRevenue.toFixed(2)}</TableCell>
-                                <TableCell className="text-right font-bold text-muted-foreground">${totalPotentialRevenue.toFixed(2)}</TableCell>
+                                <TableCell className="text-right font-bold">{totalRevenue.toFixed(2)}</TableCell>
+                                <TableCell className="text-right font-bold text-muted-foreground">{totalPotentialRevenue.toFixed(2)}</TableCell>
                                 <TableCell className="text-right font-bold">
                                      <Badge className="bg-blue-600 hover:bg-blue-700 text-base">
                                         {totalEffectiveness.toFixed(1)}%

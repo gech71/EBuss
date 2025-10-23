@@ -68,7 +68,7 @@ export default async function AdminRoutesPage() {
                 <TableCell className="font-medium">{route.origin.name}</TableCell>
                 <TableCell>{route.destination.name}</TableCell>
                 <TableCell>{new Date(route.departureTime).toLocaleString()}</TableCell>
-                <TableCell className="text-right">${route.price.toFixed(2)}</TableCell>
+                <TableCell className="text-right">{route.price.toFixed(2)} ETB</TableCell>
                 <TableCell>
                   <RouteActions routeId={route.id} />
                 </TableCell>

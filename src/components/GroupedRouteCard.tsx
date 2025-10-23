@@ -54,7 +54,7 @@ export function GroupedRouteCard({ routes }: GroupedRouteCardProps) {
                                 <div className="text-sm font-semibold text-foreground/90">
                                     <span>{bus?.name || 'Standard Bus'}</span>
                                 </div>
-                                <div className="text-lg font-bold text-primary">${Number(route.price).toFixed(2)}</div>
+                                <div className="text-lg font-bold text-primary">{Number(route.price).toFixed(2)} ETB</div>
                             </div>
                             <div className="flex flex-col items-end">
                                 <div className="flex items-center text-sm font-semibold text-primary mb-1 justify-end">

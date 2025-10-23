@@ -161,7 +161,7 @@ export function EditOwnerForm({ owner: initialOwner, otherOwnerNames }: EditOwne
                                         </Select>
                                     </div>
                                      <div className="space-y-2">
-                                        <Label htmlFor={`value-${index}`}>{tier.type === 'FIXED' ? 'Amount ($)' : 'Rate (%)'}</Label>
+                                        <Label htmlFor={`value-${index}`}>{tier.type === 'FIXED' ? 'Amount (ETB)' : 'Rate (%)'}</Label>
                                         <Input id={`value-${index}`} type="number" placeholder="e.g., 3" required value={tier.value} onChange={e => handleTierChange(index, 'value', Number(e.target.value))} />
                                     </div>
                                 </div>

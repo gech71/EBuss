@@ -3,7 +3,7 @@
 import { RecentBookings } from "@/components/admin/RecentBookings";
 import { Analytics } from "@/components/admin/Analytics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, Route as RouteIcon, Bus } from "lucide-react";
+import { Route as RouteIcon, Bus } from "lucide-react";
 import prisma from "@/lib/prisma";
 import { validateRequest } from "@/app/lib/auth";
 import { redirect } from "next/navigation";
@@ -67,10 +67,10 @@ export default async function AdminDashboard() {
             <CardTitle className="text-sm font-medium">
               Total Revenue
             </CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground font-bold">ETB</span>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalRevenue.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{totalRevenue.toLocaleString()} ETB</div>
             <p className="text-xs text-muted-foreground">
               Based on your company's bookings
             </p>
