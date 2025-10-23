@@ -217,23 +217,3 @@ function TicketCard({ booking }: { booking: EnrichedBooking }) {
         </Card>
     )
 }
-
-// Simple hook to manage cookies client-side
-function useCookies() {
-    const [cookies, setCookies] = useState<Record<string, string>>({});
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        if (typeof document !== 'undefined') {
-            const allCookies = document.cookie.split('; ').reduce((acc, cookie) => {
-                const [key, val] = cookie.split('=');
-                acc[key] = decodeURIComponent(val);
-                return acc;
-            }, {} as Record<string, string>);
-            setCookies(allCookies);
-        }
-        setLoading(false);
-    }, []);
-
-    return { cookies, loading };
-}
