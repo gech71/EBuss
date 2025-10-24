@@ -127,4 +127,3 @@ export async function deleteLocationAction(locationId: string, csrfToken: string
     return { success: false, message: 'An unexpected error occurred.' };
   }
 }
-

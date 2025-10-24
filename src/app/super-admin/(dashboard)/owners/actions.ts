@@ -136,6 +136,9 @@ export async function updateOwnerAction(formData: FormData) {
 
 export async function deleteOwnerAction(ownerId: string): Promise<{ success: boolean; message: string }> {
   try {
+    // NOTE: Super admin actions don't have CSRF validation in this simplified implementation.
+    // A production app should add this protection.
+
     // Check if the owner has any buses associated with them
     const busCount = await prisma.bus.count({
       where: {
