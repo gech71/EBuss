@@ -110,64 +110,6 @@ export async function createBookingAction(data: unknown) {
   }
 }
 
-async function releaseSeatsForBooking(bookingId: string) {
-    try {
-        await prisma.$transaction(async (tx) => {
-            const booking = await tx.booking.findUnique({
-                where: { id: bookingId },
-                include: { 
-                    bookedSeats: true, 
-                    route: {
-                        include: {
-                            bus: {
-                                include: {
-                                    layout: true
-                                }
-                            }
-                        }
-                    } 
-                }
-            });
-
-            if (!booking || !booking.route?.bus?.layoutId) {
-                console.error(`Cannot release seats: Booking, route, bus, or layout not found for ID ${bookingId}`);
-                return;
-            }
-
-            if (booking.paymentStatus === 'PAID') {
-                return; // Do not release seats for paid bookings
-            }
-            
-            // Get the seat numbers that were booked
-            const seatNumbersToRelease = booking.bookedSeats.map(bs => bs.seatNumber);
-            
-            if (seatNumbersToRelease.length === 0) {
-                return; // Nothing to release
-            }
-            
-            // Revert seat status to AVAILABLE
-            await tx.seat.updateMany({
-                where: {
-                    layoutId: booking.route.bus.layoutId,
-                    seatNumber: { in: seatNumbersToRelease }
-                },
-                data: { status: 'AVAILABLE' }
-            });
-
-            // Mark booking as cancelled
-            await tx.booking.update({
-                where: { id: bookingId },
-                data: { status: 'CANCELLED', paymentStatus: 'FAILED' }
-            });
-            
-             revalidatePath(`/book/${booking.routeId}`);
-        });
-    } catch(error) {
-        console.error(`Failed to release seats for booking ${bookingId}:`, error);
-        // We don't throw here to avoid crashing the payment failure flow
-    }
-}
-
 export async function releaseSeatsOnPaymentTimeoutAction(bookingId: string) {
      try {
         await prisma.$transaction(async (tx) => {
@@ -204,6 +146,19 @@ export async function releaseSeatsOnPaymentTimeoutAction(bookingId: string) {
                 });
             }
 
+            // Delete non-paid payment records associated with the booking
+            await tx.payment.deleteMany({
+                where: {
+                    bookingId: bookingId,
+                    status: { not: PaymentStatus.PAID }
+                }
+            });
+
+            // Delete the booking itself
+            await tx.booking.delete({
+                where: { id: bookingId }
+            });
+
             if (booking.routeId) {
                 revalidatePath(`/book/${booking.routeId}`);
             }
@@ -220,13 +175,34 @@ export async function createPaymentRequestAction(bookingId: string, amount: numb
         return { success: false, message: 'Authentication token is missing.' };
     }
 
+    const bookingWithOwner = await prisma.booking.findUnique({
+        where: { id: bookingId },
+        include: {
+            route: {
+                include: {
+                    bus: {
+                        include: {
+                            owner: true
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    if (!bookingWithOwner?.route?.bus?.owner?.bankAccountNumber) {
+        console.error(`Could not find bus owner or bank account for booking ID: ${bookingId}`);
+        return { success: false, message: 'Bus owner account details not found.' };
+    }
+    
+    const ACCOUNT_NO = bookingWithOwner.route.bus.owner.bankAccountNumber;
+
     const NIB_PAYMENT_URL = process.env.NIB_PAYMENT_URL;
     const NIB_PAYMENT_KEY = process.env.NIB_PAYMENT_KEY;
-    const ACCOUNT_NO = process.env.NIB_ACCOUNT_NO;
     const COMPANY_NAME = process.env.NIB_COMPANY_NAME || 'EBUSS';
     const CALLBACK_URL = `${process.env.NEXT_PUBLIC_BASE_URL}/api/portal/payment-callback`;
     
-    if (!NIB_PAYMENT_URL || !NIB_PAYMENT_KEY || !ACCOUNT_NO) {
+    if (!NIB_PAYMENT_URL || !NIB_PAYMENT_KEY) {
         console.error("Payment environment variables are not set.");
         return { success: false, message: 'Server is not configured for payments.' };
     }
