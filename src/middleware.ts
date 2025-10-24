@@ -2,7 +2,6 @@
 // middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { randomBytes } from 'crypto';
 
 const ALLOWED_ORIGINS = ['https://yourdomain.com', 'https://admin.yourdomain.com'];
 
@@ -11,13 +10,15 @@ export async function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
 
   // 1. Generate CSP nonce
-  const nonce = btoa(randomBytes(16).toString());
+  const nonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
   requestHeaders.set('x-nonce', nonce);
 
   // 2. Manage CSRF Token
   let csrfToken = request.cookies.get('csrf_token')?.value;
   if (!csrfToken) {
-    csrfToken = randomBytes(32).toString('hex');
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    csrfToken = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
   }
   // We set the token on the request headers so it's available in API routes and Server Components
   requestHeaders.set('X-CSRF-Token', csrfToken);
