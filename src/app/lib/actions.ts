@@ -12,12 +12,13 @@ import { z } from 'zod';
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_ATTEMPT_WINDOW_SECONDS = 60;
 
-function getIP() {
-    const forwardedFor = headers().get('x-forwarded-for');
+async function getIP() {
+  const h = await headers();
+    const forwardedFor = h.get('x-forwarded-for');
     if (forwardedFor) {
         return forwardedFor.split(',')[0].trim();
     }
-    const realIp = headers().get('x-real-ip');
+    const realIp = h.get('x-real-ip');
     if (realIp) {
         return realIp.trim();
     }

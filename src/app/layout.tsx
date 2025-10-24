@@ -3,12 +3,13 @@ import { Toaster } from "@/components/ui/toaster";
 import React from 'react';
 import { headers } from 'next/headers';
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const nonce = headers().get('x-nonce') || '';
+  const nonceHeader = await headers();
+  const  nonce =  nonceHeader.get('x-nonce') || '';
   return (
     <html lang="en" suppressHydrationWarning>
        <head>
