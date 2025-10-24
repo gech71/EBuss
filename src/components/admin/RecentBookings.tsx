@@ -69,7 +69,7 @@ export function RecentBookings({ bookings, routes }: RecentBookingsProps) {
         </div>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="w-full">
+        <ScrollArea className="max-h-[500px] w-full">
             <Table>
             <TableHeader>
                 <TableRow>

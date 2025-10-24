@@ -209,7 +209,7 @@ export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
                 </CardHeader>
                 <CardContent>
                 {routeStats.length > 0 ? (
-                    <ScrollArea className="w-full">
+                    <ScrollArea className="max-h-[500px] w-full">
                         <Table>
                             <TableHeader>
                                 <TableRow>
