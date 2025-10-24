@@ -8,12 +8,29 @@ import prisma from '@/lib/prisma';
 import { LocationActions } from '@/components/admin/LocationActions';
 import { validateRequest } from '@/app/lib/auth';
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
+import { randomBytes } from 'crypto';
+
+async function generateCsrfToken() {
+  const token = randomBytes(32).toString('hex');
+  cookies().set({
+    name: 'csrf_token',
+    value: token,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: '/',
+  });
+  return token;
+}
 
 export default async function AdminLocationsPage() {
   const { user } = await validateRequest();
   if (!user || !user.busOwnerId) {
     return redirect('/login');
   }
+
+  const csrfToken = await generateCsrfToken();
 
   const locations = await prisma.location.findMany({
     where: {
@@ -52,7 +69,11 @@ export default async function AdminLocationsPage() {
                 <TableRow key={location.id}>
                   <TableCell className="font-medium">{location.name}</TableCell>
                   <TableCell className="text-right">
-                    <LocationActions locationId={location.id} locationName={location.name} />
+                    <LocationActions 
+                      locationId={location.id} 
+                      locationName={location.name} 
+                      csrfToken={csrfToken} 
+                    />
                   </TableCell>
                 </TableRow>
               ))}

@@ -9,24 +9,18 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { deleteLocationAction } from "@/app/admin/locations/actions";
-import { useCsrf } from "@/hooks/useCsrf";
-
 
 interface LocationActionsProps {
   locationId: string;
   locationName: string;
+  csrfToken: string;
 }
 
-export function LocationActions({ locationId, locationName }: LocationActionsProps) {
+export function LocationActions({ locationId, locationName, csrfToken }: LocationActionsProps) {
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
-  const { csrfToken, loading: csrfLoading } = useCsrf();
 
   const handleDelete = async () => {
-    if (!csrfToken) {
-        toast({ title: "Error", description: "Invalid session. Please refresh.", variant: "destructive"});
-        return;
-    }
     setIsDeleting(true);
     const result = await deleteLocationAction(locationId, csrfToken);
     setIsDeleting(false);
@@ -60,7 +54,7 @@ export function LocationActions({ locationId, locationName }: LocationActionsPro
             <Link href={`/admin/locations/${locationId}/edit`}>Edit</Link>
           </DropdownMenuItem>
           <AlertDialogTrigger asChild>
-            <DropdownMenuItem disabled={csrfLoading} className="text-destructive focus:text-destructive" onSelect={(e) => e.preventDefault()}>
+            <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(e) => e.preventDefault()}>
               Delete
             </DropdownMenuItem>
           </AlertDialogTrigger>
@@ -75,7 +69,7 @@ export function LocationActions({ locationId, locationName }: LocationActionsPro
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleDelete} disabled={isDeleting || csrfLoading} className="bg-destructive hover:bg-destructive/90">
+          <AlertDialogAction onClick={handleDelete} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
             {isDeleting ? "Deleting..." : "Yes, delete it"}
           </AlertDialogAction>
         </AlertDialogFooter>
