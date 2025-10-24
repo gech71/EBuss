@@ -42,7 +42,7 @@ export async function middleware(request: NextRequest) {
     });
   }
 
-  // 4. Security headers
+  // 4. Dynamic Security headers (CSP)
   response.headers.set('Content-Security-Policy', `
     default-src 'self';
     script-src 'self' 'nonce-${nonce}';
@@ -61,12 +61,9 @@ export async function middleware(request: NextRequest) {
     form-action 'self';
   `.replace(/\s{2,}/g, ' ').trim());
 
-  response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('X-Frame-Options', 'DENY');
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  // Static headers are set in next.config.js for better performance.
+  // We only set dynamic headers like CSP here.
   response.headers.set('Permissions-Policy', 'geolocation=(), microphone=(), camera=(self)');
-  response.headers.set('Cross-Origin-Resource-Policy', 'same-origin');
 
   // 5. CORS for API requests
   const origin = request.headers.get('origin');
@@ -77,7 +74,7 @@ export async function middleware(request: NextRequest) {
     response.headers.set('Access-Control-Allow-Credentials', 'true');
   }
 
-  // 6. Secure cookie
+  // 6. Secure cookie attributes
   if (sessionCookie) {
     const currentCookie = response.cookies.get('auth_session');
     if (currentCookie) {
