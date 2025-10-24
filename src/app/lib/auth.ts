@@ -3,7 +3,6 @@ import { PrismaAdapter } from "@lucia-auth/adapter-prisma";
 import prisma from "@/lib/prisma";
 import { Lucia, Session, User } from "lucia";
 import { cookies } from "next/headers";
-import { cache } from "react";
 
 const adapter = new PrismaAdapter(prisma.session, prisma.user);
 
@@ -40,32 +39,30 @@ interface DatabaseUserAttributes {
     busOwnerId: string | null;
 }
 
-export const validateRequest = cache(
-	async (): Promise<{ user: User; session: Session } | { user: null; session: null }> => {
-		const cookieStore = await cookies();
-		const sessionId = cookieStore.get(lucia.sessionCookieName)?.value ?? null;
-		if (!sessionId) {
-			return {
-				user: null,
-				session: null
-			};
-		}
-
-		const result = await lucia.validateSession(sessionId);
-		
-		try {
-			if (result.session && result.session.fresh) {
-				const sessionCookie = lucia.createSessionCookie(result.session.id);
-				cookieStore.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
-			}
-			if (!result.session) {
-				const sessionCookie = lucia.createBlankSessionCookie();
-				cookieStore.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
-			}
-		} catch {
-			// Next.js throws error when attempting to set cookies when rendering page
-		}
-		
-		return result;
+export const validateRequest = async (): Promise<{ user: User; session: Session } | { user: null; session: null }> => {
+	const cookieStore = await cookies();
+	const sessionId = cookieStore.get(lucia.sessionCookieName)?.value ?? null;
+	if (!sessionId) {
+		return {
+			user: null,
+			session: null
+		};
 	}
-);
+
+	const result = await lucia.validateSession(sessionId);
+	
+	try {
+		if (result.session && result.session.fresh) {
+			const sessionCookie = lucia.createSessionCookie(result.session.id);
+			cookieStore.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
+		}
+		if (!result.session) {
+			const sessionCookie = lucia.createBlankSessionCookie();
+			cookieStore.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
+		}
+	} catch {
+		// Next.js throws error when attempting to set cookies when rendering page
+	}
+	
+	return result;
+};
