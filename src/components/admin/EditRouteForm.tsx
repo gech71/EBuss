@@ -17,6 +17,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import type { Route, Bus, Discount, Location } from "@prisma/client";
 import { updateRouteAction } from "@/app/admin/routes/actions";
 import { Separator } from "@/components/ui/separator";
+import { useCsrf } from "@/hooks/useCsrf";
 
 interface EditRouteFormProps {
     route: Route;
@@ -29,13 +30,17 @@ export function EditRouteForm({ route, locations, buses, discounts }: EditRouteF
     const { toast } = useToast();
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
+    const { csrfToken, loading: csrfLoading } = useCsrf();
 
     const [departureDate, setDepartureDate] = useState<Date | undefined>(new Date(route.departureTime));
     const [departureTime, setDepartureTime] = useState(format(new Date(route.departureTime), "HH:mm"));
     const [arrivalDate, setArrivalDate] = useState<Date | undefined>(new Date(route.arrivalTime));
     const [arrivalTime, setArrivalTime] = useState(format(new Date(route.arrivalTime), "HH:mm"));
 
-    const handleSubmit = (formData: FormData) => {
+    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
+
         if (!departureDate || !arrivalDate) {
             toast({ title: "Error", description: "Please fill out all fields.", variant: "destructive" });
             return;
@@ -65,12 +70,14 @@ export function EditRouteForm({ route, locations, buses, discounts }: EditRouteF
                  toast({ title: "Update Failed", description: result.message, variant: "destructive" });
             } else {
                  toast({ title: "Success!", description: "Route has been updated."});
+                 router.push('/admin/routes');
             }
         });
     };
 
     return (
-        <form action={handleSubmit}>
+        <form onSubmit={handleSubmit}>
+            <input type="hidden" name="csrfToken" value={csrfToken} />
             <Card className="max-w-2xl mx-auto">
                 <CardHeader>
                     <CardTitle>Edit Route</CardTitle>
@@ -184,7 +191,7 @@ export function EditRouteForm({ route, locations, buses, discounts }: EditRouteF
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
                      <Button type="button" variant="outline" onClick={() => router.push('/admin/routes')}>Cancel</Button>
-                    <Button type="submit" disabled={isPending}>{isPending ? "Saving..." : "Save Changes"}</Button>
+                    <Button type="submit" disabled={isPending || csrfLoading}>{isPending ? "Saving..." : "Save Changes"}</Button>
                 </CardFooter>
             </Card>
         </form>
