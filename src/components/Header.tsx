@@ -36,12 +36,15 @@ export function Header({ user, isMiniApp = false }: HeaderProps) {
         </div>
         
         <nav className="flex items-center gap-4">
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/my-tickets">
-              <Ticket className="mr-2 h-4 w-4" />
-              My Tickets
-            </Link>
-          </Button>
+          {!isMiniApp && (
+            <Button asChild variant="ghost" size="sm">
+                <Link href="/my-tickets">
+                <Ticket className="mr-2 h-4 w-4" />
+                My Tickets
+                </Link>
+            </Button>
+          )}
+
           {!user && !isMiniApp && (
              <Button asChild variant="outline" size="sm">
                 <Link href="/login">
