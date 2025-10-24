@@ -24,7 +24,7 @@ const createBusSchema = z.object({
 });
 
 export async function createBusAction(formData: FormData) {
-    await validateCsrf(formData.get('csrfToken') as string);
+    await validateCsrf(formData);
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         return { success: false, message: 'Unauthorized' };
