@@ -19,7 +19,7 @@ interface DiscountActionsProps {
 export function DiscountActions({ discountId }: DiscountActionsProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  const { csrfToken } = useCsrf();
+  const { csrfToken, loading: csrfLoading } = useCsrf();
 
   const handleDelete = () => {
      if (!csrfToken) {
@@ -58,7 +58,7 @@ export function DiscountActions({ discountId }: DiscountActionsProps) {
             <Link href={`/admin/discounts/${discountId}/edit`}>Edit</Link>
           </DropdownMenuItem>
           <AlertDialogTrigger asChild>
-            <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(e) => e.preventDefault()}>
+            <DropdownMenuItem disabled={csrfLoading} className="text-destructive focus:text-destructive" onSelect={(e) => e.preventDefault()}>
               Delete
             </DropdownMenuItem>
           </AlertDialogTrigger>
@@ -73,7 +73,7 @@ export function DiscountActions({ discountId }: DiscountActionsProps) {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleDelete} disabled={isPending} className="bg-destructive hover:bg-destructive/90">
+          <AlertDialogAction onClick={handleDelete} disabled={isPending || csrfLoading} className="bg-destructive hover:bg-destructive/90">
             {isPending ? "Deleting..." : "Yes, delete it"}
           </AlertDialogAction>
         </AlertDialogFooter>

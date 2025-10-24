@@ -18,7 +18,7 @@ interface RouteActionsProps {
 export function RouteActions({ routeId }: RouteActionsProps) {
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
-  const { csrfToken } = useCsrf();
+  const { csrfToken, loading: csrfLoading } = useCsrf();
 
   const handleDelete = async () => {
     if (!csrfToken) {
@@ -58,7 +58,7 @@ export function RouteActions({ routeId }: RouteActionsProps) {
             <Link href={`/admin/routes/${routeId}/edit`}>Edit</Link>
           </DropdownMenuItem>
           <AlertDialogTrigger asChild>
-            <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(e) => e.preventDefault()}>
+            <DropdownMenuItem disabled={csrfLoading} className="text-destructive focus:text-destructive" onSelect={(e) => e.preventDefault()}>
               Delete
             </DropdownMenuItem>
           </AlertDialogTrigger>
@@ -73,7 +73,7 @@ export function RouteActions({ routeId }: RouteActionsProps) {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleDelete} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+          <AlertDialogAction onClick={handleDelete} disabled={isDeleting || csrfLoading} className="bg-destructive hover:bg-destructive/90">
             {isDeleting ? "Deleting..." : "Yes, delete it"}
           </AlertDialogAction>
         </AlertDialogFooter>

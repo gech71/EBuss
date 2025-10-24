@@ -47,7 +47,7 @@ interface BusActionsProps {
 export function BusActions({ bus }: BusActionsProps) {
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
-  const { csrfToken } = useCsrf();
+  const { csrfToken, loading: csrfLoading } = useCsrf();
 
   const handleDelete = async () => {
     if (!csrfToken) {
@@ -108,7 +108,7 @@ export function BusActions({ bus }: BusActionsProps) {
               <DropdownMenuItem disabled>Edit</DropdownMenuItem>
               <DropdownMenuSeparator />
               <AlertDialogTrigger asChild>
-                <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(e) => e.preventDefault()}>
+                <DropdownMenuItem disabled={csrfLoading} className="text-destructive focus:text-destructive" onSelect={(e) => e.preventDefault()}>
                   Delete
                 </DropdownMenuItem>
               </AlertDialogTrigger>
@@ -123,7 +123,7 @@ export function BusActions({ bus }: BusActionsProps) {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+              <AlertDialogAction onClick={handleDelete} disabled={isDeleting || csrfLoading} className="bg-destructive hover:bg-destructive/90">
                 {isDeleting ? "Deleting..." : "Yes, delete it"}
               </AlertDialogAction>
             </AlertDialogFooter>
