@@ -50,7 +50,7 @@ async function main() {
   const owner1 = await prisma.busOwner.create({
     data: {
       name: 'Selam Bus',
-      bankAccountNumber: '7000123456789',
+      bankAccountNumber: '7000101633387',
       commissionTiers: {
         create: [
           { minSales: 1, maxSales: 10000, type: CommissionType.PERCENTAGE, value: 5 },
@@ -64,7 +64,7 @@ async function main() {
   const owner2 = await prisma.busOwner.create({
     data: {
       name: 'Abyssinia Bus',
-      bankAccountNumber: '7000987654321',
+      bankAccountNumber: '7000101633387',
       commissionTiers: {
         create: [
           { minSales: 1, maxSales: 9999999, type: CommissionType.FIXED, value: 50.00 },
