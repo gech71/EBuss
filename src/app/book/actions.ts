@@ -7,6 +7,7 @@ import { z } from 'zod';
 import crypto from 'crypto';
 import { format } from 'date-fns';
 import { BookingStatus, PaymentStatus } from '@prisma/client';
+import { validateCsrf } from '@/app/lib/actions';
 
 const createBookingSchema = z.object({
   routeId: z.string().min(1),
@@ -17,8 +18,19 @@ const createBookingSchema = z.object({
   passengerEmail: z.string().email().optional().or(z.literal('')),
 });
 
-export async function createBookingAction(data: unknown) {
-  const validatedData = createBookingSchema.safeParse(data);
+export async function createBookingAction(formData: FormData) {
+  await validateCsrf(formData);
+
+  const rawData = {
+    routeId: formData.get('routeId'),
+    selectedSeatNumbers: JSON.parse(formData.get('selectedSeatNumbers') as string),
+    totalPrice: formData.get('totalPrice'),
+    passengerName: formData.get('passengerName'),
+    passengerPhone: formData.get('passengerPhone'),
+    passengerEmail: formData.get('passengerEmail')
+  };
+
+  const validatedData = createBookingSchema.safeParse(rawData);
 
   if (!validatedData.success) {
     return {
@@ -37,9 +49,7 @@ export async function createBookingAction(data: unknown) {
   } = validatedData.data;
 
   try {
-    // Use a transaction to ensure data consistency
     const newBooking = await prisma.$transaction(async (tx) => {
-      // 1. Fetch the route and its seats to lock the rows for update
       const route = await tx.route.findUnique({
         where: { id: routeId },
         include: {
@@ -63,12 +73,10 @@ export async function createBookingAction(data: unknown) {
         selectedSeatNumbers.includes(seat.seatNumber) && seat.status === 'AVAILABLE'
       );
       
-      // 2. Check if all selected seats are actually available
       if (availableSeats.length !== selectedSeatNumbers.length) {
         throw new Error('One or more selected seats are no longer available.');
       }
 
-      // 3. Create the booking
       const booking = await tx.booking.create({
         data: {
           passengerName,
@@ -86,7 +94,6 @@ export async function createBookingAction(data: unknown) {
         },
       });
 
-      // 4. Update the status of the selected seats to OCCUPIED
       const seatIdsToUpdate = availableSeats.map(seat => seat.id);
       await tx.seat.updateMany({
         where: {
@@ -129,12 +136,10 @@ export async function releaseSeatsOnPaymentTimeoutAction(bookingId: string) {
                 }
             });
 
-            // Idempotency: If booking is already paid or doesn't exist, do nothing.
             if (!booking || booking.paymentStatus === PaymentStatus.PAID) {
                 return;
             }
             
-            // Release Seats
             const seatNumbersToRelease = booking.bookedSeats.map(bs => bs.seatNumber);
             if (seatNumbersToRelease.length > 0 && booking.route?.bus?.layoutId) {
                 await tx.seat.updateMany({
@@ -146,7 +151,6 @@ export async function releaseSeatsOnPaymentTimeoutAction(bookingId: string) {
                 });
             }
 
-            // Delete non-paid payment records associated with the booking
             await tx.payment.deleteMany({
                 where: {
                     bookingId: bookingId,
@@ -256,7 +260,6 @@ export async function createPaymentRequestAction(bookingId: string, amount: numb
             });
             return { success: true, paymentToken: responseData.token };
         } else {
-             // If getting the payment token fails, release the seats and clean up booking.
             await releaseSeatsOnPaymentTimeoutAction(bookingId);
             return { success: false, message: responseData.message || 'Failed to get payment token.' };
         }

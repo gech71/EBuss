@@ -17,6 +17,7 @@ import { useState, useTransition, useRef } from "react";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import type { Bus, Discount, Location } from "@prisma/client";
 import { createRouteAction } from "@/app/admin/routes/actions";
+import { useCsrf } from "@/hooks/useCsrf";
 
 interface NewRouteFormProps {
     locations: Location[];
@@ -29,6 +30,7 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const formRef = useRef<HTMLFormElement>(null);
+    const { csrfToken, loading: csrfLoading } = useCsrf();
     
     const [originId, setOriginId] = useState<string>('');
     const [destinationId, setDestinationId] = useState<string>('');
@@ -83,6 +85,7 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
 
     return (
         <form ref={formRef} action={handleSubmit}>
+            <input type="hidden" name="csrfToken" value={csrfToken} />
             <Card className="max-w-xl mx-auto">
                 <CardHeader>
                     <CardTitle>Add New Route</CardTitle>
@@ -227,7 +230,7 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
                      <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-                    <Button type="submit" disabled={isPending}>{isPending ? "Saving..." : "Save Route"}</Button>
+                    <Button type="submit" disabled={isPending || csrfLoading}>{isPending ? "Saving..." : "Save Route"}</Button>
                 </CardFooter>
             </Card>
         </form>

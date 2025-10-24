@@ -24,6 +24,18 @@ function getIP() {
     return null;
 }
 
+export async function validateCsrf(formData: FormData) {
+    const csrfTokenFromForm = formData.get('csrfToken') as string;
+    const cookieStore = await cookies();
+    const csrfTokenFromCookie = cookieStore.get('csrf_token')?.value;
+
+    if (!csrfTokenFromForm || !csrfTokenFromCookie || csrfTokenFromForm !== csrfTokenFromCookie) {
+        throw new Error('Invalid CSRF token.');
+    }
+    // Invalidate after use
+    cookieStore.set('csrf_token', '', { expires: new Date(0), path: '/' });
+}
+
 export async function authenticate(
   prevState: string | undefined,
   formData: FormData
@@ -51,15 +63,9 @@ export async function authenticate(
   }
 
 
-  // 1. CSRF Token Validation
-  const csrfTokenFromForm = formData.get('csrfToken') as string;
-  const csrfTokenFromCookie = cookieStore.get('csrf_token')?.value;
-
-  if (!csrfTokenFromForm || !csrfTokenFromCookie || csrfTokenFromForm !== csrfTokenFromCookie) {
-    return 'Invalid session. Please try logging in again.';
-  }
-
   try {
+    await validateCsrf(formData);
+
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
 
@@ -91,15 +97,10 @@ export async function authenticate(
       return 'Invalid email or password.';
     }
 
-    // CSRF token is valid, and user is authenticated. Invalidate CSRF token.
-    cookieStore.set('csrf_token', '', { expires: new Date(0), path: '/' });
-
-    // Create Lucia session for server components
     const session = await lucia.createSession(existingUser.id, {});
     const sessionCookie = lucia.createSessionCookie(session.id);
     cookieStore.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
 
-    // Redirect after setting cookies
     let redirectPath = '/';
     if (existingUser.role === 'SUPER_ADMIN') {
       redirectPath = '/super-admin';
@@ -107,15 +108,15 @@ export async function authenticate(
       redirectPath = '/admin';
     }
     
-    // Instead of calling redirect() which throws an error, return a success message.
-    // The client will handle the navigation.
     redirect(redirectPath);
-    // This part will not be reached due to redirect, but as a fallback:
     return 'success';
 
   } catch (error) {
-    if (error instanceof Error && 'message' in error && error.message.includes('NEXT_REDIRECT')) {
-      throw error;
+    if (error instanceof Error) {
+       if (error.message.includes('NEXT_REDIRECT')) {
+         throw error;
+       }
+       return error.message;
     }
     console.error(error);
     return 'An unexpected error occurred.';
@@ -136,8 +137,6 @@ export async function logout(): Promise<ActionResult> {
 	const sessionCookie = lucia.createBlankSessionCookie();
 	cookieStore.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
   
-  // Also clear the JWT cookie and any CSRF token
-  cookieStore.set('auth_session', '', { expires: new Date(0), path: '/' });
   cookieStore.set('csrf_token', '', { expires: new Date(0), path: '/' });
 	
   return redirect("/login");
@@ -162,6 +161,7 @@ const changePasswordSchema = z.object({
 
 
 export async function changePasswordAction(formData: FormData) {
+    await validateCsrf(formData);
     const cookieStore = await cookies();
     const { user, session } = await validateRequest();
     if (!user || !session) {
@@ -205,7 +205,6 @@ export async function changePasswordAction(formData: FormData) {
 
         const newHashedPassword = await new Argon2id().hash(newPassword);
         
-        // Invalidate all other sessions for security
         await lucia.invalidateUserSessions(user.id);
 
         await prisma.user.update({
@@ -213,7 +212,6 @@ export async function changePasswordAction(formData: FormData) {
             data: { hashed_password: newHashedPassword }
         });
         
-        // Create a new session after password change
         const newSession = await lucia.createSession(user.id, {});
         const sessionCookie = lucia.createSessionCookie(newSession.id);
         cookieStore.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);

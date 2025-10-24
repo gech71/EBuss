@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { MoreHorizontal, Armchair, CarFront, LayoutGrid } from "lucide-react";
+import { MoreHorizontal, LayoutGrid } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -12,6 +12,9 @@ import { deleteBusAction } from "@/app/admin/buses/actions";
 import type { Bus, SeatLayout, Seat as PrismaSeat } from '@prisma/client';
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "../ui/scroll-area";
+import { useCsrf } from "@/hooks/useCsrf";
+import { Armchair } from "lucide-react";
+
 
 interface SeatProps {
   seat: PrismaSeat;
@@ -44,10 +47,15 @@ interface BusActionsProps {
 export function BusActions({ bus }: BusActionsProps) {
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
+  const { csrfToken } = useCsrf();
 
   const handleDelete = async () => {
+    if (!csrfToken) {
+        toast({ title: "Error", description: "Invalid session. Please refresh.", variant: "destructive"});
+        return;
+    }
     setIsDeleting(true);
-    const result = await deleteBusAction(bus.id);
+    const result = await deleteBusAction(bus.id, csrfToken);
     setIsDeleting(false);
 
     if (result.success) {

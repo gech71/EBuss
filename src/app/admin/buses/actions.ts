@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { SeatStatus, SeatType } from '@prisma/client';
 import { validateRequest } from '@/app/lib/auth';
+import { validateCsrf } from '@/app/lib/actions';
 
 const seatSchema = z.object({
   seatNumber: z.string(),
@@ -23,6 +24,7 @@ const createBusSchema = z.object({
 });
 
 export async function createBusAction(formData: FormData) {
+    await validateCsrf(formData);
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         return { success: false, message: 'Unauthorized' };
@@ -77,7 +79,11 @@ export async function createBusAction(formData: FormData) {
     redirect('/admin/buses');
 }
 
-export async function deleteBusAction(busId: string): Promise<{ success: boolean; message: string }> {
+export async function deleteBusAction(busId: string, csrfToken: string): Promise<{ success: boolean; message: string }> {
+  const formData = new FormData();
+  formData.append('csrfToken', csrfToken);
+  await validateCsrf(formData);
+  
   const { user } = await validateRequest();
   if (!user || !user.busOwnerId) {
     return { success: false, message: 'Unauthorized' };
@@ -93,9 +99,6 @@ export async function deleteBusAction(busId: string): Promise<{ success: boolean
       };
     }
 
-    // First check if the bus belongs to the user, then delete.
-    // The schema is set up with cascading deletes, so deleting the bus
-    // will also delete the associated SeatLayout and Seats.
     await prisma.bus.delete({
       where: {
         id: busId,
@@ -107,8 +110,6 @@ export async function deleteBusAction(busId: string): Promise<{ success: boolean
     return { success: true, message: 'Bus has been deleted.' };
   } catch (error) {
     console.error('Error deleting bus:', error);
-    // This could be a P2025 error if the bus is not found (e.g., wrong owner)
-    // or another DB error.
     return { success: false, message: 'An unexpected error occurred or you do not have permission.' };
   }
 }

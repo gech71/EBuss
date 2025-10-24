@@ -16,6 +16,7 @@ import { SeatMap } from "./SeatMap";
 import { createBookingAction, createPaymentRequestAction } from "@/app/book/actions";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
+import { useCsrf } from "@/hooks/useCsrf";
 
 type RouteWithDetails = Route & {
     origin: Location;
@@ -33,7 +34,6 @@ interface BookingFormProps {
   phoneNumber?: string;
 }
 
-// For Mini App communication
 declare global {
     interface Window {
         myJsChannel?: {
@@ -46,6 +46,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
+  const { csrfToken, loading: csrfLoading } = useCsrf();
 
   const [selectedRoute, setSelectedRoute] = useState<RouteWithDetails>(initialRoute);
   const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
@@ -92,12 +93,11 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
   const handleRouteChange = async (routeId: string) => {
     if (routeId === selectedRoute.id) return;
     
-    // Fetch full route details for the selected alternative
     const response = await fetch(`/api/route/${routeId}`);
     const newRouteDetails: RouteWithDetails = await response.json();
 
     setSelectedRoute(newRouteDetails);
-    setSelectedSeats([]); // Reset seat selection when route changes
+    setSelectedSeats([]);
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -115,17 +115,14 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
         setShowWebPaymentAlert(true);
         return;
     }
-
-    const bookingData = {
-      routeId: selectedRoute.id,
-      selectedSeatNumbers: selectedSeats.map(s => s.seatNumber),
-      totalPrice: finalPrice,
-      passengerName,
-      passengerPhone
-    };
+    
+    const formData = new FormData(event.currentTarget);
+    formData.append('routeId', selectedRoute.id);
+    formData.append('selectedSeatNumbers', JSON.stringify(selectedSeats.map(s => s.seatNumber)));
+    formData.append('totalPrice', finalPrice.toString());
 
     startTransition(async () => {
-      const result = await createBookingAction(bookingData);
+      const result = await createBookingAction(formData);
       if (result.success && result.bookingId) {
         setLastBookingId(result.bookingId);
         if (typeof window !== 'undefined') {
@@ -153,13 +150,9 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
             toast({ title: "Payment Initiation Failed", description: paymentResult.message, variant: "destructive" });
         }
         
-        // Instead of showing a dialog, we let the user be redirected back to the home page, where the TicketRedirector will handle it.
-        // For non-superapp flows, they can click a button to view their ticket.
         if (!authToken) {
             setShowConfirmation(true);
         } else {
-            // In the super-app, the user will be taken away to the payment screen.
-            // When they return, the TicketRedirector on the homepage will take them to the ticket.
         }
 
       } else {
@@ -171,13 +164,13 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
   return (
     <>
       <form onSubmit={handleSubmit}>
+        <input type="hidden" name="csrfToken" value={csrfToken} />
         <Card>
           <CardHeader>
             <CardTitle className="font-headline text-3xl">Confirm Your Booking</CardTitle>
             <CardDescription>Review your trip details and select your seats.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-8">
-            {/* Route Details */}
             <div className="p-4 border rounded-lg bg-muted/30">
                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div className="flex items-center gap-2 md:gap-4 text-lg md:text-xl font-bold">
@@ -207,12 +200,11 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
               </div>
             </div>
             
-            {/* Seat Map */}
             <div>
               <h3 className="font-semibold text-lg flex items-center gap-2 mb-2"><Armchair /> Select Your Seats</h3>
               {areSeatsAvailable ? (
                 <SeatMap 
-                  key={selectedRoute.id} // Add key to force re-render on route change
+                  key={selectedRoute.id} 
                   bus={selectedRoute.bus} 
                   onSelectionChange={setSelectedSeats} 
                 />
@@ -229,24 +221,22 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
 
             <Separator />
             
-            {/* Passenger Info */}
             <div>
               <h3 className="font-semibold text-lg flex items-center gap-2 mb-4"><User /> Passenger Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="passengerName">Full Name</Label>
-                  <Input id="passengerName" placeholder="e.g., John Doe" required value={passengerName} onChange={e => setPassengerName(e.target.value)} />
+                  <Input id="passengerName" name="passengerName" placeholder="e.g., John Doe" required value={passengerName} onChange={e => setPassengerName(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="passengerPhone">Phone Number</Label>
-                  <Input id="passengerPhone" type="tel" placeholder="e.g., 0912345678" required value={passengerPhone} onChange={e => setPassengerPhone(e.target.value)} disabled={!!phoneNumber} />
+                  <Input id="passengerPhone" name="passengerPhone" type="tel" placeholder="e.g., 0912345678" required value={passengerPhone} onChange={e => setPassengerPhone(e.target.value)} disabled={!!phoneNumber} />
                 </div>
               </div>
             </div>
 
             <Separator />
             
-            {/* Price Summary */}
             <div>
               <h3 className="font-semibold text-lg flex items-center gap-2 mb-4"><span className="font-bold">ETB</span> Price Summary</h3>
               <div className="space-y-2 p-4 border rounded-lg bg-muted/30">
@@ -278,7 +268,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
               </div>
             </div>
             
-            <Button type="submit" size="lg" className="w-full" disabled={isPending || ticketCount === 0 || !areSeatsAvailable}>
+            <Button type="submit" size="lg" className="w-full" disabled={isPending || csrfLoading || ticketCount === 0 || !areSeatsAvailable}>
               {isPending ? 'Processing...' : 'Book Now & Pay'}
             </Button>
 

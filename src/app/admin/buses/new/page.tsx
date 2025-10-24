@@ -11,6 +11,7 @@ import { useState, useMemo, useTransition, useRef } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { createBusAction } from "@/app/admin/buses/actions";
+import { useCsrf } from "@/hooks/useCsrf";
 
 // Helper function to generate seat layouts, adapted from the original data file.
 const generateSeats = (rows: number, cols: number, aisleCols: number[], lastRowFull: boolean = false) => {
@@ -36,6 +37,7 @@ export default function NewBusPage() {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const formRef = useRef<HTMLFormElement>(null);
+    const { csrfToken, loading: csrfLoading } = useCsrf();
 
     const [name, setName] = useState('');
     const [rows, setRows] = useState(12);
@@ -93,6 +95,7 @@ export default function NewBusPage() {
 
     return (
         <form ref={formRef} onSubmit={handleSubmit}>
+             <input type="hidden" name="csrfToken" value={csrfToken} />
             <Card className="max-w-xl mx-auto">
                 <CardHeader>
                     <CardTitle>Add New Bus</CardTitle>
@@ -139,7 +142,7 @@ export default function NewBusPage() {
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-                    <Button type="submit" disabled={isPending}>{isPending ? "Saving..." : "Save Bus"}</Button>
+                    <Button type="submit" disabled={isPending || csrfLoading}>{isPending ? "Saving..." : "Save Bus"}</Button>
                 </CardFooter>
             </Card>
         </form>

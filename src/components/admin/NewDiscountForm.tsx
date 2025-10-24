@@ -16,6 +16,7 @@ import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import { Separator } from "@/components/ui/separator";
 import { createDiscountAction } from "@/app/admin/discounts/actions";
+import { useCsrf } from "@/hooks/useCsrf";
 
 type TierState = {
     minTickets: number;
@@ -28,6 +29,7 @@ export function NewDiscountForm() {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const formRef = useRef<HTMLFormElement>(null);
+    const { csrfToken, loading: csrfLoading } = useCsrf();
     
     const [name, setName] = useState('');
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
@@ -90,6 +92,7 @@ export function NewDiscountForm() {
 
     return (
         <form ref={formRef} onSubmit={handleSubmit}>
+            <input type="hidden" name="csrfToken" value={csrfToken} />
             <Card className="max-w-3xl mx-auto">
                 <CardHeader>
                     <CardTitle>Add New Tiered Discount</CardTitle>
@@ -178,7 +181,7 @@ export function NewDiscountForm() {
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
                      <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-                    <Button type="submit" disabled={isPending}>{isPending ? "Saving..." : "Save Discount"}</Button>
+                    <Button type="submit" disabled={isPending || csrfLoading}>{isPending ? "Saving..." : "Save Discount"}</Button>
                 </CardFooter>
             </Card>
         </form>

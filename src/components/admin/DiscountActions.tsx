@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { deleteDiscountAction } from "@/app/admin/discounts/actions";
 import Link from "next/link";
 import { useTransition } from "react";
+import { useCsrf } from "@/hooks/useCsrf";
 
 
 interface DiscountActionsProps {
@@ -18,10 +19,15 @@ interface DiscountActionsProps {
 export function DiscountActions({ discountId }: DiscountActionsProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
+  const { csrfToken } = useCsrf();
 
   const handleDelete = () => {
+     if (!csrfToken) {
+        toast({ title: "Error", description: "Invalid session. Please refresh.", variant: "destructive"});
+        return;
+    }
     startTransition(async () => {
-      const result = await deleteDiscountAction(discountId);
+      const result = await deleteDiscountAction(discountId, csrfToken);
       if (result.success) {
         toast({
           title: "Discount Deleted",

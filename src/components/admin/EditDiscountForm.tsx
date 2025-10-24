@@ -17,6 +17,7 @@ import type { DateRange } from "react-day-picker";
 import { Separator } from "@/components/ui/separator";
 import type { Discount, DiscountTier } from "@prisma/client";
 import { updateDiscountAction } from "@/app/admin/discounts/actions";
+import { useCsrf } from "@/hooks/useCsrf";
 
 type DiscountWithTiers = Discount & { tiers: DiscountTier[] };
 
@@ -28,6 +29,7 @@ export function EditDiscountForm({ discount: initialDiscount }: EditDiscountForm
     const { toast } = useToast();
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
+    const { csrfToken, loading: csrfLoading } = useCsrf();
 
     const [name, setName] = useState(initialDiscount.name);
     const [dateRange, setDateRange] = useState<DateRange | undefined>({ from: new Date(initialDiscount.startDate), to: new Date(initialDiscount.endDate) });
@@ -79,7 +81,7 @@ export function EditDiscountForm({ discount: initialDiscount }: EditDiscountForm
             }
         }
 
-        const formData = new FormData();
+        const formData = new FormData(event.currentTarget);
         formData.append('id', initialDiscount.id);
         formData.append('name', name);
         formData.append('startDate', dateRange.from.toISOString());
@@ -99,6 +101,7 @@ export function EditDiscountForm({ discount: initialDiscount }: EditDiscountForm
 
     return (
         <form onSubmit={handleSubmit}>
+             <input type="hidden" name="csrfToken" value={csrfToken} />
             <Card className="max-w-3xl mx-auto">
                 <CardHeader>
                     <CardTitle>Edit Tiered Discount</CardTitle>
@@ -176,7 +179,7 @@ export function EditDiscountForm({ discount: initialDiscount }: EditDiscountForm
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
                      <Button type="button" variant="outline" onClick={() => router.push('/admin/discounts')}>Cancel</Button>
-                    <Button type="submit" disabled={isPending}>{isPending ? "Saving..." : "Save Changes"}</Button>
+                    <Button type="submit" disabled={isPending || csrfLoading}>{isPending ? "Saving..." : "Save Changes"}</Button>
                 </CardFooter>
             </Card>
         </form>

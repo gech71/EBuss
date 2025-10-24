@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { validateRequest } from '@/app/lib/auth';
+import { validateCsrf } from '@/app/lib/actions';
 
 const routeSchema = z.object({
   originId: z.string().min(1, 'Origin is required.'),
@@ -28,6 +29,7 @@ const combineDateTime = (dateStr: string, timeStr: string): Date => {
 
 
 export async function createRouteAction(formData: FormData) {
+    await validateCsrf(formData);
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         return { success: false, message: 'Unauthorized' };
@@ -64,7 +66,6 @@ export async function createRouteAction(formData: FormData) {
     }
 
     try {
-        // VERIFY OWNERSHIP of all selected buses
         const busCount = await prisma.bus.count({
             where: {
                 id: { in: busIds },
@@ -101,6 +102,7 @@ export async function createRouteAction(formData: FormData) {
 
 
 export async function updateRouteAction(formData: FormData) {
+    await validateCsrf(formData);
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         return { success: false, message: 'Unauthorized' };
@@ -115,7 +117,7 @@ export async function updateRouteAction(formData: FormData) {
         arrivalDate: formData.get('arrivalDate'),
         arrivalTime: formData.get('arrivalTime'),
         price: formData.get('price'),
-        busIds: JSON.parse(formData.get('busIds') as string), // Even if it's one, it's passed as an array
+        busIds: JSON.parse(formData.get('busIds') as string),
         discountId: formData.get('discountId') || undefined,
     };
     
@@ -142,7 +144,6 @@ export async function updateRouteAction(formData: FormData) {
 
     try {
        await prisma.$transaction(async (tx) => {
-           // VERIFY OWNERSHIP of the route being updated
            const routeToUpdate = await tx.route.findFirst({
                where: {
                    id: routeId,
@@ -156,7 +157,6 @@ export async function updateRouteAction(formData: FormData) {
                throw new Error("Route not found or you do not have permission to edit it.");
            }
 
-           // VERIFY OWNERSHIP of the new bus being assigned
            const newBus = await tx.bus.findFirst({
                where: {
                    id: busId,
@@ -193,14 +193,17 @@ export async function updateRouteAction(formData: FormData) {
 }
 
 
-export async function deleteRouteAction(routeId: string): Promise<{ success: boolean; message: string }> {
+export async function deleteRouteAction(routeId: string, csrfToken: string): Promise<{ success: boolean; message: string }> {
+  const formData = new FormData();
+  formData.append('csrfToken', csrfToken);
+  await validateCsrf(formData);
+
   const { user } = await validateRequest();
   if (!user || !user.busOwnerId) {
       return { success: false, message: 'Unauthorized' };
   }
 
   try {
-    // VERIFY OWNERSHIP
     const routeToDelete = await prisma.route.findFirst({
         where: {
             id: routeId,

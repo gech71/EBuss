@@ -10,12 +10,14 @@ interface EditDiscountPageProps {
 
 export default async function EditDiscountPage({ params }: EditDiscountPageProps) {
     const { user } = await validateRequest();
+    if (!user || !user.busOwnerId) {
+        return notFound();
+    }
 
     const discount = await prisma.discount.findUnique({
         where: { 
             id: params.id,
-            // Security: Ensure the user can only edit their own discounts
-            ownerId: user?.busOwnerId 
+            ownerId: user.busOwnerId 
         },
         include: { tiers: { orderBy: { minTickets: 'asc' } } }
     });

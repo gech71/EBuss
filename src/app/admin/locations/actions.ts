@@ -6,12 +6,14 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { validateRequest } from '@/app/lib/auth';
+import { validateCsrf } from '@/app/lib/actions';
 
 const locationSchema = z.object({
   name: z.string().min(1, 'Location name is required.'),
 });
 
 export async function createLocationAction(formData: FormData) {
+    await validateCsrf(formData);
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         return { success: false, message: 'Unauthorized' };
@@ -46,6 +48,7 @@ export async function createLocationAction(formData: FormData) {
 }
 
 export async function updateLocationAction(formData: FormData) {
+    await validateCsrf(formData);
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         return redirect('/login');
@@ -63,7 +66,7 @@ export async function updateLocationAction(formData: FormData) {
         await prisma.location.update({
             where: { 
                 id,
-                ownerId: user.busOwnerId, // VERIFY OWNERSHIP
+                ownerId: user.busOwnerId,
             },
             data: { name },
         });
@@ -79,14 +82,17 @@ export async function updateLocationAction(formData: FormData) {
 }
 
 
-export async function deleteLocationAction(locationId: string): Promise<{ success: boolean; message: string }> {
+export async function deleteLocationAction(locationId: string, csrfToken: string): Promise<{ success: boolean; message: string }> {
+  const formData = new FormData();
+  formData.append('csrfToken', csrfToken);
+  await validateCsrf(formData);
+  
   const { user } = await validateRequest();
   if (!user || !user.busOwnerId) {
       return { success: false, message: 'Unauthorized' };
   }
   
   try {
-    // VERIFY OWNERSHIP
     const location = await prisma.location.findFirst({
         where: { id: locationId, ownerId: user.busOwnerId }
     });
@@ -110,7 +116,7 @@ export async function deleteLocationAction(locationId: string): Promise<{ succes
     await prisma.location.delete({ 
         where: { 
             id: locationId,
-            ownerId: user.busOwnerId // Final ownership check
+            ownerId: user.busOwnerId
         } 
     });
     

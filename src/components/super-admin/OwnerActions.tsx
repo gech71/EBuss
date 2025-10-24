@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -8,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { deleteOwnerAction } from '@/app/super-admin/(dashboard)/owners/actions';
 import type { BusOwner } from '@prisma/client';
+import { useCsrf } from '@/hooks/useCsrf';
 
 interface OwnerActionsProps {
   owner: BusOwner & {
@@ -20,9 +22,14 @@ interface OwnerActionsProps {
 
 export function OwnerActions({ owner }: OwnerActionsProps) {
   const { toast } = useToast();
+  const { csrfToken } = useCsrf();
 
   const handleDelete = async () => {
-    const result = await deleteOwnerAction(owner.id);
+    if (!csrfToken) {
+        toast({ title: "Error", description: "Invalid session. Please refresh.", variant: "destructive"});
+        return;
+    }
+    const result = await deleteOwnerAction(owner.id, csrfToken);
     if (result.success) {
       toast({
         title: "Owner Deleted",

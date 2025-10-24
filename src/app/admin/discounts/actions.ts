@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { validateRequest } from '@/app/lib/auth';
+import { validateCsrf } from '@/app/lib/actions';
 
 const tierSchema = z.object({
   id: z.string().optional(),
@@ -22,6 +23,7 @@ const discountSchema = z.object({
 });
 
 export async function createDiscountAction(formData: FormData) {
+    await validateCsrf(formData);
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         return { success: false, message: 'Unauthorized' };
@@ -70,6 +72,7 @@ export async function createDiscountAction(formData: FormData) {
 }
 
 export async function updateDiscountAction(formData: FormData) {
+    await validateCsrf(formData);
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         return { success: false, message: 'Unauthorized' };
@@ -96,7 +99,6 @@ export async function updateDiscountAction(formData: FormData) {
 
     try {
         await prisma.$transaction(async (tx) => {
-            // VERIFY OWNERSHIP: Check if the discount belongs to the user
             const discount = await tx.discount.findFirst({
                 where: { id: discountId, ownerId: user.busOwnerId }
             });
@@ -105,21 +107,18 @@ export async function updateDiscountAction(formData: FormData) {
                 throw new Error("Discount not found or you don't have permission to edit it.");
             }
             
-            // Update discount details
             await tx.discount.update({
                 where: { 
                     id: discountId,
-                    ownerId: user.busOwnerId // Redundant check for safety
+                    ownerId: user.busOwnerId
                 },
                 data: { name, startDate, endDate }
             });
             
-            // Delete old tiers
             await tx.discountTier.deleteMany({
                 where: { discountId: discountId }
             });
             
-            // Create new tiers
             await tx.discountTier.createMany({
                 data: tiers.map(tier => ({
                     minTickets: tier.minTickets,
@@ -139,14 +138,17 @@ export async function updateDiscountAction(formData: FormData) {
     redirect('/admin/discounts');
 }
 
-export async function deleteDiscountAction(discountId: string): Promise<{ success: boolean; message: string }> {
+export async function deleteDiscountAction(discountId: string, csrfToken: string): Promise<{ success: boolean; message: string }> {
+    const formData = new FormData();
+    formData.append('csrfToken', csrfToken);
+    await validateCsrf(formData);
+
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         return { success: false, message: 'Unauthorized' };
     }
 
     try {
-        // VERIFY OWNERSHIP: ensure the discount belongs to the user before doing anything.
         const discount = await prisma.discount.findFirst({
             where: { id: discountId, ownerId: user.busOwnerId }
         });
@@ -155,7 +157,6 @@ export async function deleteDiscountAction(discountId: string): Promise<{ succes
             return { success: false, message: 'Discount not found or you do not have permission to delete it.' };
         }
 
-        // Unlink discount from any routes before deleting
         await prisma.route.updateMany({
             where: { discountId: discountId },
             data: { discountId: null }
@@ -164,7 +165,7 @@ export async function deleteDiscountAction(discountId: string): Promise<{ succes
         await prisma.discount.delete({
             where: { 
                 id: discountId,
-                ownerId: user.busOwnerId // Final ownership check
+                ownerId: user.busOwnerId
             }
         });
 

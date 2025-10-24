@@ -9,6 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { deleteRouteAction } from "@/app/admin/routes/actions";
+import { useCsrf } from "@/hooks/useCsrf";
 
 interface RouteActionsProps {
   routeId: string;
@@ -17,10 +18,15 @@ interface RouteActionsProps {
 export function RouteActions({ routeId }: RouteActionsProps) {
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
+  const { csrfToken } = useCsrf();
 
   const handleDelete = async () => {
+    if (!csrfToken) {
+        toast({ title: "Error", description: "Invalid session. Please refresh.", variant: "destructive"});
+        return;
+    }
     setIsDeleting(true);
-    const result = await deleteRouteAction(routeId);
+    const result = await deleteRouteAction(routeId, csrfToken);
     setIsDeleting(false);
 
     if (result.success) {

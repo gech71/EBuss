@@ -9,6 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { deleteLocationAction } from "@/app/admin/locations/actions";
+import { useCsrf } from "@/hooks/useCsrf";
 
 
 interface LocationActionsProps {
@@ -19,10 +20,15 @@ interface LocationActionsProps {
 export function LocationActions({ locationId, locationName }: LocationActionsProps) {
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
+  const { csrfToken } = useCsrf();
 
   const handleDelete = async () => {
+    if (!csrfToken) {
+        toast({ title: "Error", description: "Invalid session. Please refresh.", variant: "destructive"});
+        return;
+    }
     setIsDeleting(true);
-    const result = await deleteLocationAction(locationId);
+    const result = await deleteLocationAction(locationId, csrfToken);
     setIsDeleting(false);
 
     if (result.success) {
