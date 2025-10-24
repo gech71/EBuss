@@ -24,7 +24,7 @@ const createBusSchema = z.object({
 });
 
 export async function createBusAction(formData: FormData) {
-    await validateCsrf(formData);
+    await validateCsrf(formData.get('csrfToken') as string);
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         return { success: false, message: 'Unauthorized' };
@@ -80,9 +80,7 @@ export async function createBusAction(formData: FormData) {
 }
 
 export async function deleteBusAction(busId: string, csrfToken: string): Promise<{ success: boolean; message: string }> {
-  const formData = new FormData();
-  formData.append('csrfToken', csrfToken);
-  await validateCsrf(formData);
+  await validateCsrf(csrfToken);
   
   const { user } = await validateRequest();
   if (!user || !user.busOwnerId) {

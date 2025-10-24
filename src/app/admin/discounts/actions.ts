@@ -23,7 +23,7 @@ const discountSchema = z.object({
 });
 
 export async function createDiscountAction(formData: FormData) {
-    await validateCsrf(formData);
+    await validateCsrf(formData.get('csrfToken') as string);
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         return { success: false, message: 'Unauthorized' };
@@ -72,7 +72,7 @@ export async function createDiscountAction(formData: FormData) {
 }
 
 export async function updateDiscountAction(formData: FormData) {
-    await validateCsrf(formData);
+    await validateCsrf(formData.get('csrfToken') as string);
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         return { success: false, message: 'Unauthorized' };
@@ -139,9 +139,7 @@ export async function updateDiscountAction(formData: FormData) {
 }
 
 export async function deleteDiscountAction(discountId: string, csrfToken: string): Promise<{ success: boolean; message: string }> {
-    const formData = new FormData();
-    formData.append('csrfToken', csrfToken);
-    await validateCsrf(formData);
+    await validateCsrf(csrfToken);
 
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {

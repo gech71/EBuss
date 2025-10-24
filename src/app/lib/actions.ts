@@ -24,12 +24,11 @@ function getIP() {
     return null;
 }
 
-export async function validateCsrf(formData: FormData) {
-    const csrfTokenFromForm = formData.get('csrfToken') as string;
+export async function validateCsrf(tokenFromForm: string) {
     const cookieStore = await cookies();
     const csrfTokenFromCookie = cookieStore.get('csrf_token')?.value;
 
-    if (!csrfTokenFromForm || !csrfTokenFromCookie || csrfTokenFromForm !== csrfTokenFromCookie) {
+    if (!tokenFromForm || !csrfTokenFromCookie || tokenFromForm !== csrfTokenFromCookie) {
         throw new Error('Invalid CSRF token.');
     }
     // Invalidate after use
@@ -64,7 +63,7 @@ export async function authenticate(
 
 
   try {
-    await validateCsrf(formData);
+    await validateCsrf(formData.get('csrfToken') as string);
 
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
@@ -161,7 +160,7 @@ const changePasswordSchema = z.object({
 
 
 export async function changePasswordAction(formData: FormData) {
-    await validateCsrf(formData);
+    await validateCsrf(formData.get('csrfToken') as string);
     const cookieStore = await cookies();
     const { user, session } = await validateRequest();
     if (!user || !session) {

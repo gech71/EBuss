@@ -13,7 +13,7 @@ const locationSchema = z.object({
 });
 
 export async function createLocationAction(formData: FormData) {
-    await validateCsrf(formData);
+    await validateCsrf(formData.get('csrfToken') as string);
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         return { success: false, message: 'Unauthorized' };
@@ -48,7 +48,7 @@ export async function createLocationAction(formData: FormData) {
 }
 
 export async function updateLocationAction(prevState: any, formData: FormData) {
-    await validateCsrf(formData);
+    await validateCsrf(formData.get('csrfToken') as string);
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         return { success: false, message: 'Unauthorized' };
@@ -83,9 +83,7 @@ export async function updateLocationAction(prevState: any, formData: FormData) {
 
 
 export async function deleteLocationAction(locationId: string, csrfToken: string): Promise<{ success: boolean; message: string }> {
-  const formData = new FormData();
-  formData.append('csrfToken', csrfToken);
-  await validateCsrf(formData);
+  await validateCsrf(csrfToken);
   
   const { user } = await validateRequest();
   if (!user || !user.busOwnerId) {
