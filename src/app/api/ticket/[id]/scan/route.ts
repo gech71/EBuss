@@ -1,15 +1,54 @@
 
 'use server';
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { validateRequest } from '@/app/lib/auth';
 import { BookingStatus } from '@prisma/client';
+import { headers } from 'next/headers';
+
+const MAX_SCAN_ATTEMPTS_PER_MINUTE = 20;
+
+function getIP(request: NextRequest) {
+    const headersList = headers();
+    const forwardedFor = headersList.get('x-forwarded-for');
+    if (forwardedFor) {
+        return forwardedFor.split(',')[0].trim();
+    }
+    const realIp = headersList.get('x-real-ip');
+    if (realIp) {
+        return realIp.trim();
+    }
+    // For local development, request.ip might be available
+    return request.ip ?? '127.0.0.1';
+}
 
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const ip = getIP(request);
+  
+  if (ip) {
+      const now = new Date();
+      const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
+
+      const attempts = await prisma.apiRequestAttempt.count({
+          where: {
+              ipAddress: ip,
+              timestamp: { gte: oneMinuteAgo }
+          }
+      });
+      
+      if (attempts >= MAX_SCAN_ATTEMPTS_PER_MINUTE) {
+          console.warn(`Rate limit exceeded for IP: ${ip}`);
+          return NextResponse.json({ message: 'Too many requests. Please try again in a minute.' }, { status: 429 });
+      }
+
+      await prisma.apiRequestAttempt.create({ data: { ipAddress: ip }});
+  }
+
+
   try {
     const { user } = await validateRequest();
 
@@ -21,6 +60,7 @@ export async function POST(
     if (!ticketId) {
         return NextResponse.json({ message: 'Ticket ID is required.' }, { status: 400 });
     }
+    console.log(`Scan attempt by user ${user.id} for ticket ${ticketId}`);
 
     const booking = await prisma.$transaction(async (tx) => {
         const bookingToScan = await tx.booking.findUnique({
@@ -65,7 +105,8 @@ export async function POST(
                 },
             },
         });
-
+        
+        console.log(`Ticket ${ticketId} successfully validated and marked as USED.`);
         return updatedBooking;
     });
 
