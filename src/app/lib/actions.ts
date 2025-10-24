@@ -146,7 +146,7 @@ export async function logout(): Promise<ActionResult> {
   
   cookieStore.set('csrf_token', '', { expires: new Date(0), path: '/' });
 	
-  return redirect(`/login?ts=${Date.now()}`);
+  return redirect("/login");
 }
 
 const passwordPolicy = z.string()
