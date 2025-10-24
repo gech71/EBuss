@@ -3,8 +3,8 @@ import { Header } from '@/components/Header';
 import { cookies } from 'next/headers';
 import { MyTicketsClientPage } from '@/components/my-tickets/MyTicketsClientPage';
 
-function getMiniAppData() {
-    const cookieStore = cookies();
+async function getMiniAppData() {
+    const cookieStore =  await cookies();
     const sessionCookie = cookieStore.get('miniapp_session');
     if (sessionCookie) {
         try {

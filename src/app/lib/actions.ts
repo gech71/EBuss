@@ -25,7 +25,7 @@ function getIP() {
 }
 
 export async function validateCsrf(tokenFromRequest: string | FormData) {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const tokenFromCookie = cookieStore.get('csrf_token')?.value;
 
     let token: string | null;

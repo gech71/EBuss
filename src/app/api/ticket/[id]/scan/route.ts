@@ -9,8 +9,8 @@ import { headers } from 'next/headers';
 
 const MAX_SCAN_ATTEMPTS_PER_MINUTE = 20;
 
-function getIP(request: NextRequest) {
-    const headersList = headers();
+async function getIP(request: NextRequest) {
+    const headersList = await headers();
     const forwardedFor = headersList.get('x-forwarded-for');
     if (forwardedFor) {
         return forwardedFor.split(',')[0].trim();

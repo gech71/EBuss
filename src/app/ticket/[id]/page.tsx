@@ -11,8 +11,8 @@ interface TicketPageProps {
   params: { id: string };
 }
 
-function getIsMiniApp() {
-  const cookieStore = cookies();
+async function getIsMiniApp() {
+  const cookieStore = await cookies();
   const sessionCookie = cookieStore.get('miniapp_session');
   if (sessionCookie) {
     try {

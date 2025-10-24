@@ -4,8 +4,8 @@ import prisma from "@/lib/prisma";
 import { validateRequest } from "@/app/lib/auth";
 import { cookies } from "next/headers";
 
-function getIsMiniApp() {
-  const cookieStore = cookies();
+async function getIsMiniApp() {
+  const cookieStore = await cookies();
   const sessionCookie = cookieStore.get('miniapp_session');
   if (sessionCookie) {
     try {

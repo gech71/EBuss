@@ -9,8 +9,8 @@ import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { cookies } from "next/headers";
 
-function getIsMiniApp() {
-  const cookieStore = cookies();
+async function getIsMiniApp() {
+  const cookieStore = await cookies();
   const sessionCookie = cookieStore.get('miniapp_session');
   if (sessionCookie) {
     try {
