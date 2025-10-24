@@ -8,9 +8,11 @@ import { cache } from "react";
 const adapter = new PrismaAdapter(prisma.session, prisma.user);
 
 export const lucia = new Lucia(adapter, {
-    sessionExpiresIn: new TimeSpan(30, "d"), // Sessions expire after 30 days
+    sessionExpiresIn: new TimeSpan(30, "m"), // 30 minute idle timeout
 	sessionCookie: {
 		expires: true, // The cookie should expire
+        // Cookie expires in 2 hours, which acts as the absolute session lifetime
+        maxAge: 60 * 60 * 2, 
 		attributes: {
 			secure: process.env.NODE_ENV === "production",
             sameSite: "strict",
