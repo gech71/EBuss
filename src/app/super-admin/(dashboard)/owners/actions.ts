@@ -10,10 +10,10 @@ import type { CommissionTier, CommissionType } from '@prisma/client';
 
 const tierSchema = z.object({
   id: z.string().optional(),
-  minSales: z.number().positive("Min Sales must be positive"),
-  maxSales: z.number().positive("Max Sales must be positive"),
+  minSales: z.coerce.number().positive("Min Sales must be positive"),
+  maxSales: z.coerce.number().positive("Max Sales must be positive"),
   type: z.enum(['PERCENTAGE', 'FIXED']),
-  value: z.number().positive("Value must be positive")
+  value: z.coerce.number().positive("Value must be positive")
 });
 
 const bankAccountSchema = z.string()
