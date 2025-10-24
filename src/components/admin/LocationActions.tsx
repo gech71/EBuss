@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from 'next/link';
 import { MoreHorizontal } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -18,7 +18,7 @@ interface LocationActionsProps {
 
 export function LocationActions({ locationId, locationName }: LocationActionsProps) {
   const { toast } = useToast();
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleting, setIsDeleting] = useTransition();
   const { csrfToken, loading: csrfLoading } = useCsrf();
 
   const handleDelete = async () => {
@@ -26,22 +26,23 @@ export function LocationActions({ locationId, locationName }: LocationActionsPro
         toast({ title: "Error", description: "Invalid session. Please refresh.", variant: "destructive"});
         return;
     }
-    setIsDeleting(true);
-    const result = await deleteLocationAction(locationId, csrfToken);
-    setIsDeleting(false);
+    
+    setIsDeleting(async () => {
+        const result = await deleteLocationAction(locationId, csrfToken);
 
-    if (result.success) {
-      toast({
-        title: "Location Deleted",
-        description: `"${locationName}" has been deleted.`,
-      });
-    } else {
-      toast({
-        title: "Deletion Failed",
-        description: result.message,
-        variant: "destructive",
-      });
-    }
+        if (result.success) {
+          toast({
+            title: "Location Deleted",
+            description: `"${locationName}" has been deleted.`,
+          });
+        } else {
+          toast({
+            title: "Deletion Failed",
+            description: result.message,
+            variant: "destructive",
+          });
+        }
+    });
   };
 
   return (

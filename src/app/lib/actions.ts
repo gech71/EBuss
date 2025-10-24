@@ -24,22 +24,23 @@ function getIP() {
     return null;
 }
 
-export async function validateCsrf(tokenOrFormData: string | FormData) {
-    const cookieStore = await cookies();
-    const csrfTokenFromCookie = cookieStore.get('csrf_token')?.value;
+export async function validateCsrf(tokenFromRequest: string | FormData) {
+    const cookieStore = cookies();
+    const tokenFromCookie = cookieStore.get('csrf_token')?.value;
 
-    let tokenFromForm: string | null;
+    let token: string | null;
 
-    if (typeof tokenOrFormData === 'string') {
-        tokenFromForm = tokenOrFormData;
+    if (tokenFromRequest instanceof FormData) {
+        token = tokenFromRequest.get('csrfToken') as string | null;
     } else {
-        tokenFromForm = tokenOrFormData.get('csrfToken') as string | null;
+        token = tokenFromRequest;
     }
-    
-    if (!tokenFromForm || !csrfTokenFromCookie || tokenFromForm !== csrfTokenFromCookie) {
+
+    if (!token || !tokenFromCookie || token !== tokenFromCookie) {
         throw new Error('Invalid CSRF token.');
     }
 }
+
 
 export async function authenticate(
   prevState: string | undefined,

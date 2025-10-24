@@ -1,19 +1,15 @@
 
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { randomBytes } from 'crypto';
+import { headers } from 'next/headers';
 
 export async function GET(request: Request) {
-  const token = randomBytes(32).toString('hex');
-  const cookieStore = await cookies();
-  cookieStore.set({
-    name: 'csrf_token',
-    value: token,
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    path: '/',
-  });
+  const headerList = headers();
+  const token = headerList.get('X-CSRF-Token');
+
+  if (!token) {
+    // This should theoretically not happen if middleware is set up correctly
+    return NextResponse.json({ error: 'CSRF token not found in request headers.' }, { status: 500 });
+  }
 
   return NextResponse.json({ token });
 }
