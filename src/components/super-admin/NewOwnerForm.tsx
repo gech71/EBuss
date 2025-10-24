@@ -16,6 +16,7 @@ import { createOwnerAction } from "@/app/super-admin/(dashboard)/owners/actions"
 
 interface NewOwnerFormProps {
     existingOwnerNames: string[];
+    existingAccountNumbers: string[];
 }
 
 type CommissionTierState = {
@@ -25,12 +26,13 @@ type CommissionTierState = {
     value: number;
 };
 
-export function NewOwnerForm({ existingOwnerNames }: NewOwnerFormProps) {
+export function NewOwnerForm({ existingOwnerNames, existingAccountNumbers }: NewOwnerFormProps) {
     const { toast } = useToast();
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     
     const [name, setName] = useState('');
+    const [bankAccountNumber, setBankAccountNumber] = useState('');
     const [tiers, setTiers] = useState<CommissionTierState[]>([
         { minSales: 1, maxSales: 100, type: 'PERCENTAGE', value: 0 }
     ]);
@@ -72,6 +74,10 @@ export function NewOwnerForm({ existingOwnerNames }: NewOwnerFormProps) {
              toast({ title: "Error", description: "An owner with this name already exists.", variant: "destructive" });
              return;
         }
+        if(existingAccountNumbers.includes(bankAccountNumber)) {
+            toast({ title: "Error", description: "This bank account number is already in use.", variant: "destructive" });
+            return;
+        }
 
         for (const tier of tiers) {
              if (!tier.minSales || !tier.maxSales || !tier.value ) {
@@ -90,6 +96,7 @@ export function NewOwnerForm({ existingOwnerNames }: NewOwnerFormProps) {
         
         const formData = new FormData();
         formData.append('name', name);
+        formData.append('bankAccountNumber', bankAccountNumber);
         formData.append('commissionTiers', JSON.stringify(tiers));
 
         startTransition(async () => {
@@ -98,6 +105,7 @@ export function NewOwnerForm({ existingOwnerNames }: NewOwnerFormProps) {
                  toast({ title: "Creation Failed", description: result.message, variant: "destructive" });
             } else {
                  toast({ title: "Success!", description: `Owner "${name}" has been added.`});
+                 router.push('/super-admin/owners');
             }
         });
     };
@@ -110,16 +118,30 @@ export function NewOwnerForm({ existingOwnerNames }: NewOwnerFormProps) {
                     <CardDescription>Enter the details for the new bus owner account and their commission structure.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    <div className="space-y-2">
-                        <Label htmlFor="name">Owner Name</Label>
-                        <Input 
-                            id="name" 
-                            name="name"
-                            placeholder="e.g., Metro Transit Inc." 
-                            required
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                        />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <Label htmlFor="name">Owner Name</Label>
+                            <Input 
+                                id="name" 
+                                name="name"
+                                placeholder="e.g., Metro Transit Inc." 
+                                required
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                            />
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="bankAccountNumber">Bank Account Number</Label>
+                            <Input 
+                                id="bankAccountNumber" 
+                                name="bankAccountNumber"
+                                placeholder="e.g., 7000123456789" 
+                                required
+                                value={bankAccountNumber}
+                                onChange={(e) => setBankAccountNumber(e.target.value)}
+                                maxLength={13}
+                            />
+                        </div>
                     </div>
                     
                     <Separator />

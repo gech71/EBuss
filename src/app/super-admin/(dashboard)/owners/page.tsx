@@ -39,6 +39,7 @@ export default async function SuperAdminOwnersPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Owner Name</TableHead>
+                <TableHead>Bank Account</TableHead>
                 <TableHead>Buses</TableHead>
                 <TableHead>Users</TableHead>
                 <TableHead>Commission Tiers</TableHead>
@@ -51,6 +52,7 @@ export default async function SuperAdminOwnersPage() {
               {owners.map((owner) => (
                 <TableRow key={owner.id}>
                   <TableCell className="font-medium">{owner.name}</TableCell>
+                  <TableCell>{owner.bankAccountNumber}</TableCell>
                    <TableCell>
                     <Badge variant="secondary">{owner._count.buses}</Badge>
                   </TableCell>

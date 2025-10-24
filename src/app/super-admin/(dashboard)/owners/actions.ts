@@ -16,14 +16,21 @@ const tierSchema = z.object({
   value: z.number().positive("Value must be positive")
 });
 
+const bankAccountSchema = z.string()
+    .length(13, "Bank account number must be exactly 13 digits.")
+    .startsWith('7', "Bank account number must start with '7'.")
+    .regex(/^\d+$/, "Bank account number must only contain digits.");
+
 const createOwnerSchema = z.object({
   name: z.string().min(1, "Owner name cannot be empty."),
+  bankAccountNumber: bankAccountSchema,
   commissionTiers: z.array(tierSchema)
 });
 
 const updateOwnerSchema = z.object({
   id: z.string(),
   name: z.string().min(1, "Owner name cannot be empty."),
+  bankAccountNumber: bankAccountSchema,
   commissionTiers: z.array(tierSchema)
 });
 
@@ -31,6 +38,7 @@ const updateOwnerSchema = z.object({
 export async function createOwnerAction(formData: FormData) {
     const rawData = {
         name: formData.get('name'),
+        bankAccountNumber: formData.get('bankAccountNumber'),
         commissionTiers: JSON.parse(formData.get('commissionTiers') as string)
     };
 
@@ -43,12 +51,13 @@ export async function createOwnerAction(formData: FormData) {
         };
     }
 
-    const { name, commissionTiers } = validatedData.data;
+    const { name, bankAccountNumber, commissionTiers } = validatedData.data;
 
     try {
         await prisma.busOwner.create({
             data: {
                 name,
+                bankAccountNumber,
                 commissionTiers: {
                     create: commissionTiers.map(tier => ({
                         minSales: tier.minSales,
@@ -74,6 +83,7 @@ export async function updateOwnerAction(formData: FormData) {
     const rawData = {
         id: formData.get('id'),
         name: formData.get('name'),
+        bankAccountNumber: formData.get('bankAccountNumber'),
         commissionTiers: JSON.parse(formData.get('commissionTiers') as string)
     };
 
@@ -86,14 +96,14 @@ export async function updateOwnerAction(formData: FormData) {
         };
     }
 
-    const { id, name, commissionTiers } = validatedData.data;
+    const { id, name, bankAccountNumber, commissionTiers } = validatedData.data;
 
     try {
         await prisma.$transaction(async (tx) => {
             // Update owner name
             await tx.busOwner.update({
                 where: { id },
-                data: { name }
+                data: { name, bankAccountNumber }
             });
 
             // Delete existing tiers for this owner

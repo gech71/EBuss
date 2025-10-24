@@ -31,7 +31,7 @@ export function EditOwnerForm({ owner: initialOwner, otherOwnerNames }: EditOwne
     const [owner, setOwner] = useState(initialOwner);
     const [tiers, setTiers] = useState<ClientCommissionTier[]>(initialOwner.commissionTiers);
 
-    const handleTierChange = (index: number, field: keyof Omit<ClientCommissionTier, 'id' | 'type' | 'busOwnerId'>, value: number) => {
+    const handleTierChange = (index: number, field: keyof Omit<ClientCommissionTier, 'id' | 'type' | 'ownerId'>, value: number) => {
         const newTiers = [...tiers];
         newTiers[index] = { ...newTiers[index], [field]: value };
         setTiers(newTiers);
@@ -90,6 +90,7 @@ export function EditOwnerForm({ owner: initialOwner, otherOwnerNames }: EditOwne
         const formData = new FormData();
         formData.append('id', owner.id);
         formData.append('name', owner.name);
+        formData.append('bankAccountNumber', owner.bankAccountNumber);
         formData.append('commissionTiers', JSON.stringify(tiers));
 
         startTransition(async () => {
@@ -98,6 +99,7 @@ export function EditOwnerForm({ owner: initialOwner, otherOwnerNames }: EditOwne
                  toast({ title: "Update Failed", description: result.message, variant: "destructive" });
             } else {
                  toast({ title: "Success!", description: "Owner details have been updated."});
+                 router.push('/super-admin/owners');
             }
         });
     };
@@ -110,16 +112,30 @@ export function EditOwnerForm({ owner: initialOwner, otherOwnerNames }: EditOwne
                     <CardDescription>Update the details for this bus owner and their commission structure.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    <div className="space-y-2">
-                        <Label htmlFor="name">Owner Name</Label>
-                        <Input 
-                            id="name" 
-                            name="name"
-                            placeholder="e.g., Metro Transit Inc." 
-                            required
-                            value={owner.name}
-                            onChange={(e) => setOwner({...owner, name: e.target.value})}
-                        />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <Label htmlFor="name">Owner Name</Label>
+                            <Input 
+                                id="name" 
+                                name="name"
+                                placeholder="e.g., Metro Transit Inc." 
+                                required
+                                value={owner.name}
+                                onChange={(e) => setOwner({...owner, name: e.target.value})}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="bankAccountNumber">Bank Account Number</Label>
+                            <Input 
+                                id="bankAccountNumber" 
+                                name="bankAccountNumber"
+                                placeholder="e.g., 7000123456789" 
+                                required
+                                value={owner.bankAccountNumber}
+                                onChange={(e) => setOwner({...owner, bankAccountNumber: e.target.value})}
+                                maxLength={13}
+                            />
+                        </div>
                     </div>
                     
                     <Separator />
