@@ -28,7 +28,7 @@ async function getIsMiniApp() {
 
 export default async function TicketPage({ params }: TicketPageProps) {
   const { user } = await validateRequest();
-  const isMiniApp = getIsMiniApp();
+  const isMiniApp = await getIsMiniApp();
   const ticketId = params.id;
 
   const booking = await prisma.booking.findUnique({

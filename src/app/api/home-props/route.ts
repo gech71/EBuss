@@ -22,7 +22,7 @@ async function getIsMiniApp() {
 export async function GET() {
     try {
         const { user } = await validateRequest();
-        const isMiniApp = getIsMiniApp();
+        const isMiniApp = await getIsMiniApp();
         
         const routesData = await prisma.route.findMany({
             include: {

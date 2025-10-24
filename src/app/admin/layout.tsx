@@ -36,7 +36,7 @@ export default async function AdminLayout({
   if (user.role !== 'ADMIN') {
     return redirect('/unauthorized');
   }
-  const isMiniApp = getIsMiniApp();
+  const isMiniApp = await getIsMiniApp();
 
   let ownerName = null;
   if (user.busOwnerId) {
@@ -50,7 +50,7 @@ export default async function AdminLayout({
   return (
     <SidebarProvider>
       <div className="flex flex-col min-h-screen w-full">
-        <Header user={user} isMiniApp={isMiniApp} />
+        <Header user={user} isMiniApp={false} />
         <div className="flex flex-1">
           <Sidebar>
             <SidebarContent>

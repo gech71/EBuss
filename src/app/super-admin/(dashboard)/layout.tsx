@@ -35,7 +35,7 @@ export default async function SuperAdminLayout({
    if (user.role !== 'SUPER_ADMIN') {
     return redirect('/unauthorized');
   }
-  const isMiniApp = getIsMiniApp();
+  const isMiniApp = await getIsMiniApp();
   
   return (
     <SidebarProvider>
