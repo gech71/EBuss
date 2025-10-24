@@ -47,19 +47,18 @@ export async function createLocationAction(formData: FormData) {
     redirect('/admin/locations');
 }
 
-export async function updateLocationAction(formData: FormData) {
+export async function updateLocationAction(prevState: any, formData: FormData) {
     await validateCsrf(formData);
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
-        return redirect('/login');
+        return { success: false, message: 'Unauthorized' };
     }
 
     const id = formData.get('id') as string;
     const name = formData.get('name') as string;
 
     if (!id || !name) {
-        redirect('/admin/locations');
-        return;
+        return { success: false, message: 'Invalid data provided.'};
     }
 
     try {
@@ -78,7 +77,8 @@ export async function updateLocationAction(formData: FormData) {
 
     revalidatePath('/admin/locations');
     revalidatePath('/admin/routes');
-    redirect('/admin/locations');
+    // Don't redirect here, let the client-side handle it on success
+    return { success: true, message: 'Location updated successfully.' };
 }
 
 
@@ -127,3 +127,4 @@ export async function deleteLocationAction(locationId: string, csrfToken: string
     return { success: false, message: 'An unexpected error occurred.' };
   }
 }
+

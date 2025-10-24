@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Check, X } from "lucide-react";
 import { changePasswordAction } from "@/app/lib/actions";
 import { cn } from "@/lib/utils";
+import { useCsrf } from "@/hooks/useCsrf";
 
 const passwordRules = [
     { text: "At least 8 characters long", regex: /.{8,}/ },
@@ -52,6 +53,7 @@ export function ChangePasswordForm() {
   const [showConfirm, setShowConfirm] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const [newPassword, setNewPassword] = useState("");
+  const { csrfToken, loading: csrfLoading } = useCsrf();
 
   const handleSubmit = (formData: FormData) => {
     const newPasswordValue = formData.get("newPassword") as string;
@@ -94,6 +96,7 @@ export function ChangePasswordForm() {
         </CardDescription>
       </CardHeader>
       <form ref={formRef} action={handleSubmit}>
+        <input type="hidden" name="csrfToken" value={csrfToken} />
         <CardContent className="space-y-4 pt-6 p-0">
           <div className="space-y-2">
             <Label htmlFor="currentPassword">Current Password</Label>
@@ -156,7 +159,7 @@ export function ChangePasswordForm() {
            </div>
         </CardContent>
         <CardFooter className="p-0 pt-6">
-          <Button type="submit" disabled={isPending}>
+          <Button type="submit" disabled={isPending || csrfLoading}>
             {isPending ? "Updating..." : "Update Password"}
           </Button>
         </CardFooter>
