@@ -31,8 +31,6 @@ export async function validateCsrf(tokenFromForm: string) {
     if (!tokenFromForm || !csrfTokenFromCookie || tokenFromForm !== csrfTokenFromCookie) {
         throw new Error('Invalid CSRF token.');
     }
-    // Invalidate after use
-    cookieStore.set('csrf_token', '', { expires: new Date(0), path: '/' });
 }
 
 export async function authenticate(
