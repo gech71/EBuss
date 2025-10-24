@@ -56,11 +56,7 @@ export function BusActions({ bus }: BusActionsProps) {
     }
     setIsDeleting(true);
 
-    const formData = new FormData();
-    formData.append('csrfToken', csrfToken);
-    formData.append('busId', bus.id);
-
-    const result = await deleteBusAction(formData);
+    const result = await deleteBusAction(bus.id, csrfToken);
     setIsDeleting(false);
 
     if (result.success) {
