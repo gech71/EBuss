@@ -27,6 +27,7 @@ async function main() {
 
   // 1. Clear previous data
   await prisma.loginAttempt.deleteMany();
+  await prisma.apiRequestAttempt.deleteMany();
   await prisma.session.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.bookedSeat.deleteMany();
@@ -61,7 +62,7 @@ async function main() {
   const owner2 = await prisma.busOwner.create({
     data: {
       name: 'Abyssinia Bus',
-      bankAccountNumber: '7000101633387',
+      bankAccountNumber: '7000101633388',
       commissionTiers: {
         create: [
           { minSales: 1, maxSales: 9999999, type: CommissionType.FIXED, value: 50.00 },
