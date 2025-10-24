@@ -63,7 +63,7 @@ export async function updateLocationAction(formData: FormData) {
         await prisma.location.update({
             where: { 
                 id,
-                ownerId: user.busOwnerId,
+                ownerId: user.busOwnerId, // VERIFY OWNERSHIP
             },
             data: { name },
         });
@@ -86,6 +86,7 @@ export async function deleteLocationAction(locationId: string): Promise<{ succes
   }
   
   try {
+    // VERIFY OWNERSHIP
     const location = await prisma.location.findFirst({
         where: { id: locationId, ownerId: user.busOwnerId }
     });
@@ -106,7 +107,12 @@ export async function deleteLocationAction(locationId: string): Promise<{ succes
       };
     }
 
-    await prisma.location.delete({ where: { id: locationId } });
+    await prisma.location.delete({ 
+        where: { 
+            id: locationId,
+            ownerId: user.busOwnerId // Final ownership check
+        } 
+    });
     
     revalidatePath('/admin/locations');
     return { success: true, message: 'Location has been deleted.' };

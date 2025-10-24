@@ -1,3 +1,4 @@
+
 // middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
@@ -18,7 +19,7 @@ export async function middleware(request: NextRequest) {
 
   // 3. Route protection
   const isProtectedRoute = pathname.startsWith('/admin') || pathname.startsWith('/super-admin');
-  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register');
+  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/super-admin/login');
 
   let response: NextResponse;
 
@@ -28,7 +29,10 @@ export async function middleware(request: NextRequest) {
     response = NextResponse.redirect(url);
   } else if (isAuthRoute && isAuthenticated) {
     const url = request.nextUrl.clone();
-    url.pathname = '/admin';
+    // A logged-in user trying to access a login page should be redirected to their default dashboard
+    // This part of the logic relies on the server action /lucia to determine the correct dashboard
+    // For simplicity here, we redirect to a sensible default. The client-side logic will handle final role-based redirects.
+    url.pathname = '/admin'; 
     response = NextResponse.redirect(url);
   } else {
     const requestHeaders = new Headers(request.headers);
@@ -46,7 +50,7 @@ export async function middleware(request: NextRequest) {
     font-src 'self' https://fonts.gstatic.com;
     img-src 'self' https://api.qrserver.com https://www.daimlertruck.com https://placehold.co https://picsum.photos https://dekonpower.com data:;
     connect-src 'self';
-    frame-ancestors 'self';
+    frame-ancestors 'none';
     frame-src 'none';
     child-src 'none';
     worker-src 'self';
@@ -75,11 +79,15 @@ export async function middleware(request: NextRequest) {
 
   // 6. Secure cookie
   if (sessionCookie) {
-    response.cookies.set('auth_session', sessionCookie, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'Strict',
-    });
+    const currentCookie = response.cookies.get('auth_session');
+    if (currentCookie) {
+         response.cookies.set('auth_session', currentCookie.value, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            path: '/',
+        });
+    }
   }
 
   return response;

@@ -96,7 +96,7 @@ export async function updateDiscountAction(formData: FormData) {
 
     try {
         await prisma.$transaction(async (tx) => {
-            // Check if the discount belongs to the user
+            // VERIFY OWNERSHIP: Check if the discount belongs to the user
             const discount = await tx.discount.findFirst({
                 where: { id: discountId, ownerId: user.busOwnerId }
             });
@@ -107,7 +107,10 @@ export async function updateDiscountAction(formData: FormData) {
             
             // Update discount details
             await tx.discount.update({
-                where: { id: discountId },
+                where: { 
+                    id: discountId,
+                    ownerId: user.busOwnerId // Redundant check for safety
+                },
                 data: { name, startDate, endDate }
             });
             
@@ -127,8 +130,9 @@ export async function updateDiscountAction(formData: FormData) {
             });
         });
     } catch (error) {
+         const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
          console.error("Error updating discount:", error);
-        return { success: false, message: 'An unexpected error occurred.' };
+        return { success: false, message };
     }
 
     revalidatePath('/admin/discounts');
@@ -142,7 +146,7 @@ export async function deleteDiscountAction(discountId: string): Promise<{ succes
     }
 
     try {
-        // First, verify the discount belongs to the user to prevent unauthorized deletions
+        // VERIFY OWNERSHIP: ensure the discount belongs to the user before doing anything.
         const discount = await prisma.discount.findFirst({
             where: { id: discountId, ownerId: user.busOwnerId }
         });
@@ -158,7 +162,10 @@ export async function deleteDiscountAction(discountId: string): Promise<{ succes
         });
 
         await prisma.discount.delete({
-            where: { id: discountId }
+            where: { 
+                id: discountId,
+                ownerId: user.busOwnerId // Final ownership check
+            }
         });
 
         revalidatePath('/admin/discounts');

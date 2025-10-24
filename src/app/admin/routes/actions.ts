@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
+import { validateRequest } from '@/app/lib/auth';
 
 const routeSchema = z.object({
   originId: z.string().min(1, 'Origin is required.'),
@@ -27,6 +28,11 @@ const combineDateTime = (dateStr: string, timeStr: string): Date => {
 
 
 export async function createRouteAction(formData: FormData) {
+    const { user } = await validateRequest();
+    if (!user || !user.busOwnerId) {
+        return { success: false, message: 'Unauthorized' };
+    }
+
     const rawData = {
         originId: formData.get('originId'),
         destinationId: formData.get('destinationId'),
@@ -58,6 +64,18 @@ export async function createRouteAction(formData: FormData) {
     }
 
     try {
+        // VERIFY OWNERSHIP of all selected buses
+        const busCount = await prisma.bus.count({
+            where: {
+                id: { in: busIds },
+                ownerId: user.busOwnerId
+            }
+        });
+
+        if (busCount !== busIds.length) {
+            return { success: false, message: "You can only create routes for buses you own." };
+        }
+
         const routesToCreate = busIds.map(busId => ({
             originId,
             destinationId,
@@ -83,6 +101,11 @@ export async function createRouteAction(formData: FormData) {
 
 
 export async function updateRouteAction(formData: FormData) {
+    const { user } = await validateRequest();
+    if (!user || !user.busOwnerId) {
+        return { success: false, message: 'Unauthorized' };
+    }
+
     const routeId = formData.get('routeId') as string;
     const rawData = {
         originId: formData.get('originId'),
@@ -96,7 +119,6 @@ export async function updateRouteAction(formData: FormData) {
         discountId: formData.get('discountId') || undefined,
     };
     
-    // a single bus is expected for an update
     const validatedData = routeSchema.extend({
         busIds: z.array(z.string()).length(1, "Exactly one bus must be selected for an update."),
     }).safeParse(rawData);
@@ -109,6 +131,7 @@ export async function updateRouteAction(formData: FormData) {
     }
 
     const { originId, destinationId, departureDate, departureTime, arrivalDate, arrivalTime, price, busIds, discountId } = validatedData.data;
+    const busId = busIds[0];
 
     const fullDepartureTime = combineDateTime(departureDate, departureTime);
     const fullArrivalTime = combineDateTime(arrivalDate, arrivalTime);
@@ -118,22 +141,51 @@ export async function updateRouteAction(formData: FormData) {
     }
 
     try {
-       await prisma.route.update({
-           where: { id: routeId },
-           data: {
-                originId,
-                destinationId,
-                departureTime: fullDepartureTime,
-                arrivalTime: fullArrivalTime,
-                price,
-                busId: busIds[0],
-                discountId: discountId === 'none' ? null : discountId,
+       await prisma.$transaction(async (tx) => {
+           // VERIFY OWNERSHIP of the route being updated
+           const routeToUpdate = await tx.route.findFirst({
+               where: {
+                   id: routeId,
+                   bus: {
+                       ownerId: user.busOwnerId
+                   }
+               }
+           });
+
+           if (!routeToUpdate) {
+               throw new Error("Route not found or you do not have permission to edit it.");
            }
-       })
+
+           // VERIFY OWNERSHIP of the new bus being assigned
+           const newBus = await tx.bus.findFirst({
+               where: {
+                   id: busId,
+                   ownerId: user.busOwnerId
+               }
+           });
+
+           if (!newBus) {
+               throw new Error("The selected bus does not belong to you.");
+           }
+
+           await tx.route.update({
+               where: { id: routeId },
+               data: {
+                    originId,
+                    destinationId,
+                    departureTime: fullDepartureTime,
+                    arrivalTime: fullArrivalTime,
+                    price,
+                    busId,
+                    discountId: discountId === 'none' ? null : discountId,
+               }
+           });
+       });
 
     } catch (error) {
+        const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
         console.error("Error updating route:", error);
-        return { success: false, message: 'An unexpected error occurred.' };
+        return { success: false, message };
     }
 
     revalidatePath('/admin/routes');
@@ -142,8 +194,26 @@ export async function updateRouteAction(formData: FormData) {
 
 
 export async function deleteRouteAction(routeId: string): Promise<{ success: boolean; message: string }> {
+  const { user } = await validateRequest();
+  if (!user || !user.busOwnerId) {
+      return { success: false, message: 'Unauthorized' };
+  }
+
   try {
-    // Optional: Check if the route has any active bookings before deleting
+    // VERIFY OWNERSHIP
+    const routeToDelete = await prisma.route.findFirst({
+        where: {
+            id: routeId,
+            bus: {
+                ownerId: user.busOwnerId
+            }
+        }
+    });
+
+    if (!routeToDelete) {
+        return { success: false, message: 'Route not found or you do not have permission to delete it.' };
+    }
+    
     const bookingCount = await prisma.booking.count({
       where: {
         routeId: routeId,

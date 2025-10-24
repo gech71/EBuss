@@ -108,7 +108,7 @@ export async function updateOwnerAction(formData: FormData) {
 
             // Delete existing tiers for this owner
             await tx.commissionTier.deleteMany({
-                where: { ownerId: id }
+                where: { busOwnerId: id }
             });
 
             // Create new tiers
@@ -116,9 +116,9 @@ export async function updateOwnerAction(formData: FormData) {
                 data: commissionTiers.map(tier => ({
                     minSales: tier.minSales,
                     maxSales: tier.maxSales,
-                    type: tier.type,
+                    type: tier.type as CommissionType,
                     value: tier.value,
-                    ownerId: id
+                    busOwnerId: id
                 }))
             });
         });
