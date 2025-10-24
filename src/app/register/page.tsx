@@ -3,7 +3,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useData } from "@/lib/store";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,27 +18,18 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const { register } = useData();
   const router = useRouter();
   const { toast } = useToast();
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
-    const result = register({ name, email, password });
-    
-    if (result.success) {
-      toast({
-        title: "Registration Successful",
-        description: "You can now log in with your new account.",
-      });
-      router.push("/login");
-    } else {
-      toast({
-        title: "Registration Failed",
-        description: result.message,
+    // This is a placeholder since the original logic was removed.
+    // In a real app, this would be a server action.
+    toast({
+        title: "Registration Disabled",
+        description: "This feature is not available in the current setup.",
         variant: "destructive",
       });
-    }
   };
 
   return (

@@ -1,7 +1,6 @@
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import React from 'react';
-import { DataProvider } from '@/components/DataProvider';
 import { headers } from 'next/headers';
 
 export default function RootLayout({
@@ -20,9 +19,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=PT+Sans:wght@400;700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased min-h-screen flex flex-col">
-        <DataProvider>
-          {children}
-        </DataProvider>
+        {children}
         <Toaster />
       </body>
     </html>
