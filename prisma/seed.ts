@@ -115,7 +115,11 @@ async function main() {
     data: {
       name: 'FF-01 Luxury Liner',
       capacity: 45,
-      ownerId: owner1.id,
+      owner: {
+        connect: {
+          id: owner1.id,
+        },
+      },
       layout: {
         create: {
           rows: 12,
@@ -132,7 +136,11 @@ async function main() {
     data: {
       name: 'FF-02 Express',
       capacity: 40,
-      ownerId: owner1.id,
+      owner: {
+        connect: {
+          id: owner1.id,
+        },
+      },
       layout: {
         create: {
           rows: 10,
@@ -150,7 +158,11 @@ async function main() {
     data: {
       name: 'RR-Cruiser',
       capacity: 49,
-      ownerId: owner2.id,
+      owner: {
+        connect: {
+          id: owner2.id,
+        },
+      },
       layout: {
         create: {
           rows: 13,
