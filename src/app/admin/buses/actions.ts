@@ -79,8 +79,9 @@ export async function createBusAction(formData: FormData) {
     redirect('/admin/buses');
 }
 
-export async function deleteBusAction(busId: string, csrfToken: string): Promise<{ success: boolean; message: string }> {
-  await validateCsrf(csrfToken);
+export async function deleteBusAction(formData: FormData): Promise<{ success: boolean; message: string }> {
+  await validateCsrf(formData);
+  const busId = formData.get('busId') as string;
   
   const { user } = await validateRequest();
   if (!user || !user.busOwnerId) {
