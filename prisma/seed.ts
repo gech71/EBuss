@@ -24,10 +24,8 @@ const generateSeats = (rows: number, cols: number, aisleCols: number[], lastRowF
 
 
 async function main() {
-  console.log('Start seeding...');
 
   // 1. Clear previous data
-  console.log('Clearing existing data...');
   await prisma.loginAttempt.deleteMany();
   await prisma.session.deleteMany();
   await prisma.payment.deleteMany();
@@ -43,14 +41,13 @@ async function main() {
   await prisma.location.deleteMany();
   await prisma.user.deleteMany();
   await prisma.busOwner.deleteMany();
-  console.log('Existing data cleared.');
 
   
   // 2. Create Bus Owners
   const owner1 = await prisma.busOwner.create({
     data: {
       name: 'Selam Bus',
-      bankAccountNumber: '7000123456789',
+      bankAccountNumber: '7000101633387',
       commissionTiers: {
         create: [
           { minSales: 1, maxSales: 10000, type: CommissionType.PERCENTAGE, value: 5 },
@@ -64,7 +61,7 @@ async function main() {
   const owner2 = await prisma.busOwner.create({
     data: {
       name: 'Abyssinia Bus',
-      bankAccountNumber: '7000987654321',
+      bankAccountNumber: '7000101633387',
       commissionTiers: {
         create: [
           { minSales: 1, maxSales: 9999999, type: CommissionType.FIXED, value: 50.00 },
@@ -72,8 +69,6 @@ async function main() {
       },
     },
   });
-
-  console.log(`Created owners: ${owner1.name}, ${owner2.name}`);
 
 
   // 3. Create Locations
@@ -96,7 +91,6 @@ async function main() {
   });
   const allLocations = await prisma.location.findMany();
   const locationMap = new Map(allLocations.map(l => [l.name, l.id]));
-  console.log('Created locations.');
 
 
   // 4. Create Users
@@ -136,7 +130,6 @@ async function main() {
     },
   });
 
-  console.log('Created users.');
 
 
   // 5. Create Buses and their SeatLayouts
@@ -197,7 +190,6 @@ async function main() {
     },
   });
 
-  console.log(`Created buses: ${bus1.name}, ${bus2.name}, ${bus3.name}`);
   
   // 6. Create Discounts
   const summerDiscount = await prisma.discount.create({
@@ -233,7 +225,6 @@ async function main() {
     }
   });
 
-  console.log(`Created discounts: ${summerDiscount.name}, ${weekendDiscount.name}`);
 
   // 7. Create Routes
   const routesToCreate = [
@@ -289,7 +280,6 @@ async function main() {
     });
   }
 
-  console.log(`Created ${routesToCreate.length} routes.`);
 
   const allCreatedRoutes = await prisma.route.findMany();
 
@@ -347,10 +337,7 @@ async function main() {
       }
     });
     
-    console.log(`Created bookings for ${booking1.passengerName}, ${booking2.passengerName}, and ${booking3.passengerName}.`);
   }
-
-  console.log('Seeding finished.');
 }
 
 main()

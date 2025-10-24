@@ -6,7 +6,6 @@ import { PaymentStatus, BookingStatus } from '@prisma/client';
 
 async function POST(request: NextRequest) {
     const authHeader = request.headers.get('Authorization');
-    console.log({ authHeader });
 
     // Extract the token from the string like: Bearer {token: YOUR_TOKEN}
     const tokenMatch = authHeader?.match(/token:\s*(.+)\s*}/);
@@ -60,7 +59,6 @@ async function POST(request: NextRequest) {
         token, // This is the user's auth token for the mini-app, not the payment token
         signature: receivedSignature
     } = requestBody;
-    console.log({ requestBody });
     // 3. Process the payment and update database
     try {
         const payment = await prisma.payment.findUnique({

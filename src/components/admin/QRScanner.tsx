@@ -28,7 +28,6 @@ export function QRScanner() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const stopScan = useCallback(() => {
-    console.log("Stopping scan...");
     setIsScanning(false);
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
@@ -37,19 +36,15 @@ export function QRScanner() {
   }, []);
 
   const handleScanResult = useCallback(async (decodedQR: string) => {
-    console.log("Handling scan result:", decodedQR);
     stopScan();
     try {
         const { ticketId } = JSON.parse(decodedQR);
         if (!ticketId) throw new Error("Invalid QR code format.");
 
-        console.log(`Found ticketId: ${ticketId}. Calling API...`);
         const response = await fetch(`/api/ticket/${ticketId}`);
         const result = await response.json();
-        console.log("API Response:", result);
 
         if (response.ok && result.booking) {
-            console.log("Scan successful:", result.booking);
             setScanStatus("success");
             setScannedData(result.booking);
         } else {
@@ -86,11 +81,8 @@ export function QRScanner() {
                 });
 
                 if (code) {
-                    console.log("QR Code detected:", code.data);
                     handleScanResult(code.data);
                 } else {
-                    // This will log every frame, which can be noisy. Uncomment for deep debugging.
-                    // console.log("No QR code detected in this frame.");
                 }
             } catch (e) {
                 console.error("jsQR error:", e);
@@ -100,7 +92,6 @@ export function QRScanner() {
   }, [isScanning, handleScanResult]);
   
   const startScan = () => {
-    console.log("Starting scan...");
     setErrorMessage(null);
     setScannedData(null);
     setScanStatus("idle");
@@ -125,14 +116,12 @@ export function QRScanner() {
   useEffect(() => {
     const getCameraPermission = async () => {
       try {
-        console.log("Requesting camera permission...");
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
         setHasCameraPermission(true);
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
-        console.log("Camera permission granted and stream attached.");
       } catch (error) {
         console.error('Error accessing camera:', error);
         setHasCameraPermission(false);
@@ -150,7 +139,6 @@ export function QRScanner() {
         if (videoRef.current && videoRef.current.srcObject) {
             const stream = videoRef.current.srcObject as MediaStream;
             stream.getTracks().forEach(track => track.stop());
-            console.log("Camera stream stopped on cleanup.");
         }
         if (animationFrameRef.current) {
             cancelAnimationFrame(animationFrameRef.current);
@@ -160,7 +148,6 @@ export function QRScanner() {
 
 
   const resetScanner = () => {
-    console.log("Resetting scanner state.");
     setScannedData(null);
     setErrorMessage(null);
     setScanStatus("idle");

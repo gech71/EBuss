@@ -154,16 +154,10 @@ export async function releaseSeatsOnPaymentTimeoutAction(bookingId: string) {
                 }
             });
 
-            // Delete the booking itself
-            await tx.booking.delete({
-                where: { id: bookingId }
-            });
-
             if (booking.routeId) {
                 revalidatePath(`/book/${booking.routeId}`);
             }
         });
-        console.log(`Successfully cleaned up timed-out booking ${bookingId}`);
     } catch(error) {
         console.error(`Failed to execute cleanup for timed-out booking ${bookingId}:`, error);
     }
