@@ -37,12 +37,17 @@ export function QRScanner() {
 
   const handleScanResult = useCallback(async (decodedQR: string) => {
     stopScan();
+    console.log("QR Code detected:", decodedQR);
     try {
         const { ticketId } = JSON.parse(decodedQR);
         if (!ticketId) throw new Error("Invalid QR code format.");
 
-        const response = await fetch(`/api/ticket/${ticketId}`);
+        console.log(`Sending scan request for ticketId: ${ticketId}`);
+        const response = await fetch(`/api/ticket/${ticketId}/scan`, {
+            method: 'POST',
+        });
         const result = await response.json();
+        console.log("API Response:", { status: response.status, body: result });
 
         if (response.ok && result.booking) {
             setScanStatus("success");
@@ -81,8 +86,8 @@ export function QRScanner() {
                 });
 
                 if (code) {
+                    console.log("jsQR detected a code:", code.data);
                     handleScanResult(code.data);
-                } else {
                 }
             } catch (e) {
                 console.error("jsQR error:", e);
@@ -161,10 +166,10 @@ export function QRScanner() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-green-600">
               <CheckCircle className="h-8 w-8" />
-              <span>Ticket Valid</span>
+              <span>Ticket Validated & Used</span>
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This ticket is valid for entry. Welcome aboard!
+              This ticket has been successfully marked as used. Welcome aboard!
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="text-sm space-y-2">
@@ -240,5 +245,3 @@ export function QRScanner() {
     </div>
   );
 }
-
-    
