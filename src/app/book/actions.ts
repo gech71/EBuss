@@ -74,8 +74,8 @@ export async function createBookingAction(formData: FormData) {
         throw new Error('One or more selected seats are no longer available.');
       }
       
-      // Set expiration for 10 minutes from now
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      // Set expiration for 30 seconds from now
+      const expiresAt = new Date(Date.now() + 30 * 1000);
 
       const booking = await tx.booking.create({
         data: {
@@ -209,12 +209,10 @@ export async function createPaymentRequestAction(bookingId: string, amount: numb
             });
             return { success: true, paymentToken: responseData.token };
         } else {
-            // No need to release seats here anymore, the server-side cron job will handle it.
             return { success: false, message: responseData.message || 'Failed to get payment token.' };
         }
     } catch (error) {
         console.error("Payment request failed:", error);
-         // No need to release seats here anymore.
         const message = error instanceof Error ? error.message : 'An unexpected error occurred during payment initiation.';
         return { success: false, message };
     }

@@ -9,7 +9,7 @@ import { Loader2, Ticket, Info, AlertTriangle } from 'lucide-react';
 import type { Booking, PaymentStatus } from "@prisma/client";
 
 const POLLING_INTERVAL = 5000; // 5 seconds
-const POLLING_DURATION = 10 * 60 * 1000; // Match the 10-minute server-side expiration
+const POLLING_DURATION = 30 * 1000; // 30 seconds
 
 interface PaymentStatusCheckerProps {
     booking: Booking;
@@ -88,7 +88,7 @@ export function PaymentStatusChecker({ booking }: PaymentStatusCheckerProps) {
                 <Ticket className="h-4 w-4" />
                 <AlertTitle>Awaiting Payment Confirmation</AlertTitle>
                 <AlertDescription>
-                    This booking is not yet paid for. We are actively checking for payment confirmation. Your seats are reserved for 10 minutes.
+                    This booking is not yet paid for. We are actively checking for payment confirmation. Your seats are reserved for 30 seconds.
                 </AlertDescription>
                 <div className="flex items-center justify-center pt-4">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -103,7 +103,7 @@ export function PaymentStatusChecker({ booking }: PaymentStatusCheckerProps) {
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Booking Expired</AlertTitle>
                 <AlertDescription>
-                   Your 10-minute payment window has expired. The seats you selected have been released. If you believe you have paid, please contact support. Otherwise, you can try booking again.
+                   Your 30-second payment window has expired. The seats you selected have been released. If you believe you have paid, please contact support. Otherwise, you can try booking again.
                 </AlertDescription>
                  <div className="pt-4 flex justify-end gap-2">
                     <Button variant="outline" onClick={() => router.push('/')}>Go to Homepage</Button>
