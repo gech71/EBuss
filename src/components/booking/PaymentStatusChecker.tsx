@@ -7,10 +7,9 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Loader2, Ticket, Info, AlertTriangle } from 'lucide-react';
 import type { Booking, PaymentStatus } from "@prisma/client";
-import { releaseSeatsOnPaymentTimeoutAction } from '@/app/book/actions';
 
 const POLLING_INTERVAL = 5000; // 5 seconds
-const POLLING_DURATION = 30000; // 30 seconds
+const POLLING_DURATION = 10 * 60 * 1000; // Match the 10-minute server-side expiration
 
 interface PaymentStatusCheckerProps {
     booking: Booking;
@@ -22,13 +21,12 @@ export function PaymentStatusChecker({ booking }: PaymentStatusCheckerProps) {
     const [isPolling, setIsPolling] = useState(true);
     const [isTimedOut, setIsTimedOut] = useState(false);
 
-    const handleTimeout = useCallback(async () => {
+    const handleTimeout = useCallback(() => {
         setIsPolling(false);
         setIsTimedOut(true);
-        if (booking.id) {
-            await releaseSeatsOnPaymentTimeoutAction(booking.id);
-        }
-    }, [booking.id]);
+        // The server will handle seat release, we just need to update the UI.
+        router.refresh();
+    }, [router]);
 
     useEffect(() => {
         if (status === 'PAID') {
@@ -36,10 +34,13 @@ export function PaymentStatusChecker({ booking }: PaymentStatusCheckerProps) {
             return;
         }
 
+        const bookingExpiryTime = new Date(booking.expiresAt || 0).getTime();
         const startTime = Date.now();
+        const effectivePollingDuration = bookingExpiryTime > startTime ? bookingExpiryTime - startTime : POLLING_DURATION;
+
 
         const intervalId = setInterval(async () => {
-            if (Date.now() - startTime > POLLING_DURATION) {
+            if (Date.now() - startTime > effectivePollingDuration) {
                 clearInterval(intervalId);
                 handleTimeout();
                 return;
@@ -63,7 +64,7 @@ export function PaymentStatusChecker({ booking }: PaymentStatusCheckerProps) {
         }, POLLING_INTERVAL);
 
         return () => clearInterval(intervalId);
-    }, [booking.id, status, router, handleTimeout]);
+    }, [booking.id, booking.expiresAt, status, router, handleTimeout]);
 
     if (status === 'PAID') {
         // This state should be quickly replaced by the router refresh showing the real ticket.
@@ -87,7 +88,7 @@ export function PaymentStatusChecker({ booking }: PaymentStatusCheckerProps) {
                 <Ticket className="h-4 w-4" />
                 <AlertTitle>Awaiting Payment Confirmation</AlertTitle>
                 <AlertDescription>
-                    This booking is not yet paid for. We are actively checking for payment confirmation. Please do not close this page.
+                    This booking is not yet paid for. We are actively checking for payment confirmation. Your seats are reserved for 10 minutes.
                 </AlertDescription>
                 <div className="flex items-center justify-center pt-4">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -100,9 +101,9 @@ export function PaymentStatusChecker({ booking }: PaymentStatusCheckerProps) {
         return (
              <Alert variant="destructive" className="max-w-md">
                 <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Payment Check Timed Out</AlertTitle>
+                <AlertTitle>Booking Expired</AlertTitle>
                 <AlertDescription>
-                   We could not confirm your payment. The seats you selected have been released. If you believe you have paid, please contact support. Otherwise, you can try booking again.
+                   Your 10-minute payment window has expired. The seats you selected have been released. If you believe you have paid, please contact support. Otherwise, you can try booking again.
                 </AlertDescription>
                  <div className="pt-4 flex justify-end gap-2">
                     <Button variant="outline" onClick={() => router.push('/')}>Go to Homepage</Button>

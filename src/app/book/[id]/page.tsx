@@ -5,6 +5,7 @@ import { BookingForm } from '@/components/booking/BookingForm';
 import prisma from '@/lib/prisma';
 import { validateRequest } from '@/app/lib/auth';
 import { cookies } from 'next/headers';
+import { BookingStatus, SeatStatus } from '@prisma/client';
 
 interface BookPageProps {
   params: { id: string };
@@ -29,10 +30,63 @@ async function getMiniAppData() {
   return { isMiniApp: false, authToken: undefined, phoneNumber: undefined };
 }
 
+async function releaseExpiredBookings(routeId: string) {
+    await prisma.$transaction(async (tx) => {
+        const expiredBookings = await tx.booking.findMany({
+            where: {
+                routeId: routeId,
+                status: BookingStatus.PENDING,
+                expiresAt: {
+                    lt: new Date(),
+                },
+            },
+            include: {
+                bookedSeats: true,
+                route: {
+                    include: {
+                        bus: {
+                            include: {
+                                layout: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        if (expiredBookings.length === 0) {
+            return;
+        }
+
+        for (const booking of expiredBookings) {
+            if (booking.route?.bus?.layoutId) {
+                const seatNumbersToRelease = booking.bookedSeats.map(bs => bs.seatNumber);
+                await tx.seat.updateMany({
+                    where: {
+                        layoutId: booking.route.bus.layoutId,
+                        seatNumber: { in: seatNumbersToRelease },
+                    },
+                    data: { status: SeatStatus.AVAILABLE },
+                });
+            }
+        }
+        
+        const expiredBookingIds = expiredBookings.map(b => b.id);
+        await tx.booking.updateMany({
+            where: { id: { in: expiredBookingIds } },
+            data: { status: BookingStatus.EXPIRED, paymentStatus: 'FAILED' },
+        });
+    });
+}
+
+
 export default async function BookPage({ params }: BookPageProps) {
   const { user } = await validateRequest();
   const { isMiniApp, authToken, phoneNumber } = await getMiniAppData();
   const routeId = params.id;
+
+  // Release expired seats before fetching route data
+  await releaseExpiredBookings(routeId);
 
   const routeData = await prisma.route.findUnique({
     where: { id: routeId },

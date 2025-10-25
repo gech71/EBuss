@@ -73,6 +73,9 @@ export async function createBookingAction(formData: FormData) {
       if (availableSeats.length !== selectedSeatNumbers.length) {
         throw new Error('One or more selected seats are no longer available.');
       }
+      
+      // Set expiration for 10 minutes from now
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
       const booking = await tx.booking.create({
         data: {
@@ -82,6 +85,7 @@ export async function createBookingAction(formData: FormData) {
           routeId,
           status: BookingStatus.PENDING,
           paymentStatus: 'PENDING',
+          expiresAt, // Set the expiration time
           bookedSeats: {
             create: selectedSeatNumbers.map(seatNumber => ({
               seatNumber,
@@ -112,57 +116,6 @@ export async function createBookingAction(formData: FormData) {
     return { success: false, message };
   }
 }
-
-export async function releaseSeatsOnPaymentTimeoutAction(bookingId: string) {
-     try {
-        await prisma.$transaction(async (tx) => {
-            const booking = await tx.booking.findUnique({
-                where: { id: bookingId },
-                include: { 
-                    bookedSeats: true, 
-                    route: {
-                        include: {
-                            bus: {
-                                include: {
-                                    layout: true
-                                }
-                            }
-                        }
-                    } 
-                }
-            });
-
-            if (!booking || booking.paymentStatus === PaymentStatus.PAID) {
-                return;
-            }
-            
-            const seatNumbersToRelease = booking.bookedSeats.map(bs => bs.seatNumber);
-            if (seatNumbersToRelease.length > 0 && booking.route?.bus?.layoutId) {
-                await tx.seat.updateMany({
-                    where: {
-                        layoutId: booking.route.bus.layoutId,
-                        seatNumber: { in: seatNumbersToRelease }
-                    },
-                    data: { status: 'AVAILABLE' }
-                });
-            }
-
-            await tx.payment.deleteMany({
-                where: {
-                    bookingId: bookingId,
-                    status: { not: PaymentStatus.PAID }
-                }
-            });
-
-            if (booking.routeId) {
-                revalidatePath(`/book/${booking.routeId}`);
-            }
-        });
-    } catch(error) {
-        console.error(`Failed to execute cleanup for timed-out booking ${bookingId}:`, error);
-    }
-}
-
 
 export async function createPaymentRequestAction(bookingId: string, amount: number, authToken: string | undefined) {
     if (!authToken) {
@@ -256,12 +209,12 @@ export async function createPaymentRequestAction(bookingId: string, amount: numb
             });
             return { success: true, paymentToken: responseData.token };
         } else {
-            await releaseSeatsOnPaymentTimeoutAction(bookingId);
+            // No need to release seats here anymore, the server-side cron job will handle it.
             return { success: false, message: responseData.message || 'Failed to get payment token.' };
         }
     } catch (error) {
         console.error("Payment request failed:", error);
-        await releaseSeatsOnPaymentTimeoutAction(bookingId);
+         // No need to release seats here anymore.
         const message = error instanceof Error ? error.message : 'An unexpected error occurred during payment initiation.';
         return { success: false, message };
     }
