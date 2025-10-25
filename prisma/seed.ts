@@ -68,6 +68,71 @@ async function main() {
     },
   });
   console.log('Created users.');
+
+  // --- Create Locations ---
+  const locations = await prisma.location.createManyAndReturn({
+      data: [
+        { name: 'Addis Ababa', ownerId: owner1.id },
+        { name: 'Adama', ownerId: owner1.id },
+        { name: 'Hawassa', ownerId: owner1.id },
+        { name: 'Bahir Dar', ownerId: owner1.id },
+        { name: 'Gondar', ownerId: owner1.id },
+        { name: 'Mekelle', ownerId: owner1.id },
+        { name: 'Dire Dawa', ownerId: owner1.id },
+        { name: 'Jimma', ownerId: owner1.id },
+      ],
+  });
+  console.log(`Created ${locations.length} locations.`);
+
+  // --- Create Buses for Selam Bus ---
+  const bus1 = await prisma.bus.create({
+      data: {
+          name: 'Selam 1',
+          capacity: 45,
+          owner: { connect: { id: owner1.id } },
+          layout: { create: { rows: 11, cols: 5, seats: { create: Array.from({ length: 55 }).map((_, i) => ({ seatNumber: `${String.fromCharCode(65 + Math.floor(i / 5))}${ (i % 5) + 1 }`, status: 'AVAILABLE', type: (i % 5 === 2) ? 'AISLE' : 'SEAT' })) } } }
+      }
+  });
+
+  const bus2 = await prisma.bus.create({
+      data: {
+          name: 'Selam 2',
+          capacity: 45,
+          owner: { connect: { id: owner1.id } },
+          layout: { create: { rows: 11, cols: 5, seats: { create: Array.from({ length: 55 }).map((_, i) => ({ seatNumber: `${String.fromCharCode(65 + Math.floor(i / 5))}${ (i % 5) + 1 }`, status: 'AVAILABLE', type: (i % 5 === 2) ? 'AISLE' : 'SEAT' })) } } }
+      }
+  });
+
+  const bus3 = await prisma.bus.create({
+      data: {
+          name: 'Selam VIP',
+          capacity: 30,
+          owner: { connect: { id: owner1.id } },
+          layout: { create: { rows: 10, cols: 4, seats: { create: Array.from({ length: 40 }).map((_, i) => ({ seatNumber: `${String.fromCharCode(65 + Math.floor(i / 4))}${ (i % 4) + 1 }`, status: 'AVAILABLE', type: (i % 4 === 1) ? 'AISLE' : 'SEAT' })) } } }
+      }
+  });
+  console.log('Created buses.');
+
+  // --- Create Routes ---
+  const addisAbaba = locations.find(l => l.name === 'Addis Ababa');
+  const hawassa = locations.find(l => l.name === 'Hawassa');
+  const bahirDar = locations.find(l => l.name === 'Bahir Dar');
+  const adama = locations.find(l => l.name === 'Adama');
+
+  if (addisAbaba && hawassa && bahirDar && adama) {
+      await prisma.route.createMany({
+          data: [
+              // Future routes
+              { originId: addisAbaba.id, destinationId: hawassa.id, busId: bus1.id, departureTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), arrivalTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000), price: 500 },
+              { originId: addisAbaba.id, destinationId: bahirDar.id, busId: bus2.id, departureTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), arrivalTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 10 * 60 * 60 * 1000), price: 700 },
+              { originId: hawassa.id, destinationId: addisAbaba.id, busId: bus1.id, departureTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000), arrivalTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000), price: 500 },
+              { originId: addisAbaba.id, destinationId: adama.id, busId: bus3.id, departureTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), arrivalTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000), price: 250 },
+              // Past routes
+              { originId: addisAbaba.id, destinationId: hawassa.id, busId: bus1.id, departureTime: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), arrivalTime: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000), price: 450 },
+          ]
+      });
+      console.log('Created routes.');
+  }
   
   console.log('Seeding finished.');
 }
