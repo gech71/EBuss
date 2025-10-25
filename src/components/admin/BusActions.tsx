@@ -140,7 +140,7 @@ export function BusActions({ bus }: BusActionsProps) {
             <div className="flex flex-col items-center pt-4">
                <ScrollArea className="h-[60vh] w-full">
                 <div 
-                  className="grid gap-1 md:gap-2 p-2 md:p-4 bg-muted/30 rounded-lg border-2 border-dashed w-full" 
+                  className="grid gap-1 md:gap-2 p-2 bg-muted/30 rounded-lg border-2 border-dashed w-full" 
                   style={{ gridTemplateColumns: `repeat(${bus.layout.cols}, minmax(0, 1fr))` }}
                 >
                   {sortedSeats.map(seat => (
