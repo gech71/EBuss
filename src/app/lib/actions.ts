@@ -48,7 +48,7 @@ export async function authenticate(
   formData: FormData
 ): Promise<string | undefined> {
   const cookieStore = await cookies();
-  const ip = getIP();
+  const ip = await getIP();
 
   if (ip) {
       const now = new Date();
