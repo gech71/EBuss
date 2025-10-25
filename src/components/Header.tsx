@@ -97,7 +97,7 @@ export function Header({ user, isMiniApp = false }: HeaderProps) {
             )}
         </div>
         
-        <nav className="flex items-center gap-4">
+        <nav className="flex items-center gap-2 flex-wrap justify-end">
             {renderNavContent()}
         </nav>
       </div>
