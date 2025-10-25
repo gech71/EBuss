@@ -15,7 +15,6 @@ const createBookingSchema = z.object({
   totalPrice: z.coerce.number(),
   passengerName: z.string().min(1, 'Passenger name is required.'),
   passengerPhone: z.string().min(1, 'Passenger phone is required.'),
-  passengerEmail: z.string().email().optional().or(z.literal('')),
 });
 
 export async function createBookingAction(formData: FormData) {
@@ -27,7 +26,6 @@ export async function createBookingAction(formData: FormData) {
     totalPrice: formData.get('totalPrice'),
     passengerName: formData.get('passengerName'),
     passengerPhone: formData.get('passengerPhone'),
-    passengerEmail: formData.get('passengerEmail')
   };
 
   const validatedData = createBookingSchema.safeParse(rawData);
@@ -45,7 +43,6 @@ export async function createBookingAction(formData: FormData) {
     totalPrice,
     passengerName,
     passengerPhone,
-    passengerEmail
   } = validatedData.data;
 
   try {
@@ -81,7 +78,7 @@ export async function createBookingAction(formData: FormData) {
         data: {
           passengerName,
           passengerPhone,
-          passengerEmail: passengerEmail || null,
+          passengerEmail: null, // Set to null as it's not collected anymore
           totalPrice,
           routeId,
           status: BookingStatus.PENDING,
