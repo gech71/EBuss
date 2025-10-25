@@ -17,7 +17,7 @@ const routeSchema = z.object({
   arrivalTime: z.string().min(1, 'Arrival time is required.'),
   price: z.coerce.number().positive('Price must be a positive number.'),
   busIds: z.array(z.string()).min(1, 'At least one bus must be selected.'),
-  discountId: z.string().optional(),
+  discountId: z.string().optional().nullable(),
 });
 
 const combineDateTime = (dateStr: string, timeStr: string): Date => {
@@ -44,7 +44,7 @@ export async function createRouteAction(formData: FormData) {
         arrivalTime: formData.get('arrivalTime'),
         price: formData.get('price'),
         busIds: JSON.parse(formData.get('busIds') as string),
-        discountId: formData.get('discountId') || undefined,
+        discountId: formData.get('discountId') || null,
     };
     
     const validatedData = routeSchema.safeParse(rawData);
@@ -118,7 +118,7 @@ export async function updateRouteAction(formData: FormData) {
         arrivalTime: formData.get('arrivalTime'),
         price: formData.get('price'),
         busIds: JSON.parse(formData.get('busIds') as string),
-        discountId: formData.get('discountId') || undefined,
+        discountId: formData.get('discountId') || null,
     };
     
     const validatedData = routeSchema.extend({
