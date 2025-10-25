@@ -208,58 +208,94 @@ export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
                     </div>
                 </CardHeader>
                 <CardContent>
-                {routeStats.length > 0 ? (
-                    <ScrollArea className="max-h-[500px] w-full">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Route</TableHead>
-                                    <TableHead className="text-center">Tickets Sold</TableHead>
-                                    <TableHead className="text-right">Revenue (ETB)</TableHead>
-                                    <TableHead className="text-right">Potential (ETB)</TableHead>
-                                    <TableHead className="text-right">% of Total</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
+                    {routeStats.length > 0 ? (
+                        <div className="w-full">
+                            {/* Mobile View - Card List */}
+                            <div className="md:hidden space-y-4">
                                 {routeStats.map(stat => (
-                                    <TableRow key={stat.routeId}>
-                                        <TableCell className="font-medium">{stat.origin} → {stat.destination}</TableCell>
-                                        <TableCell className="text-center">
-                                            <Badge variant="outline">{stat.ticketsSold}</Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right font-semibold">{stat.revenue.toFixed(2)}</TableCell>
-                                        <TableCell className="text-right text-muted-foreground">{stat.potentialRevenue.toFixed(2)}</TableCell>
-                                        <TableCell className="text-right">
-                                            <Badge className="bg-green-600 hover:bg-green-700">
-                                                {totalRevenue > 0 ? ((stat.revenue / totalRevenue) * 100).toFixed(1) : '0.0'}%
-                                            </Badge>
-                                        </TableCell>
-                                    </TableRow>
+                                    <div key={stat.routeId} className="p-4 border rounded-lg">
+                                        <div className="font-medium mb-2">{stat.origin} → {stat.destination}</div>
+                                        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+                                            <div className="flex items-center gap-1">
+                                                <span className="font-semibold">Revenue:</span>{stat.revenue.toFixed(2)} ETB
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <span className="font-semibold">Sold:</span> <Badge variant="outline">{stat.ticketsSold}</Badge>
+                                            </div>
+                                            <div className="flex items-center gap-1 text-muted-foreground">
+                                                <span className="font-semibold">Potential:</span>{stat.potentialRevenue.toFixed(2)} ETB
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <span className="font-semibold">% of Total:</span> 
+                                                <Badge className="bg-green-600 hover:bg-green-700">
+                                                    {totalRevenue > 0 ? ((stat.revenue / totalRevenue) * 100).toFixed(1) : '0.0'}%
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                    </div>
                                 ))}
-                            </TableBody>
-                            <TableFooter>
-                                <TableRow>
-                                    <TableCell colSpan={2} className="font-bold">Totals</TableCell>
-                                    <TableCell className="text-right font-bold">{totalRevenue.toFixed(2)}</TableCell>
-                                    <TableCell className="text-right font-bold text-muted-foreground">{totalPotentialRevenue.toFixed(2)}</TableCell>
-                                    <TableCell className="text-right font-bold">
-                                        <Badge className="bg-blue-600 hover:bg-blue-700 text-base">
-                                            {totalEffectiveness.toFixed(1)}%
-                                        </Badge>
-                                    </TableCell>
-                                </TableRow>
-                            </TableFooter>
-                        </Table>
-                    </ScrollArea>
-                ) : (
-                    <div className="col-span-full">
-                        <div className="p-10 flex flex-col items-center justify-center text-center">
-                            <Ticket className="w-16 h-16 text-muted-foreground mb-4" />
-                            <h3 className="font-headline text-xl font-semibold mb-2">No Bookings Found</h3>
-                            <p className="text-muted-foreground text-sm">No bookings were found for the selected date range.</p>
+                                <div className="p-4 border rounded-lg bg-muted/50 font-bold space-y-2">
+                                    <div className="flex justify-between"><span>Total Revenue:</span><span>{totalRevenue.toFixed(2)} ETB</span></div>
+                                    <div className="flex justify-between"><span>Total Potential:</span><span>{totalPotentialRevenue.toFixed(2)} ETB</span></div>
+                                    <div className="flex justify-between items-center"><span>Total Effectiveness:</span><Badge className="bg-blue-600 hover:bg-blue-700 text-base">{totalEffectiveness.toFixed(1)}%</Badge></div>
+                                </div>
+                            </div>
+                            
+                            {/* Desktop View - Table */}
+                            <div className="hidden md:block">
+                                <ScrollArea className="max-h-[500px] w-full">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Route</TableHead>
+                                                <TableHead className="text-center">Tickets Sold</TableHead>
+                                                <TableHead className="text-right">Revenue (ETB)</TableHead>
+                                                <TableHead className="text-right">Potential (ETB)</TableHead>
+                                                <TableHead className="text-right">% of Total</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {routeStats.map(stat => (
+                                                <TableRow key={stat.routeId}>
+                                                    <TableCell className="font-medium">{stat.origin} → {stat.destination}</TableCell>
+                                                    <TableCell className="text-center">
+                                                        <Badge variant="outline">{stat.ticketsSold}</Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-semibold">{stat.revenue.toFixed(2)}</TableCell>
+                                                    <TableCell className="text-right text-muted-foreground">{stat.potentialRevenue.toFixed(2)}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        <Badge className="bg-green-600 hover:bg-green-700">
+                                                            {totalRevenue > 0 ? ((stat.revenue / totalRevenue) * 100).toFixed(1) : '0.0'}%
+                                                        </Badge>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                        <TableFooter>
+                                            <TableRow>
+                                                <TableCell colSpan={2} className="font-bold">Totals</TableCell>
+                                                <TableCell className="text-right font-bold">{totalRevenue.toFixed(2)}</TableCell>
+                                                <TableCell className="text-right font-bold text-muted-foreground">{totalPotentialRevenue.toFixed(2)}</TableCell>
+                                                <TableCell className="text-right font-bold">
+                                                    <Badge className="bg-blue-600 hover:bg-blue-700 text-base">
+                                                        {totalEffectiveness.toFixed(1)}%
+                                                    </Badge>
+                                                </TableCell>
+                                            </TableRow>
+                                        </TableFooter>
+                                    </Table>
+                                </ScrollArea>
+                            </div>
                         </div>
-                    </div>
-                )}
+                    ) : (
+                        <div className="col-span-full">
+                            <div className="p-10 flex flex-col items-center justify-center text-center">
+                                <Ticket className="w-16 h-16 text-muted-foreground mb-4" />
+                                <h3 className="font-headline text-xl font-semibold mb-2">No Bookings Found</h3>
+                                <p className="text-muted-foreground text-sm">No bookings were found for the selected date range.</p>
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>

@@ -43,7 +43,6 @@ export function RecentBookings({ bookings, routes }: RecentBookingsProps) {
     });
   }, [searchTerm, bookings, routes]);
   
-  // Sort bookings by most recent (already sorted by query, but good for client-side filtering)
   const sortedBookings = useMemo(() => {
       return [...filteredBookings].sort((a, b) => new Date(b.bookingTime).getTime() - new Date(a.bookingTime).getTime());
   }, [filteredBookings]);
@@ -69,50 +68,86 @@ export function RecentBookings({ bookings, routes }: RecentBookingsProps) {
         </div>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="max-h-[500px] w-full">
-            <Table>
-            <TableHeader>
-                <TableRow>
-                <TableHead>Ticket ID</TableHead>
-                <TableHead>Passenger</TableHead>
-                <TableHead>Route</TableHead>
-                <TableHead>Seats</TableHead>
-                <TableHead>Booking Date</TableHead>
-                <TableHead className="text-right">Price</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {sortedBookings.length > 0 ? (
-                    sortedBookings.map(booking => {
-                    const route = routes.find(r => r.id === booking.routeId);
-                    return (
-                    <TableRow key={booking.id}>
-                        <TableCell className="font-medium">
-                        <Badge variant="outline">{booking.id.substring(0, 8)}...</Badge>
-                        </TableCell>
-                        <TableCell>{booking.passengerName}</TableCell>
-                        <TableCell>{route ? `${route.origin.name} → ${route.destination.name}` : "N/A"}</TableCell>
-                        <TableCell>{booking.bookedSeats.map(s => s.seatNumber).join(', ')}</TableCell>
-                        <TableCell>{new Date(booking.bookingTime).toLocaleDateString()}</TableCell>
-                        <TableCell className="text-right">{booking.totalPrice.toFixed(2)} ETB</TableCell>
-                    </TableRow>
-                    )
-                })
-                ) : (
+        {sortedBookings.length > 0 ? (
+          <div className="w-full">
+            {/* Mobile View - Card List */}
+            <div className="md:hidden space-y-4">
+              {sortedBookings.map(booking => {
+                const route = routes.find(r => r.id === booking.routeId);
+                return (
+                  <div key={booking.id} className="p-4 border rounded-lg">
+                    <div className="flex justify-between items-start">
+                      <div className="font-semibold">{booking.passengerName}</div>
+                      <Badge variant="outline" className="text-xs">
+                        {booking.id.substring(0, 8)}...
+                      </Badge>
+                    </div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      {route ? `${route.origin.name} → ${route.destination.name}` : "N/A"}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-sm items-center justify-between">
+                      <div>
+                        <span className="font-semibold">Seats:</span> {booking.bookedSeats.map(s => s.seatNumber).join(', ')}
+                      </div>
+                      <div className="font-semibold text-primary">{booking.totalPrice.toFixed(2)} ETB</div>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-2">
+                      {new Date(booking.bookingTime).toLocaleDateString()}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop View - Table */}
+            <div className="hidden md:block">
+              <ScrollArea className="max-h-[500px] w-full">
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center">
-                            No results found.
-                        </TableCell>
+                      <TableHead>Ticket ID</TableHead>
+                      <TableHead>Passenger</TableHead>
+                      <TableHead>Route</TableHead>
+                      <TableHead>Seats</TableHead>
+                      <TableHead>Booking Date</TableHead>
+                      <TableHead className="text-right">Price</TableHead>
                     </TableRow>
-                )}
-            </TableBody>
-            </Table>
-        </ScrollArea>
-        {bookings.length === 0 && (
-             <div className="text-center p-8 text-muted-foreground">
+                  </TableHeader>
+                  <TableBody>
+                    {sortedBookings.map(booking => {
+                      const route = routes.find(r => r.id === booking.routeId);
+                      return (
+                        <TableRow key={booking.id}>
+                          <TableCell className="font-medium">
+                            <Badge variant="outline">{booking.id.substring(0, 8)}...</Badge>
+                          </TableCell>
+                          <TableCell>{booking.passengerName}</TableCell>
+                          <TableCell>{route ? `${route.origin.name} → ${route.destination.name}` : "N/A"}</TableCell>
+                          <TableCell>{booking.bookedSeats.map(s => s.seatNumber).join(', ')}</TableCell>
+                          <TableCell>{new Date(booking.bookingTime).toLocaleDateString()}</TableCell>
+                          <TableCell className="text-right">{booking.totalPrice.toFixed(2)} ETB</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center p-8 text-muted-foreground">
+            {searchTerm ? (
+              <>
+                <Search className="mx-auto h-12 w-12" />
+                <p className="mt-4">No results found for your search.</p>
+              </>
+            ) : (
+              <>
                 <Ticket className="mx-auto h-12 w-12" />
                 <p className="mt-4">No bookings have been made yet.</p>
-              </div>
+              </>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>
