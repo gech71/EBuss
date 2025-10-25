@@ -10,7 +10,7 @@ import { headers } from 'next/headers';
 const MAX_SCAN_ATTEMPTS_PER_MINUTE = 20;
 
 async function getIP(request: NextRequest) {
-    const headersList = await headers();
+    const headersList = headers();
     const forwardedFor = headersList.get('x-forwarded-for');
     if (forwardedFor) {
         return forwardedFor.split(',')[0].trim();
@@ -27,7 +27,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const ip = getIP(request);
+  const ip = await getIP(request);
   
   if (ip) {
       const now = new Date();
