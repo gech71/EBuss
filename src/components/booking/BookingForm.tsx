@@ -120,6 +120,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
     formData.append('routeId', selectedRoute.id);
     formData.append('selectedSeatNumbers', JSON.stringify(selectedSeats.map(s => s.seatNumber)));
     formData.append('totalPrice', finalPrice.toString());
+    formData.append('passengerPhone', passengerPhone);
 
     startTransition(async () => {
       const result = await createBookingAction(formData);
@@ -153,6 +154,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
         if (!authToken) {
             setShowConfirmation(true);
         } else {
+             router.push(`/ticket/${result.bookingId}`);
         }
 
       } else {
@@ -320,3 +322,5 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
     </>
   );
 }
+
+    
