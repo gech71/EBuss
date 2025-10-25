@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -34,7 +35,9 @@ interface MyTicketsClientPageProps {
 
 function TicketCard({ booking }: { booking: EnrichedBooking }) {
     const { route } = booking;
-    const qrCodeData = encodeURIComponent(JSON.stringify({ ticketId: booking.id }));
+    const qrCodePayload = JSON.stringify({ ticketId: booking.id });
+    const base64Payload = btoa(qrCodePayload);
+    const qrCodeData = encodeURIComponent(base64Payload);
 
     return (
       <Dialog>

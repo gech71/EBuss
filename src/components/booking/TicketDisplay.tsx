@@ -42,7 +42,9 @@ export function TicketDisplay({ booking }: TicketDisplayProps) {
   const { route } = booking;
   const { bus } = route;
 
-  const qrCodeData = encodeURIComponent(JSON.stringify({ ticketId: booking.id }));
+  const qrCodePayload = JSON.stringify({ ticketId: booking.id });
+  const base64Payload = btoa(qrCodePayload);
+  const qrCodeData = encodeURIComponent(base64Payload);
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${qrCodeData}&bgcolor=F0F8FF`;
   const seatNumbers = booking.bookedSeats.map(s => s.seatNumber).join(', ');
   

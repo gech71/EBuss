@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -35,11 +36,12 @@ export function QRScanner() {
     }
   }, []);
 
-  const handleScanResult = useCallback(async (decodedQR: string) => {
+  const handleScanResult = useCallback(async (encodedData: string) => {
     stopScan();
-    console.log("QR Code detected:", decodedQR);
+    console.log("QR Code detected:", encodedData);
     try {
-        const { ticketId } = JSON.parse(decodedQR);
+        const decodedData = atob(encodedData);
+        const { ticketId } = JSON.parse(decodedData);
         if (!ticketId) throw new Error("Invalid QR code format.");
 
         console.log(`Sending scan request for ticketId: ${ticketId}`);
