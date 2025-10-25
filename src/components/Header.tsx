@@ -19,6 +19,68 @@ export function Header({ user, isMiniApp = false }: HeaderProps) {
   const isAdminPage = pathname.startsWith('/admin') && !pathname.startsWith('/super-admin');
   const isSuperAdminPage = pathname.startsWith('/super-admin');
 
+  const renderNavContent = () => {
+    // Priority 1: Mini App
+    if (isMiniApp) {
+      return (
+        <Button asChild variant="ghost" size="sm">
+            <Link href="/my-tickets">
+                <Ticket className="mr-2 h-4 w-4" />
+                My Tickets
+            </Link>
+        </Button>
+      );
+    }
+
+    // Priority 2: Logged-in Web User
+    if (user) {
+      return (
+        <>
+            <Button asChild variant="ghost" size="sm">
+                <Link href="/my-tickets">
+                <Ticket className="mr-2 h-4 w-4" />
+                My Tickets
+                </Link>
+            </Button>
+            {user?.role === 'ADMIN' && (
+                <Button asChild variant={isAdminPage ? 'secondary' : 'ghost'} size="sm">
+                <Link href="/admin">
+                    <Shield className="mr-2 h-4 w-4" />
+                    Admin
+                </Link>
+                </Button>
+            )}
+            {user?.role === 'SUPER_ADMIN' && (
+                <Button asChild variant={isSuperAdminPage ? 'secondary' : 'ghost'} size="sm">
+                <Link href="/super-admin">
+                    <Gem className="mr-2 h-4 w-4" />
+                    Super Admin
+                </Link>
+                </Button>
+            )}
+        </>
+      );
+    }
+    
+    // Priority 3: Logged-out Web User
+    return (
+        <>
+            <Button asChild variant="ghost" size="sm">
+                <Link href="/my-tickets">
+                    <Ticket className="mr-2 h-4 w-4" />
+                    My Tickets
+                </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+                <Link href="/login">
+                    <LogIn className="mr-2 h-4 w-4" />
+                    Login / Register
+                </Link>
+            </Button>
+        </>
+    );
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card shadow-sm">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -36,58 +98,7 @@ export function Header({ user, isMiniApp = false }: HeaderProps) {
         </div>
         
         <nav className="flex items-center gap-4">
-            {!user && !isMiniApp && (
-                <>
-                    <Button asChild variant="ghost" size="sm">
-                        <Link href="/my-tickets">
-                            <Ticket className="mr-2 h-4 w-4" />
-                            My Tickets
-                        </Link>
-                    </Button>
-                    <Button asChild variant="outline" size="sm">
-                        <Link href="/login">
-                            <LogIn className="mr-2 h-4 w-4" />
-                            Login / Register
-                        </Link>
-                    </Button>
-                </>
-            )}
-
-            {user && (
-                 <>
-                    <Button asChild variant="ghost" size="sm">
-                        <Link href="/my-tickets">
-                        <Ticket className="mr-2 h-4 w-4" />
-                        My Tickets
-                        </Link>
-                    </Button>
-                    {user?.role === 'ADMIN' && (
-                        <Button asChild variant={isAdminPage ? 'secondary' : 'ghost'} size="sm">
-                        <Link href="/admin">
-                            <Shield className="mr-2 h-4 w-4" />
-                            Admin
-                        </Link>
-                        </Button>
-                    )}
-                    {user?.role === 'SUPER_ADMIN' && (
-                        <Button asChild variant={isSuperAdminPage ? 'secondary' : 'ghost'} size="sm">
-                        <Link href="/super-admin">
-                            <Gem className="mr-2 h-4 w-4" />
-                            Super Admin
-                        </Link>
-                        </Button>
-                    )}
-                </>
-            )}
-
-            {isMiniApp && (
-                 <Button asChild variant="ghost" size="sm">
-                    <Link href="/my-tickets">
-                        <Ticket className="mr-2 h-4 w-4" />
-                        My Tickets
-                    </Link>
-                </Button>
-            )}
+            {renderNavContent()}
         </nav>
       </div>
     </header>
