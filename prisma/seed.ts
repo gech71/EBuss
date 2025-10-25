@@ -1,5 +1,5 @@
 
-import { PrismaClient, Role, SeatStatus, SeatType } from '@prisma/client';
+import { PrismaClient, Role, SeatStatus, SeatType, BookingStatus, PaymentStatus } from '@prisma/client';
 import { Argon2id } from 'oslo/password';
 import { generateId } from 'lucia';
 
@@ -116,6 +116,35 @@ async function main() {
   });
   console.log('Created users.');
   
+    // --- Create Locations ---
+  const locationNames = ['Addis Ababa', 'Bahir Dar', 'Gondar', 'Mekelle', 'Hawassa', 'Dire Dawa', 'Jimma', 'Adama', 'Axum', 'Lalibela', 'Dessie', 'Harar'];
+  const locations = await Promise.all(
+    locationNames.map(name =>
+      prisma.location.create({
+        data: {
+          name,
+          // In a real app, you might want to associate locations with owners,
+          // but for simplicity, we'll make them global for all owners in the seed.
+          // To do that, we'd create locations per owner. For now, let's keep it simple.
+          ownerId: owner1.id, // Assign to one owner, but they can be used by all.
+        }
+      })
+    )
+  );
+
+  // Also create locations for other owners to ensure they have some
+  await prisma.location.createMany({
+      data: locationNames.map(name => ({ name: `${name} (Abay)`, ownerId: owner2.id })),
+      skipDuplicates: true
+  });
+   await prisma.location.createMany({
+      data: locationNames.map(name => ({ name: `${name} (Golden)`, ownerId: owner3.id })),
+      skipDuplicates: true
+  });
+  
+  console.log('Created locations.');
+
+
   // Helper function to generate seats
     const generateSeats = (rows: number, cols: number, aisleCols: number[], lastRowFull: boolean = false) => {
         const seats = [];
@@ -157,4 +186,152 @@ async function main() {
   });
 
   const bus4 = await prisma.bus.create({
-    data:.
+    data: {
+      name: 'Abay Cruiser', capacity: 40, owner: { connect: { id: owner2.id } },
+      layout: { create: { rows: 10, cols: 5, seats: { create: generateSeats(10, 5, [3], false) } } }
+    },
+  });
+
+  const bus5 = await prisma.bus.create({
+    data: {
+      name: 'Golden Swift', capacity: 45, owner: { connect: { id: owner3.id } },
+      layout: { create: { rows: 12, cols: 5, seats: { create: generateSeats(12, 5, [3], true) } } }
+    },
+  });
+  console.log('Created buses.');
+  
+  const allBuses = [bus1, bus2, bus3, bus4, bus5];
+
+  // --- Create Discounts ---
+  const discount1 = await prisma.discount.create({
+    data: {
+      name: 'Early Bird Special',
+      startDate: new Date(),
+      endDate: new Date(new Date().setDate(new Date().getDate() + 30)),
+      owner: { connect: { id: owner1.id } },
+      tiers: {
+        create: [
+          { minTickets: 2, maxTickets: 4, percentage: 10 },
+          { minTickets: 5, maxTickets: 10, percentage: 15 },
+        ]
+      }
+    }
+  });
+  
+  const discount2 = await prisma.discount.create({
+    data: {
+      name: 'Weekend Getaway',
+      startDate: new Date(),
+      endDate: new Date(new Date().setDate(new Date().getDate() + 60)),
+      owner: { connect: { id: owner2.id } },
+      tiers: {
+        create: [
+          { minTickets: 3, maxTickets: 10, percentage: 12 },
+        ]
+      }
+    }
+  });
+
+  console.log('Created discounts.');
+
+  // --- Create Routes ---
+  const routesToCreate = [];
+  const routeCount = 50; // Create 50 routes
+  for (let i = 0; i < routeCount; i++) {
+    const bus = allBuses[i % allBuses.length];
+    const departureDaysOffset = Math.floor(Math.random() * 60) - 30; // -30 to +29 days from now
+    const departureHour = Math.floor(Math.random() * 12) + 6; // 6 AM to 5 PM
+    const travelHours = Math.floor(Math.random() * 8) + 2; // 2 to 9 hours travel time
+
+    const departureTime = new Date();
+    departureTime.setDate(departureTime.getDate() + departureDaysOffset);
+    departureTime.setHours(departureHour, 0, 0, 0);
+
+    const arrivalTime = new Date(departureTime.getTime() + travelHours * 60 * 60 * 1000);
+    
+    let origin, destination;
+    do {
+      origin = locations[Math.floor(Math.random() * locations.length)];
+      destination = locations[Math.floor(Math.random() * locations.length)];
+    } while (origin.id === destination.id);
+
+    routesToCreate.push({
+      originId: origin.id,
+      destinationId: destination.id,
+      departureTime,
+      arrivalTime,
+      price: Math.floor(Math.random() * 500) + 150, // Price between 150 and 649
+      busId: bus.id,
+      discountId: (i % 3 === 0) ? (bus.ownerId === owner1.id ? discount1.id : (bus.ownerId === owner2.id ? discount2.id : null)) : null,
+    });
+  }
+
+  await prisma.route.createMany({
+    data: routesToCreate,
+  });
+  console.log(`Created ${routeCount} routes.`);
+  
+  // --- Create Bookings for past routes for analytics ---
+  const pastRoutes = await prisma.route.findMany({
+      where: {
+          departureTime: {
+              lt: new Date()
+          }
+      },
+      include: {
+          bus: { include: { layout: { include: { seats: true }}}}
+      }
+  });
+
+  const bookingsToCreate = [];
+  for (const route of pastRoutes) {
+      if (!route.bus.layout) continue;
+
+      const availableSeats = route.bus.layout.seats.filter(s => s.type === 'SEAT');
+      const seatsToBookCount = Math.min(availableSeats.length, Math.floor(Math.random() * (route.bus.capacity / 2)) + 5);
+      
+      if (seatsToBookCount > 0) {
+          const seatsToBook = availableSeats.slice(0, seatsToBookCount);
+          const bookingId = generateId(15);
+          bookingsToCreate.push(
+              prisma.booking.create({
+                  data: {
+                      id: bookingId,
+                      passengerName: `Passenger ${Math.floor(Math.random() * 1000)}`,
+                      passengerPhone: `09${String(Math.floor(Math.random() * 100000000)).padStart(8, '0')}`,
+                      totalPrice: route.price * seatsToBookCount,
+                      routeId: route.id,
+                      status: BookingStatus.VALID,
+                      paymentStatus: PaymentStatus.PAID,
+                      bookedSeats: {
+                          create: seatsToBook.map(s => ({ seatNumber: s.seatNumber }))
+                      },
+                      payments: {
+                          create: {
+                              amount: route.price * seatsToBookCount,
+                              status: PaymentStatus.PAID,
+                              transactionId: generateId(20),
+                              referenceNumber: generateId(15)
+                          }
+                      }
+                  }
+              })
+          )
+      }
+  }
+
+  await Promise.all(bookingsToCreate);
+  console.log(`Created ${bookingsToCreate.length} historical bookings.`);
+
+
+  console.log('Seeding finished.');
+}
+
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
