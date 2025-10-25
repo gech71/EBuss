@@ -36,49 +36,58 @@ export function Header({ user, isMiniApp = false }: HeaderProps) {
         </div>
         
         <nav className="flex items-center gap-4">
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/my-tickets">
-              <Ticket className="mr-2 h-4 w-4" />
-              My Tickets
-            </Link>
-          </Button>
-          {!isMiniApp && !user && (
-            <>
-              <Button asChild variant="outline" size="sm">
-                  <Link href="/login">
-                  <LogIn className="mr-2 h-4 w-4" />
-                  Login / Register
-                  </Link>
-              </Button>
-            </>
-          )}
+            {!user && !isMiniApp && (
+                <>
+                    <Button asChild variant="ghost" size="sm">
+                        <Link href="/my-tickets">
+                            <Ticket className="mr-2 h-4 w-4" />
+                            My Tickets
+                        </Link>
+                    </Button>
+                    <Button asChild variant="outline" size="sm">
+                        <Link href="/login">
+                            <LogIn className="mr-2 h-4 w-4" />
+                            Login / Register
+                        </Link>
+                    </Button>
+                </>
+            )}
 
-          {!isMiniApp && user && (
-            <>
-                <Button asChild variant="ghost" size="sm">
+            {user && (
+                 <>
+                    <Button asChild variant="ghost" size="sm">
+                        <Link href="/my-tickets">
+                        <Ticket className="mr-2 h-4 w-4" />
+                        My Tickets
+                        </Link>
+                    </Button>
+                    {user?.role === 'ADMIN' && (
+                        <Button asChild variant={isAdminPage ? 'secondary' : 'ghost'} size="sm">
+                        <Link href="/admin">
+                            <Shield className="mr-2 h-4 w-4" />
+                            Admin
+                        </Link>
+                        </Button>
+                    )}
+                    {user?.role === 'SUPER_ADMIN' && (
+                        <Button asChild variant={isSuperAdminPage ? 'secondary' : 'ghost'} size="sm">
+                        <Link href="/super-admin">
+                            <Gem className="mr-2 h-4 w-4" />
+                            Super Admin
+                        </Link>
+                        </Button>
+                    )}
+                </>
+            )}
+
+            {isMiniApp && (
+                 <Button asChild variant="ghost" size="sm">
                     <Link href="/my-tickets">
-                    <Ticket className="mr-2 h-4 w-4" />
-                    My Tickets
+                        <Ticket className="mr-2 h-4 w-4" />
+                        My Tickets
                     </Link>
                 </Button>
-                 {user?.role === 'ADMIN' && (
-                    <Button asChild variant={isAdminPage ? 'secondary' : 'ghost'} size="sm">
-                    <Link href="/admin">
-                        <Shield className="mr-2 h-4 w-4" />
-                        Admin
-                    </Link>
-                    </Button>
-                )}
-                {user?.role === 'SUPER_ADMIN' && (
-                    <Button asChild variant={isSuperAdminPage ? 'secondary' : 'ghost'} size="sm">
-                    <Link href="/super-admin">
-                        <Gem className="mr-2 h-4 w-4" />
-                        Super Admin
-                    </Link>
-                    </Button>
-                )}
-            </>
-          )}
+            )}
         </nav>
       </div>
     </header>
