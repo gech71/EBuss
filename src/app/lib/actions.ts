@@ -144,9 +144,10 @@ export async function logout(): Promise<ActionResult> {
 	const sessionCookie = lucia.createBlankSessionCookie();
 	cookieStore.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
   
-  cookieStore.set('csrf_token', '', { expires: new Date(0), path: '/' });
+    cookieStore.set('csrf_token', '', { expires: new Date(0), path: '/' });
 	
-  return redirect("/login");
+    // We no longer redirect from the server action. Client will handle navigation.
+    return { success: true };
 }
 
 const passwordPolicy = z.string()

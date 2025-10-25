@@ -16,8 +16,8 @@ import { useSidebar } from './ui/sidebar';
 import { cn } from '@/lib/utils';
 import type { User } from 'lucia';
 import { logout } from '@/app/lib/actions';
-import { BusOwner } from '@prisma/client';
-import { useState, useEffect } from 'react';
+import { useTransition } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 interface UserNavProps {
   user: User | null;
@@ -26,10 +26,20 @@ interface UserNavProps {
 
 export function UserNav({ user, ownerName }: UserNavProps) {
   const { state: sidebarState } = useSidebar();
+  const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
   
   if (!user) {
     return null;
   }
+
+  const handleLogout = async () => {
+    startTransition(async () => {
+      await logout();
+      toast({ title: "Logged Out", description: "You have been successfully logged out." });
+      window.location.href = '/login';
+    });
+  };
   
   const userInitial = user.name ? user.name.charAt(0).toUpperCase() : 'U';
 
@@ -61,14 +71,10 @@ export function UserNav({ user, ownerName }: UserNavProps) {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <form action={logout}>
-            <button type="submit" className="w-full">
-              <DropdownMenuItem className="w-full cursor-pointer">
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
-              </DropdownMenuItem>
-            </button>
-          </form>
+          <DropdownMenuItem className="w-full cursor-pointer" onSelect={(e) => { e.preventDefault(); handleLogout(); }} disabled={isPending}>
+            <LogOut className="mr-2 h-4 w-4" />
+            <span>{isPending ? 'Logging out...' : 'Log out'}</span>
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     );
@@ -117,14 +123,10 @@ export function UserNav({ user, ownerName }: UserNavProps) {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <form action={logout}>
-            <button type="submit" className="w-full">
-              <DropdownMenuItem className="w-full cursor-pointer">
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
-              </DropdownMenuItem>
-            </button>
-          </form>
+        <DropdownMenuItem className="w-full cursor-pointer" onSelect={(e) => { e.preventDefault(); handleLogout(); }} disabled={isPending}>
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>{isPending ? 'Logging out...' : 'Log out'}</span>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
