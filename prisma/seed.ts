@@ -33,7 +33,7 @@ async function main() {
   const owner1 = await prisma.busOwner.create({
     data: {
       id: generateId(15),
-      name: 'FleetFirst Inc.',
+      name: 'Selam Bus Lines',
       bankAccountNumber: '7000101633387',
       commissionTiers: {
         create: [
@@ -47,7 +47,7 @@ async function main() {
   const owner2 = await prisma.busOwner.create({
     data: {
       id: generateId(15),
-      name: 'RoadRunner Co.',
+      name: 'Abay Bus Service',
       bankAccountNumber: '7000202744498',
       commissionTiers: {
         create: [
@@ -113,7 +113,7 @@ async function main() {
   // Create Buses for Owner 1
   const bus1 = await prisma.bus.create({
     data: {
-      name: 'FF-01 Luxury Liner',
+      name: 'Selam Class 1',
       capacity: 45,
       owner: {
         connect: {
@@ -134,7 +134,7 @@ async function main() {
 
   const bus2 = await prisma.bus.create({
     data: {
-      name: 'FF-02 Express',
+      name: 'Selam Express',
       capacity: 40,
       owner: {
         connect: {
@@ -156,7 +156,7 @@ async function main() {
   // Create Buses for Owner 2
   const bus3 = await prisma.bus.create({
     data: {
-      name: 'RR-Cruiser',
+      name: 'Abay Special',
       capacity: 49,
       owner: {
         connect: {
@@ -237,3 +237,5 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+
+    
