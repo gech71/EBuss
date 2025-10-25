@@ -22,7 +22,7 @@ interface SeatProps {
 
 function Seat({ seat }: SeatProps) {
   const seatClasses = cn(
-    'flex items-center justify-center w-10 h-10 rounded-md font-semibold text-xs',
+    'flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-md font-semibold text-xs transition-all',
     seat.type === 'SEAT' && 'border-2',
     seat.status === 'AVAILABLE' && 'bg-green-100 border-green-400 text-green-800 dark:bg-green-900/50 dark:border-green-800 dark:text-green-300',
     seat.status === 'OCCUPIED' && 'bg-muted border-muted-foreground/30 text-muted-foreground',
@@ -129,7 +129,7 @@ export function BusActions({ bus }: BusActionsProps) {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-        <DialogContent className="max-w-fit">
+        <DialogContent className="max-w-full sm:max-w-fit">
           <DialogHeader>
             <DialogTitle>Seat Layout for {bus.name}</DialogTitle>
             <DialogDescription>
@@ -140,7 +140,7 @@ export function BusActions({ bus }: BusActionsProps) {
             <div className="flex flex-col items-center pt-4">
                <ScrollArea className="h-[60vh] w-full">
                 <div 
-                  className="grid gap-2 p-4 bg-muted/30 rounded-lg border-2 border-dashed w-full" 
+                  className="grid gap-1 md:gap-2 p-2 md:p-4 bg-muted/30 rounded-lg border-2 border-dashed w-full" 
                   style={{ gridTemplateColumns: `repeat(${bus.layout.cols}, minmax(0, 1fr))` }}
                 >
                   {sortedSeats.map(seat => (
