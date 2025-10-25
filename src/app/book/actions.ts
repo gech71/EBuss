@@ -78,7 +78,6 @@ export async function createBookingAction(formData: FormData) {
         data: {
           passengerName,
           passengerPhone,
-          passengerEmail: null, // Set to null as it's not collected anymore
           totalPrice,
           routeId,
           status: BookingStatus.PENDING,
