@@ -7,14 +7,16 @@ import { usePathname } from 'next/navigation';
 import { Shield, Gem, LogIn, Ticket } from 'lucide-react';
 import { SidebarTrigger } from './ui/sidebar';
 import type { User } from 'lucia';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface HeaderProps {
     user: User | null;
-    isMiniApp?: boolean;
+    isMiniApp: boolean;
 }
 
 export function Header({ user, isMiniApp = false }: HeaderProps) {
   const pathname = usePathname();
+  const isMobile = useIsMobile();
 
   const isAdminPage = pathname.startsWith('/admin') && !pathname.startsWith('/super-admin');
   const isSuperAdminPage = pathname.startsWith('/super-admin');
@@ -23,10 +25,10 @@ export function Header({ user, isMiniApp = false }: HeaderProps) {
     // Priority 1: Mini App
     if (isMiniApp) {
       return (
-        <Button asChild variant="ghost" size="sm">
+        <Button asChild variant="ghost" size={isMobile ? "icon" : "sm"}>
             <Link href="/my-tickets">
-                <Ticket className="mr-2 h-4 w-4" />
-                My Tickets
+                <Ticket />
+                <span className="sr-only md:not-sr-only md:ml-2">My Tickets</span>
             </Link>
         </Button>
       );
@@ -36,26 +38,26 @@ export function Header({ user, isMiniApp = false }: HeaderProps) {
     if (user) {
       return (
         <>
-            <Button asChild variant="ghost" size="sm">
+            <Button asChild variant="ghost" size={isMobile ? "icon" : "sm"}>
                 <Link href="/my-tickets">
-                <Ticket className="mr-2 h-4 w-4" />
-                My Tickets
+                    <Ticket />
+                    <span className="sr-only md:not-sr-only md:ml-2">My Tickets</span>
                 </Link>
             </Button>
             {user?.role === 'ADMIN' && (
-                <Button asChild variant={isAdminPage ? 'secondary' : 'ghost'} size="sm">
-                <Link href="/admin">
-                    <Shield className="mr-2 h-4 w-4" />
-                    Admin
-                </Link>
+                <Button asChild variant={isAdminPage ? 'secondary' : 'ghost'} size={isMobile ? "icon" : "sm"}>
+                    <Link href="/admin">
+                        <Shield />
+                        <span className="sr-only md:not-sr-only md:ml-2">Admin</span>
+                    </Link>
                 </Button>
             )}
             {user?.role === 'SUPER_ADMIN' && (
-                <Button asChild variant={isSuperAdminPage ? 'secondary' : 'ghost'} size="sm">
-                <Link href="/super-admin">
-                    <Gem className="mr-2 h-4 w-4" />
-                    Super Admin
-                </Link>
+                <Button asChild variant={isSuperAdminPage ? 'secondary' : 'ghost'} size={isMobile ? "icon" : "sm"}>
+                    <Link href="/super-admin">
+                        <Gem />
+                        <span className="sr-only md:not-sr-only md:ml-2">Super Admin</span>
+                    </Link>
                 </Button>
             )}
         </>
@@ -64,20 +66,20 @@ export function Header({ user, isMiniApp = false }: HeaderProps) {
     
     // Priority 3: Logged-out Web User
     return (
-        <>
-            <Button asChild variant="ghost" size="sm">
+        <div className="flex items-center gap-2">
+            <Button asChild variant="ghost" size={isMobile ? "icon" : "sm"}>
                 <Link href="/my-tickets">
-                    <Ticket className="mr-2 h-4 w-4" />
-                    My Tickets
+                    <Ticket />
+                    <span className="sr-only md:not-sr-only md:ml-2">My Tickets</span>
                 </Link>
             </Button>
-            <Button asChild variant="outline" size="sm">
+            <Button asChild variant="outline" size={isMobile ? "icon" : "sm"}>
                 <Link href="/login">
-                    <LogIn className="mr-2 h-4 w-4" />
-                    Login / Register
+                    <LogIn />
+                    <span className="sr-only md:not-sr-only md:ml-2">Login</span>
                 </Link>
             </Button>
-        </>
+        </div>
     );
   };
 
