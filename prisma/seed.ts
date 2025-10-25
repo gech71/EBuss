@@ -27,7 +27,8 @@ async function main() {
   
   console.log('Cleared previous data.');
 
-  const hashedPassword = await new Argon2id().hash('password');
+  const superAdminPassword = await new Argon2id().hash('password');
+  const adminPassword = await new Argon2id().hash('Getaye@123');
 
   // --- Create Bus Owners ---
   const owner1 = await prisma.busOwner.create({
@@ -43,33 +44,7 @@ async function main() {
       },
     },
   });
-
-  const owner2 = await prisma.busOwner.create({
-    data: {
-      id: generateId(15),
-      name: 'Abay Bus Service',
-      bankAccountNumber: '7000202744498',
-      commissionTiers: {
-        create: [
-          { minSales: 1, maxSales: 10000, type: 'PERCENTAGE', value: 6 },
-        ],
-      },
-    },
-  });
-
-  const owner3 = await prisma.busOwner.create({
-    data: {
-      id: generateId(15),
-      name: 'Golden Express',
-      bankAccountNumber: '7000303855509',
-      commissionTiers: {
-        create: [
-          { minSales: 1, maxSales: 20000, type: 'PERCENTAGE', value: 7 },
-        ],
-      },
-    },
-  });
-  console.log('Created bus owners.');
+  console.log('Created bus owner.');
 
   // --- Create Users ---
   await prisma.user.create({
@@ -77,7 +52,7 @@ async function main() {
       id: generateId(15),
       email: 'super@example.com',
       name: 'Super Admin',
-      hashed_password: hashedPassword,
+      hashed_password: superAdminPassword,
       role: Role.SUPER_ADMIN,
     },
   });
@@ -86,82 +61,46 @@ async function main() {
     data: {
       id: generateId(15),
       email: 'admin@example.com',
-      name: 'Admin User One',
-      hashed_password: hashedPassword,
+      name: 'Getaye Temesgen',
+      hashed_password: adminPassword,
       role: Role.ADMIN,
       busOwnerId: owner1.id,
     },
   });
-
-  await prisma.user.create({
-    data: {
-      id: generateId(15),
-      email: 'runner@example.com',
-      name: 'Admin User Two',
-      hashed_password: hashedPassword,
-      role: Role.ADMIN,
-      busOwnerId: owner2.id,
-    },
-  });
-
-  await prisma.user.create({
-    data: {
-      id: generateId(15),
-      email: 'golden@example.com',
-      name: 'Admin Golden',
-      hashed_password: hashedPassword,
-      role: Role.ADMIN,
-      busOwnerId: owner3.id,
-    },
-  });
   console.log('Created users.');
   
-    // --- Create Locations ---
+  // --- Create Locations ---
   const locationNames = ['Addis Ababa', 'Bahir Dar', 'Gondar', 'Mekelle', 'Hawassa', 'Dire Dawa', 'Jimma', 'Adama', 'Axum', 'Lalibela', 'Dessie', 'Harar'];
   const locations = await Promise.all(
     locationNames.map(name =>
       prisma.location.create({
         data: {
           name,
-          // In a real app, you might want to associate locations with owners,
-          // but for simplicity, we'll make them global for all owners in the seed.
-          // To do that, we'd create locations per owner. For now, let's keep it simple.
-          ownerId: owner1.id, // Assign to one owner, but they can be used by all.
+          ownerId: owner1.id,
         }
       })
     )
   );
-
-  // Also create locations for other owners to ensure they have some
-  await prisma.location.createMany({
-      data: locationNames.map(name => ({ name: `${name} (Abay)`, ownerId: owner2.id })),
-      skipDuplicates: true
-  });
-   await prisma.location.createMany({
-      data: locationNames.map(name => ({ name: `${name} (Golden)`, ownerId: owner3.id })),
-      skipDuplicates: true
-  });
   
   console.log('Created locations.');
 
-
   // Helper function to generate seats
-    const generateSeats = (rows: number, cols: number, aisleCols: number[], lastRowFull: boolean = false) => {
-        const seats = [];
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
-            const isLastRow = r === rows - 1;
-            const isAisle = aisleCols.includes(c + 1) && !(lastRowFull && isLastRow);
-            
-            seats.push({
-                seatNumber: `${String.fromCharCode(65 + r)}${c + 1}`,
-                status: SeatStatus.AVAILABLE,
-                type: isAisle ? SeatType.AISLE : SeatType.SEAT,
-            });
-            }
-        }
-        return seats;
-    };
+  const generateSeats = (rows: number, cols: number, aisleCols: number[], lastRowFull: boolean = false) => {
+      const seats = [];
+      for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+          const isLastRow = r === rows - 1;
+          const isAisle = aisleCols.includes(c + 1) && !(lastRowFull && isLastRow);
+          
+          seats.push({
+              seatNumber: `${String.fromCharCode(65 + r)}${c + 1}`,
+              status: SeatStatus.AVAILABLE,
+              type: isAisle ? SeatType.AISLE : SeatType.SEAT,
+          });
+          }
+      }
+      return seats;
+  };
 
   // --- Create Buses ---
   const bus1 = await prisma.bus.create({
@@ -180,21 +119,21 @@ async function main() {
 
   const bus3 = await prisma.bus.create({
     data: {
-      name: 'Abay Special', capacity: 49, owner: { connect: { id: owner2.id } },
+      name: 'Selam Special', capacity: 49, owner: { connect: { id: owner1.id } },
       layout: { create: { rows: 13, cols: 5, seats: { create: generateSeats(13, 5, [3], true) } } }
     },
   });
 
   const bus4 = await prisma.bus.create({
     data: {
-      name: 'Abay Cruiser', capacity: 40, owner: { connect: { id: owner2.id } },
+      name: 'Selam Cruiser', capacity: 40, owner: { connect: { id: owner1.id } },
       layout: { create: { rows: 10, cols: 5, seats: { create: generateSeats(10, 5, [3], false) } } }
     },
   });
 
   const bus5 = await prisma.bus.create({
     data: {
-      name: 'Golden Swift', capacity: 45, owner: { connect: { id: owner3.id } },
+      name: 'Selam Swift', capacity: 45, owner: { connect: { id: owner1.id } },
       layout: { create: { rows: 12, cols: 5, seats: { create: generateSeats(12, 5, [3], true) } } }
     },
   });
@@ -223,7 +162,7 @@ async function main() {
       name: 'Weekend Getaway',
       startDate: new Date(),
       endDate: new Date(new Date().setDate(new Date().getDate() + 60)),
-      owner: { connect: { id: owner2.id } },
+      owner: { connect: { id: owner1.id } },
       tiers: {
         create: [
           { minTickets: 3, maxTickets: 10, percentage: 12 },
@@ -262,7 +201,7 @@ async function main() {
       arrivalTime,
       price: Math.floor(Math.random() * 500) + 150, // Price between 150 and 649
       busId: bus.id,
-      discountId: (i % 3 === 0) ? (bus.ownerId === owner1.id ? discount1.id : (bus.ownerId === owner2.id ? discount2.id : null)) : null,
+      discountId: (i % 2 === 0) ? discount1.id : null, // Assign discount to half the routes
     });
   }
 
