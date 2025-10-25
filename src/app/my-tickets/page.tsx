@@ -2,6 +2,7 @@
 import { Header } from '@/components/Header';
 import { cookies } from 'next/headers';
 import { MyTicketsClientPage } from '@/components/my-tickets/MyTicketsClientPage';
+import { validateRequest } from '@/app/lib/auth';
 
 async function getMiniAppData() {
     const cookieStore =  await cookies();
@@ -24,11 +25,12 @@ async function getMiniAppData() {
 
 
 export default async function MyTicketsPage() {
-    const { isMiniApp, phoneNumber } = getMiniAppData();
+    const { user } = await validateRequest();
+    const { isMiniApp, phoneNumber } = await getMiniAppData();
     
     return (
         <div className="flex flex-col min-h-screen bg-muted/20">
-            <Header user={null} isMiniApp={isMiniApp} />
+            <Header user={user} isMiniApp={isMiniApp} />
             <main className="flex-1 container mx-auto py-8 px-4">
                <MyTicketsClientPage isMiniApp={isMiniApp} phoneNumberFromSession={phoneNumber} />
             </main>
