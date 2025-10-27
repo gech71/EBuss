@@ -4,9 +4,8 @@
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { Argon2id } from 'oslo/password';
+import bcrypt from 'bcrypt';
 import { Role } from '@prisma/client';
-import { generateId } from 'lucia';
 
 const passwordPolicy = z.string()
     .min(8, "Password must be at least 8 characters long.")
@@ -21,6 +20,17 @@ const createUserSchema = z.object({
   password: passwordPolicy,
   ownerId: z.string().min(1, "Bus Owner is required."),
 });
+
+// A simple function to generate a random ID
+function generateId(length: number): string {
+    const characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return result;
+}
+
 
 export async function createUserAction(formData: FormData) {
     const rawData = Object.fromEntries(formData.entries());
@@ -51,7 +61,7 @@ export async function createUserAction(formData: FormData) {
             return { success: false, message: 'A user with this email already exists.' };
         }
 
-        const hashedPassword = await new Argon2id().hash(password);
+        const hashedPassword = await bcrypt.hash(password, 10);
         const userId = generateId(15);
 
         await prisma.user.create({
