@@ -19,6 +19,7 @@ export async function POST(
   const ip = await getIP(request);
   
   if (ip) {
+      console.log(`[SCAN TICKET] Detected IP: ${ip}`);
       const now = new Date();
       const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
 
@@ -28,13 +29,21 @@ export async function POST(
               timestamp: { gte: oneMinuteAgo }
           }
       });
+      console.log(`[SCAN TICKET] Found ${attempts} attempts in the last minute for IP ${ip}.`);
       
       if (attempts >= MAX_SCAN_ATTEMPTS_PER_MINUTE) {
           await logAction({ ipAddress: ip, actionType: 'RATE_LIMIT_EXCEEDED', description: 'Rate limit exceeded for ticket scan API.' });
           return NextResponse.json({ message: 'Too many requests. Please try again in a minute.' }, { status: 429 });
       }
 
-      await prisma.apiRequestAttempt.create({ data: { ipAddress: ip }});
+      try {
+        await prisma.apiRequestAttempt.create({ data: { ipAddress: ip }});
+        console.log(`[SCAN TICKET] Successfully logged new API request attempt for IP ${ip}.`);
+      } catch (dbError) {
+        console.error(`[SCAN TICKET] CRITICAL: Failed to write ApiRequestAttempt to database for IP ${ip}.`, dbError);
+      }
+  } else {
+    console.warn('[SCAN TICKET] Could not determine IP address for rate limiting.');
   }
 
 
