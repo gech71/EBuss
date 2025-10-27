@@ -14,28 +14,16 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { useCsrf } from "@/hooks/useCsrf";
 
 export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
-  const [csrfToken, setCsrfToken] = useState<string>("");
+  const { csrfToken, loading: csrfLoading } = useCsrf();
   const [isPending, startTransition] = useTransition();
   const [lockoutTime, setLockoutTime] = useState(0);
   const router = useRouter();
   const { toast } = useToast();
 
-  useEffect(() => {
-    async function fetchCsrfToken() {
-      try {
-        const response = await fetch(new URL('/api/csrf', window.location.origin));
-        const { token } = await response.json();
-        setCsrfToken(token);
-      } catch (error) {
-        console.error("Failed to fetch CSRF token", error);
-        setErrorMessage("Could not initialize secure session. Please try again.");
-      }
-    }
-    fetchCsrfToken();
-  }, []);
 
   useEffect(() => {
     if (lockoutTime > 0) {
@@ -72,10 +60,11 @@ export default function LoginPage() {
   };
 
   function LoginButton() {
-    const isButtonDisabled = isPending || lockoutTime > 0;
+    const isButtonDisabled = isPending || lockoutTime > 0 || csrfLoading;
     const buttonText = () => {
         if (isPending) return 'Logging in...';
         if (lockoutTime > 0) return `Try again in ${lockoutTime}s`;
+        if (csrfLoading) return 'Initializing...';
         return 'Login';
     }
 
@@ -98,7 +87,7 @@ export default function LoginPage() {
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
-            <input type="hidden" name="csrfToken" value={csrfToken} />
+            <input type="hidden" name="csrfToken" value={csrfToken || ''} />
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
