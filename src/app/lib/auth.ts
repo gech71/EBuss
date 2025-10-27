@@ -3,7 +3,6 @@ import { cookies } from 'next/headers';
 import { SignJWT, jwtVerify } from 'jose';
 import prisma from '@/lib/prisma';
 import type { User } from '@prisma/client';
-import { cache } from 'react';
 
 const secretKey = process.env.JWT_SECRET;
 const key = new TextEncoder().encode(secretKey);
@@ -45,7 +44,7 @@ export async function deleteSession() {
   cookies().set('csrf_token', '', { expires: new Date(0), path: '/' });
 }
 
-export const validateRequest = cache(async (): Promise<{ user: User | null; session: any | null }> => {
+export async function validateRequest(): Promise<{ user: User | null; session: any | null }> {
     const cookieStore = cookies();
     const sessionCookie = cookieStore.get('session')?.value;
     
@@ -71,4 +70,4 @@ export const validateRequest = cache(async (): Promise<{ user: User | null; sess
     const { hashed_password, ...userWithoutPassword } = user;
 
     return { user: userWithoutPassword as User, session: sessionPayload };
-});
+};
