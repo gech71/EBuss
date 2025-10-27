@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import bcrypt from 'bcrypt';
 import { Role } from '@prisma/client';
+import { validateRequest } from '@/lib/server/auth';
 
 const passwordPolicy = z.string()
     .min(8, "Password must be at least 8 characters long.")
@@ -33,6 +34,12 @@ function generateId(length: number): string {
 
 
 export async function createUserAction(formData: FormData) {
+    const { user: superAdmin } = await validateRequest();
+    if (!superAdmin || superAdmin.role !== 'SUPER_ADMIN') {
+        console.error('[AUDIT] Unauthorized attempt to create admin user.');
+        return { success: false, message: 'Unauthorized.' };
+    }
+
     const rawData = Object.fromEntries(formData.entries());
 
     const validatedData = createUserSchema.safeParse(rawData);
@@ -64,7 +71,7 @@ export async function createUserAction(formData: FormData) {
         const hashedPassword = await bcrypt.hash(password, 10);
         const userId = generateId(15);
 
-        await prisma.user.create({
+        const newUser = await prisma.user.create({
             data: {
                 id: userId,
                 name,
@@ -74,12 +81,13 @@ export async function createUserAction(formData: FormData) {
                 role: Role.ADMIN
             }
         });
+        console.log(`[AUDIT] Super admin ${superAdmin.id} created new admin user ${newUser.id} with email "${email}" for owner ${ownerId}.`);
 
         revalidatePath('/super-admin/settings');
         return { success: true, message: 'User created successfully.' };
 
     } catch (error) {
-        console.error("Error creating user:", error);
+        console.error(`[AUDIT] Error creating user by super admin ${superAdmin.id}:`, error);
         return { success: false, message: 'An unexpected error occurred while creating the user.' };
     }
 }

@@ -103,7 +103,7 @@ export async function createBookingAction(formData: FormData) {
           status: 'OCCUPIED'
         }
       });
-
+      console.log(`[AUDIT] Booking ${booking.id} created for passenger ${passengerName} on route ${routeId}. Seats: ${selectedSeatNumbers.join(', ')}`);
       return booking;
     });
 
@@ -111,7 +111,7 @@ export async function createBookingAction(formData: FormData) {
     return { success: true, bookingId: newBooking.id };
     
   } catch (error) {
-    console.error('Booking failed:', error);
+    console.error(`[AUDIT] Booking failed for passenger ${passengerName}:`, error);
     const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
     return { success: false, message };
   }
@@ -138,7 +138,7 @@ export async function createPaymentRequestAction(bookingId: string, amount: numb
     });
 
     if (!bookingWithOwner?.route?.bus?.owner?.bankAccountNumber) {
-        console.error(`Could not find bus owner or bank account for booking ID: ${bookingId}`);
+        console.error(`[AUDIT] Payment failed: Could not find bus owner or bank account for booking ID: ${bookingId}`);
         return { success: false, message: 'Bus owner account details not found.' };
     }
     
@@ -150,7 +150,7 @@ export async function createPaymentRequestAction(bookingId: string, amount: numb
     const CALLBACK_URL = `${process.env.NEXT_PUBLIC_BASE_URL}/api/portal/payment-callback`;
     
     if (!NIB_PAYMENT_URL || !NIB_PAYMENT_KEY) {
-        console.error("Payment environment variables are not set.");
+        console.error("[AUDIT] Payment failed: Server is not configured for payments (missing NIB_PAYMENT_URL or NIB_PAYMENT_KEY).");
         return { success: false, message: 'Server is not configured for payments.' };
     }
 
@@ -166,6 +166,7 @@ export async function createPaymentRequestAction(bookingId: string, amount: numb
                 status: 'PENDING',
             }
         });
+        console.log(`[AUDIT] Payment request created for booking ${bookingId} with transactionId ${transactionId}.`);
 
         const signatureString = [
             `accountNo=${ACCOUNT_NO}`,
@@ -207,12 +208,14 @@ export async function createPaymentRequestAction(bookingId: string, amount: numb
                 where: { transactionId },
                 data: { paymentToken: responseData.token }
             });
+            console.log(`[AUDIT] Successfully received payment token for transaction ${transactionId}.`);
             return { success: true, paymentToken: responseData.token };
         } else {
+             console.error(`[AUDIT] Failed to get payment token for transaction ${transactionId}. Response:`, responseData);
             return { success: false, message: responseData.message || 'Failed to get payment token.' };
         }
     } catch (error) {
-        console.error("Payment request failed:", error);
+        console.error(`[AUDIT] Payment request failed for transaction ${transactionId}:`, error);
         const message = error instanceof Error ? error.message : 'An unexpected error occurred during payment initiation.';
         return { success: false, message };
     }

@@ -32,6 +32,7 @@ export async function createRouteAction(formData: FormData) {
     await validateCsrf(formData.get('csrfToken') as string);
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
+        console.error('[AUDIT] Unauthorized attempt to create route.');
         return { success: false, message: 'Unauthorized' };
     }
 
@@ -91,8 +92,9 @@ export async function createRouteAction(formData: FormData) {
             data: routesToCreate,
         });
 
+        console.log(`[AUDIT] User ${user.id} created ${routesToCreate.length} new routes for buses: ${busIds.join(', ')}.`);
     } catch (error) {
-        console.error("Error creating routes:", error);
+        console.error(`[AUDIT] Error creating routes by user ${user.id}:`, error);
         return { success: false, message: 'An unexpected error occurred.' };
     }
 
@@ -105,6 +107,7 @@ export async function updateRouteAction(formData: FormData) {
     await validateCsrf(formData.get('csrfToken') as string);
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
+        console.error('[AUDIT] Unauthorized attempt to update route.');
         return { success: false, message: 'Unauthorized' };
     }
 
@@ -181,10 +184,11 @@ export async function updateRouteAction(formData: FormData) {
                }
            });
        });
+       console.log(`[AUDIT] User ${user.id} updated route ${routeId}.`);
 
     } catch (error) {
         const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
-        console.error("Error updating route:", error);
+        console.error(`[AUDIT] Error updating route ${routeId} by user ${user.id}:`, error);
         return { success: false, message };
     }
 
@@ -198,6 +202,7 @@ export async function deleteRouteAction(routeId: string, csrfToken: string): Pro
 
   const { user } = await validateRequest();
   if (!user || !user.busOwnerId) {
+      console.error(`[AUDIT] Unauthorized attempt to delete route ${routeId}.`);
       return { success: false, message: 'Unauthorized' };
   }
 
@@ -222,6 +227,7 @@ export async function deleteRouteAction(routeId: string, csrfToken: string): Pro
     });
 
     if (bookingCount > 0) {
+      console.warn(`[AUDIT] User ${user.id} failed to delete route ${routeId} as it has ${bookingCount} bookings.`);
       return {
         success: false,
         message: `This route cannot be deleted because it has ${bookingCount} associated booking(s).`,
@@ -234,10 +240,11 @@ export async function deleteRouteAction(routeId: string, csrfToken: string): Pro
       },
     });
 
+    console.log(`[AUDIT] User ${user.id} deleted route ${routeId}.`);
     revalidatePath('/admin/routes');
     return { success: true, message: 'Route has been deleted.' };
   } catch (error) {
-    console.error('Error deleting route:', error);
+    console.error(`[AUDIT] Error deleting route ${routeId} by user ${user.id}:`, error);
     return { success: false, message: 'An unexpected error occurred.' };
   }
 }

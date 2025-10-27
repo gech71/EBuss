@@ -39,6 +39,7 @@ export async function validateCsrf(tokenFromRequest: string | FormData) {
     }
 
     if (!token || !tokenFromCookie || token !== tokenFromCookie) {
+        console.warn(`[AUDIT] Invalid CSRF token received.`);
         throw new Error('Invalid CSRF token.');
     }
 }
@@ -49,6 +50,7 @@ export async function authenticate(
   formData: FormData
 ): Promise<string | undefined> {
   const ip = await getIP();
+  const email = formData.get('email') as string;
 
   if (ip) {
       const now = new Date();
@@ -65,6 +67,7 @@ export async function authenticate(
       if (attempts.length >= MAX_LOGIN_ATTEMPTS) {
           const firstAttemptTime = attempts[0].timestamp.getTime();
           const timeLeft = Math.ceil((firstAttemptTime + (LOGIN_ATTEMPT_WINDOW_SECONDS * 1000) - now.getTime()) / 1000);
+          console.warn(`[AUDIT] Rate limit exceeded for login attempts from IP: ${ip}`);
           return `Too many login attempts. Please try again in ${timeLeft} seconds.`;
       }
   }
@@ -73,7 +76,6 @@ export async function authenticate(
   try {
     await validateCsrf(formData);
 
-    const email = formData.get('email') as string;
     const password = formData.get('password') as string;
 
     if (!email || !password) {
@@ -90,6 +92,7 @@ export async function authenticate(
       if (ip) {
         await prisma.loginAttempt.create({ data: { ipAddress: ip }});
       }
+      console.warn(`[AUDIT] Failed login attempt for email "${email}" from IP: ${ip}. Reason: User not found.`);
       return 'Invalid email or password.';
     }
 
@@ -102,11 +105,13 @@ export async function authenticate(
       if (ip) {
         await prisma.loginAttempt.create({ data: { ipAddress: ip }});
       }
+      console.warn(`[AUDIT] Failed login attempt for email "${email}" from IP: ${ip}. Reason: Invalid password.`);
       return 'Invalid email or password.';
     }
 
     // Create session
     await createSession(existingUser.id);
+    console.log(`[AUDIT] Successful login for user ${existingUser.id} ("${email}") from IP: ${ip}.`);
 
 
     let redirectPath = '/';
@@ -132,14 +137,15 @@ export async function authenticate(
 }
 
 export async function logout(): Promise<ActionResult> {
-	const { session } = await validateRequest();
-	if (!session) {
+	const { session, user } = await validateRequest();
+	if (!session || !user) {
 		return {
 			error: "Unauthorized"
 		};
 	}
 
 	await deleteSession();
+    console.log(`[AUDIT] User ${user.id} logged out successfully.`);
 	
     // We no longer redirect from the server action. Client will handle navigation.
     return { success: true };
@@ -167,6 +173,7 @@ export async function changePasswordAction(formData: FormData) {
     await validateCsrf(formData);
     const { user, session } = await validateRequest();
     if (!user || !session) {
+        console.error(`[AUDIT] Unauthorized password change attempt.`);
         return { success: false, message: 'Unauthorized' };
     }
 
@@ -202,15 +209,12 @@ export async function changePasswordAction(formData: FormData) {
         );
 
         if (!validPassword) {
+            console.warn(`[AUDIT] User ${user.id} failed to change password. Reason: Incorrect current password.`);
             return { success: false, message: 'Incorrect current password.' };
         }
         
         const newHashedPassword = await bcrypt.hash(newPassword, 10);
         
-        // Invalidate all sessions by updating a value in the user record, if we stored a session version.
-        // For simplicity, we'll just log the user out of the current session and they can log back in.
-        // A more robust implementation might track session versions.
-
         await prisma.user.update({
             where: { id: user.id },
             data: { hashed_password: newHashedPassword }
@@ -218,11 +222,12 @@ export async function changePasswordAction(formData: FormData) {
 
         // Invalidate the current session, forcing a re-login for security.
         await deleteSession();
+        console.log(`[AUDIT] User ${user.id} successfully changed their password and was logged out.`);
         
         return { success: true, message: 'Password updated successfully. Please log in again.' };
 
     } catch (error) {
-        console.error("Error changing password:", error);
+        console.error(`[AUDIT] Error changing password for user ${user.id}:`, error);
         return { success: false, message: 'An unexpected error occurred.' };
     }
 }

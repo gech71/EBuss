@@ -27,6 +27,7 @@ export async function createBusAction(formData: FormData) {
     await validateCsrf(formData);
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
+        console.error('[AUDIT] Unauthorized attempt to create bus.');
         return { success: false, message: 'Unauthorized' };
     }
 
@@ -50,7 +51,7 @@ export async function createBusAction(formData: FormData) {
     const { name, capacity, rows, cols, seats } = validatedData.data;
 
     try {
-        await prisma.bus.create({
+        const newBus = await prisma.bus.create({
             data: {
                 name,
                 capacity,
@@ -70,8 +71,9 @@ export async function createBusAction(formData: FormData) {
                 }
             }
         });
+        console.log(`[AUDIT] User ${user.id} created bus ${newBus.id} with name "${name}".`);
     } catch (error) {
-        console.error("Error creating bus:", error);
+        console.error("[AUDIT] Error creating bus:", { userId: user.id, error });
         return { success: false, message: 'An unexpected error occurred.' };
     }
 
@@ -84,6 +86,7 @@ export async function deleteBusAction(busId: string, csrfToken: string): Promise
   
   const { user } = await validateRequest();
   if (!user || !user.busOwnerId) {
+    console.error(`[AUDIT] Unauthorized attempt to delete bus ${busId}.`);
     return { success: false, message: 'Unauthorized' };
   }
   
@@ -91,6 +94,7 @@ export async function deleteBusAction(busId: string, csrfToken: string): Promise
     const routeCount = await prisma.route.count({ where: { busId: busId } });
 
     if (routeCount > 0) {
+       console.warn(`[AUDIT] User ${user.id} failed to delete bus ${busId} due to existing routes.`);
       return {
         success: false,
         message: `This bus is used in ${routeCount} route(s) and cannot be deleted.`,
@@ -104,10 +108,11 @@ export async function deleteBusAction(busId: string, csrfToken: string): Promise
       },
     });
 
+    console.log(`[AUDIT] User ${user.id} deleted bus ${busId}.`);
     revalidatePath('/admin/buses');
     return { success: true, message: 'Bus has been deleted.' };
   } catch (error) {
-    console.error('Error deleting bus:', error);
+    console.error(`[AUDIT] Error deleting bus ${busId} by user ${user.id}:`, error);
     return { success: false, message: 'An unexpected error occurred or you do not have permission.' };
   }
 }

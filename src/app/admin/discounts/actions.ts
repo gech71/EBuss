@@ -26,6 +26,7 @@ export async function createDiscountAction(formData: FormData) {
     await validateCsrf(formData.get('csrfToken') as string);
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
+        console.error('[AUDIT] Unauthorized attempt to create discount.');
         return { success: false, message: 'Unauthorized' };
     }
 
@@ -47,7 +48,7 @@ export async function createDiscountAction(formData: FormData) {
     const { name, startDate, endDate, tiers } = validatedData.data;
 
     try {
-        await prisma.discount.create({
+        const newDiscount = await prisma.discount.create({
             data: {
                 name,
                 startDate,
@@ -62,8 +63,9 @@ export async function createDiscountAction(formData: FormData) {
                 }
             }
         });
+        console.log(`[AUDIT] User ${user.id} created discount ${newDiscount.id} with name "${name}".`);
     } catch (error) {
-        console.error("Error creating discount:", error);
+        console.error(`[AUDIT] Error creating discount by user ${user.id}:`, error);
         return { success: false, message: 'An unexpected error occurred.' };
     }
     
@@ -75,6 +77,7 @@ export async function updateDiscountAction(formData: FormData) {
     await validateCsrf(formData.get('csrfToken') as string);
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
+        console.error('[AUDIT] Unauthorized attempt to update discount.');
         return { success: false, message: 'Unauthorized' };
     }
     
@@ -128,9 +131,10 @@ export async function updateDiscountAction(formData: FormData) {
                 }))
             });
         });
+        console.log(`[AUDIT] User ${user.id} updated discount ${discountId}.`);
     } catch (error) {
          const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
-         console.error("Error updating discount:", error);
+         console.error(`[AUDIT] Error updating discount ${discountId} by user ${user.id}:`, error);
         return { success: false, message };
     }
 
@@ -143,6 +147,7 @@ export async function deleteDiscountAction(discountId: string, csrfToken: string
 
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
+        console.error(`[AUDIT] Unauthorized attempt to delete discount ${discountId}.`);
         return { success: false, message: 'Unauthorized' };
     }
 
@@ -167,10 +172,11 @@ export async function deleteDiscountAction(discountId: string, csrfToken: string
             }
         });
 
+        console.log(`[AUDIT] User ${user.id} deleted discount ${discountId}.`);
         revalidatePath('/admin/discounts');
         return { success: true, message: 'Discount has been deleted.' };
     } catch (error) {
-        console.error('Error deleting discount:', error);
+        console.error(`[AUDIT] Error deleting discount ${discountId} by user ${user.id}:`, error);
         return { success: false, message: 'An unexpected error occurred.' };
     }
 }
