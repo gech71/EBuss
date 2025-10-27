@@ -36,11 +36,8 @@ yarn-error.log*
 next-env.d.ts
 
 # studio
-.firebase/
-firebase.json
 database.rules.json
 storage.rules
-.firebaserc
 ```
 
 After these files are created, just follow the steps in the new `README.md` file, and you'll be able to run and test the application with its new database structure.

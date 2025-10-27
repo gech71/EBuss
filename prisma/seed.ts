@@ -54,7 +54,6 @@ async function main() {
       },
     },
   });
-  console.log('Created bus owner.');
 
   // --- Create Users ---
   await prisma.user.create({
@@ -77,7 +76,6 @@ async function main() {
       busOwnerId: owner1.id,
     },
   });
-  console.log('Created users.');
 
   // --- Create Locations ---
   const locations = await prisma.location.createManyAndReturn({
@@ -92,7 +90,6 @@ async function main() {
         { name: 'Jimma', ownerId: owner1.id },
       ],
   });
-  console.log(`Created ${locations.length} locations.`);
 
   // --- Create Buses for Selam Bus ---
   const bus1 = await prisma.bus.create({
@@ -121,7 +118,6 @@ async function main() {
           layout: { create: { rows: 10, cols: 4, seats: { create: Array.from({ length: 40 }).map((_, i) => ({ seatNumber: `${String.fromCharCode(65 + Math.floor(i / 4))}${ (i % 4) + 1 }`, status: 'AVAILABLE', type: (i % 4 === 1) ? 'AISLE' : 'SEAT' })) } } }
       }
   });
-  console.log('Created buses.');
 
   // --- Create Routes ---
   const addisAbaba = locations.find(l => l.name === 'Addis Ababa');
@@ -141,7 +137,6 @@ async function main() {
               { originId: addisAbaba.id, destinationId: hawassa.id, busId: bus1.id, departureTime: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), arrivalTime: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000), price: 450 },
           ]
       });
-      console.log('Created routes.');
   }
   
   console.log('Seeding finished.');
