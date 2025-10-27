@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -21,6 +20,7 @@ export function QRScanner() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [isScanning, setIsScanning] = useState(false);
@@ -28,13 +28,24 @@ export function QRScanner() {
   const [scannedData, setScannedData] = useState<ScannedData | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  }, []);
+
   const stopScan = useCallback(() => {
     setIsScanning(false);
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
     }
-  }, []);
+    stopCamera();
+  }, [stopCamera]);
 
   const handleScanResult = useCallback(async (encodedData: string) => {
     stopScan();
@@ -44,7 +55,7 @@ export function QRScanner() {
         const { ticketId } = JSON.parse(decodedData);
         if (!ticketId) throw new Error("Invalid QR code format.");
 
-        console.log(`Sending scan request for ticketId: ${ticketId}`);
+        console.log(`[AUDIT] Sending scan request for ticketId: ${ticketId}`);
         const response = await fetch(`/api/ticket/${ticketId}/scan`, {
             method: 'POST',
         });
@@ -98,12 +109,33 @@ export function QRScanner() {
     }
   }, [isScanning, handleScanResult]);
   
-  const startScan = () => {
+  const startScan = useCallback(async () => {
     setErrorMessage(null);
     setScannedData(null);
     setScanStatus("idle");
-    setIsScanning(true);
-  };
+
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        streamRef.current = stream;
+        setHasCameraPermission(true);
+
+        if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            // Ensure video plays, especially on mobile
+            videoRef.current.play().catch(e => console.error("Video play failed:", e));
+        }
+        setIsScanning(true);
+    } catch (error) {
+        console.error('Error accessing camera:', error);
+        setHasCameraPermission(false);
+        setIsScanning(false);
+        toast({
+            variant: 'destructive',
+            title: 'Camera Access Denied',
+            description: 'Please enable camera permissions in your browser settings to use this app.',
+        });
+    }
+  }, [toast]);
   
   useEffect(() => {
     if(isScanning) {
@@ -120,38 +152,22 @@ export function QRScanner() {
     }
   }, [isScanning, scanFrame]);
 
+  // Check for initial camera permission without activating it
   useEffect(() => {
-    const getCameraPermission = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        setHasCameraPermission(true);
+    navigator.permissions.query({ name: 'camera' as PermissionName }).then((permissionStatus) => {
+        setHasCameraPermission(permissionStatus.state !== 'denied');
+        permissionStatus.onchange = () => {
+            setHasCameraPermission(permissionStatus.state !== 'denied');
+        };
+    });
+  }, []);
 
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-      } catch (error) {
-        console.error('Error accessing camera:', error);
-        setHasCameraPermission(false);
-        toast({
-          variant: 'destructive',
-          title: 'Camera Access Denied',
-          description: 'Please enable camera permissions in your browser settings to use this app.',
-        });
-      }
-    };
-
-    getCameraPermission();
-    
+  // Cleanup effect to stop the camera when the component unmounts
+  useEffect(() => {
     return () => {
-        if (videoRef.current && videoRef.current.srcObject) {
-            const stream = videoRef.current.srcObject as MediaStream;
-            stream.getTracks().forEach(track => track.stop());
-        }
-        if (animationFrameRef.current) {
-            cancelAnimationFrame(animationFrameRef.current);
-        }
-    }
-  }, [toast]);
+      stopCamera();
+    };
+  }, [stopCamera]);
 
 
   const resetScanner = () => {
@@ -201,7 +217,7 @@ export function QRScanner() {
   return (
     <div className="flex flex-col items-center justify-center space-y-6 p-4">
       <Card className="w-full max-w-sm aspect-video flex items-center justify-center bg-black border-dashed overflow-hidden relative">
-        <video ref={videoRef} className={cn("w-full h-full object-cover", {"hidden": hasCameraPermission === false})} autoPlay playsInline muted />
+        <video ref={videoRef} className={cn("w-full h-full object-cover", {"hidden": !isScanning})} autoPlay playsInline muted />
         <canvas ref={canvasRef} className="hidden" />
          {hasCameraPermission === false && (
              <div className="absolute inset-0 flex flex-col items-center justify-center bg-background text-center p-4">
