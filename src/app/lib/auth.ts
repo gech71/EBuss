@@ -7,31 +7,50 @@ import type { User } from '@prisma/client';
 const secretKey = process.env.JWT_SECRET;
 const key = new TextEncoder().encode(secretKey);
 
-export async function encrypt(payload: any) {
-  return await new SignJWT(payload)
+const SESSION_DURATION = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+const IDLE_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
+
+interface SessionPayload {
+    userId: string;
+    expiresAt: Date; // Absolute session expiry
+    idleExpiresAt: Date; // Idle timeout
+}
+
+export async function encrypt(payload: SessionPayload) {
+  return await new SignJWT({ ...payload })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime('2h')
+    .setExpirationTime('2h') // Corresponds to SESSION_DURATION
     .sign(key);
 }
 
-export async function decrypt(input: string): Promise<any> {
+export async function decrypt(input: string): Promise<SessionPayload | null> {
   try {
     const { payload } = await jwtVerify(input, key, {
       algorithms: ['HS256'],
     });
-    return payload;
+    // Manually reconstruct Date objects after deserialization
+    return {
+        ...payload,
+        expiresAt: new Date(payload.expiresAt as string),
+        idleExpiresAt: new Date(payload.idleExpiresAt as string),
+    } as SessionPayload;
   } catch (e) {
     return null;
   }
 }
 
 export async function createSession(userId: string) {
-    const expires = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
-    const session = await encrypt({ userId, expires });
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + SESSION_DURATION);
+    const idleExpiresAt = new Date(now.getTime() + IDLE_TIMEOUT);
+
+    const sessionPayload: SessionPayload = { userId, expiresAt, idleExpiresAt };
+    
+    const session = await encrypt(sessionPayload);
 	const sessionCookie = await cookies();
     sessionCookie.set('session', session, {
-        expires,
+        expires: expiresAt,
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         path: '/',
@@ -45,18 +64,25 @@ export async function deleteSession() {
   sessionCookie.set('csrf_token', '', { expires: new Date(0), path: '/' });
 }
 
-export async function validateRequest(): Promise<{ user: User | null; session: any | null }> {
+export async function validateRequest(): Promise<{ user: User | null; session: SessionPayload | null; sessionCookie: string | null }> {
     const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('session')?.value;
+    const sessionCookieValue = cookieStore.get('session')?.value;
     
-    if (!sessionCookie) {
-        return { user: null, session: null };
+    if (!sessionCookieValue) {
+        return { user: null, session: null, sessionCookie: null };
     }
 
-    const sessionPayload = await decrypt(sessionCookie);
+    const sessionPayload = await decrypt(sessionCookieValue);
     
     if (!sessionPayload || !sessionPayload.userId) {
-        return { user: null, session: null };
+        return { user: null, session: null, sessionCookie: null };
+    }
+    
+    const now = new Date();
+    if (now > sessionPayload.expiresAt || now > sessionPayload.idleExpiresAt) {
+        // Session or idle time has expired
+        await deleteSession();
+        return { user: null, session: null, sessionCookie: null };
     }
 
     const user = await prisma.user.findUnique({
@@ -64,11 +90,20 @@ export async function validateRequest(): Promise<{ user: User | null; session: a
     });
     
     if (!user) {
-        return { user: null, session: null };
+        return { user: null, session: null, sessionCookie: null };
     }
+
+    // Refresh idle timeout by creating a new token with an updated idleExpiresAt
+    const newIdleExpiresAt = new Date(now.getTime() + IDLE_TIMEOUT);
+    const newSessionPayload: SessionPayload = {
+        ...sessionPayload,
+        idleExpiresAt: newIdleExpiresAt,
+    };
+    const newSessionCookie = await encrypt(newSessionPayload);
 
     // Omit hashed_password from the returned user object
     const { hashed_password, ...userWithoutPassword } = user;
 
-    return { user: userWithoutPassword as User, session: sessionPayload };
+    return { user: userWithoutPassword as User, session: sessionPayload, sessionCookie: newSessionCookie };
 };
+

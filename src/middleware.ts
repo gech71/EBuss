@@ -2,6 +2,7 @@
 // middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { validateRequest } from './app/lib/auth';
 
 const ALLOWED_ORIGINS = ['https://yourdomain.com', 'https://admin.yourdomain.com'];
 
@@ -25,8 +26,9 @@ export async function middleware(request: NextRequest) {
 
 
   // 3. Session check
-  const sessionCookie = request.cookies.get('session')?.value;
-  const isAuthenticated = !!sessionCookie;
+  // validateRequest is now called inside the middleware, not just in server components
+  const { user, sessionCookie } = await validateRequest();
+  const isAuthenticated = !!user;
 
   // 4. Route protection
   const isProtectedRoute = pathname.startsWith('/admin') || pathname.startsWith('/super-admin');
@@ -42,7 +44,7 @@ export async function middleware(request: NextRequest) {
     response = NextResponse.redirect(url);
   } else if (isAuthRoute && isAuthenticated) {
     const url = request.nextUrl.clone();
-    url.pathname = '/admin'; 
+    url.pathname = user.role === 'SUPER_ADMIN' ? '/super-admin' : '/admin'; 
     response = NextResponse.redirect(url);
   }
   
@@ -89,15 +91,13 @@ export async function middleware(request: NextRequest) {
 
   // 7. Secure session cookie attributes
   if (sessionCookie) {
-    const currentCookie = response.cookies.get('session');
-    if (currentCookie) {
-         response.cookies.set('session', currentCookie.value, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            path: '/',
-        });
-    }
+     response.cookies.set('session', sessionCookie, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/',
+        // expires is handled by the JWT itself, but can be set here as a fallback
+    });
   }
 
   return response;
