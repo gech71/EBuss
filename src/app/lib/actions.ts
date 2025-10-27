@@ -35,9 +35,9 @@ export async function validateCsrf(tokenFromRequest: string | FormData) {
 
 
 export async function authenticate(
-  prevState: string | undefined,
+  prevState: any,
   formData: FormData
-): Promise<string | undefined> {
+): Promise<{ message: string; success: boolean; } | undefined> {
   const ip = await getIP();
   const email = formData.get('email') as string;
 
@@ -57,7 +57,7 @@ export async function authenticate(
           const firstAttemptTime = attempts[0].timestamp.getTime();
           const timeLeft = Math.ceil((firstAttemptTime + (LOGIN_ATTEMPT_WINDOW_SECONDS * 1000) - now.getTime()) / 1000);
           await logAction({ ipAddress: ip, actionType: 'LOGIN_RATE_LIMIT', description: `Rate limit exceeded for login attempts from IP: ${ip}` });
-          return `Too many login attempts. Please try again in ${timeLeft} seconds.`;
+          return { message: `Too many login attempts. Please try again in ${timeLeft} seconds.`, success: false };
       }
   }
 
@@ -68,7 +68,7 @@ export async function authenticate(
     const password = formData.get('password') as string;
 
     if (!email || !password) {
-      return 'Please provide all fields.';
+      return { message: 'Please provide all fields.', success: false };
     }
 
     const existingUser = await prisma.user.findUnique({
@@ -82,7 +82,7 @@ export async function authenticate(
         await prisma.loginAttempt.create({ data: { ipAddress: ip }});
       }
       await logAction({ ipAddress: ip, actionType: 'LOGIN_FAIL', description: `Failed login attempt for email "${email}". Reason: User not found.` });
-      return 'Invalid email or password.';
+      return { message: 'Invalid email or password.', success: false };
     }
 
     const validPassword = await bcrypt.compare(
@@ -95,7 +95,7 @@ export async function authenticate(
         await prisma.loginAttempt.create({ data: { ipAddress: ip }});
       }
       await logAction({ userId: existingUser.id, ipAddress: ip, actionType: 'LOGIN_FAIL', description: `Failed login attempt for email "${email}". Reason: Invalid password.` });
-      return 'Invalid email or password.';
+      return { message: 'Invalid email or password.', success: false };
     }
 
     // Create session
@@ -110,17 +110,16 @@ export async function authenticate(
     }
     
     redirect(redirectPath);
-    return 'success';
 
   } catch (error) {
     if (error instanceof Error) {
        if (error.message.includes('NEXT_REDIRECT')) {
          throw error;
        }
-       return error.message;
+       return { message: error.message, success: false };
     }
     console.error(error);
-    return 'An unexpected error occurred.';
+    return { message: 'An unexpected error occurred.', success: false };
   }
 }
 

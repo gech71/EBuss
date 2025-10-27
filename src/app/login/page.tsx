@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { authenticate } from "@/app/lib/actions";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,57 +12,43 @@ import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useToast } from "@/hooks/use-toast";
 import { useCsrf } from "@/hooks/useCsrf";
+import { useFormState, useFormStatus } from "react-dom";
+import { useToast } from "@/hooks/use-toast";
 
-export default function LoginPage() {
-  const [errorMessage, setErrorMessage] = useState<string | undefined>();
-  const { csrfToken, loading: csrfLoading } = useCsrf();
-  const [isPending, startTransition] = useTransition();
-  const [lockoutTime, setLockoutTime] = useState(0);
-  const router = useRouter();
-  const { toast } = useToast();
-
-
-  useEffect(() => {
-    if (lockoutTime > 0) {
-      const timer = setTimeout(() => {
-        setLockoutTime(lockoutTime - 1);
-      }, 1000);
-      return () => clearTimeout(timer);
-    } else {
-        setErrorMessage(undefined);
-    }
-  }, [lockoutTime]);
-
-
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (lockoutTime > 0) return;
-
-    const formData = new FormData(event.currentTarget);
+function LoginButton() {
+    const { pending } = useFormStatus();
+    const [lockoutTime, setLockoutTime] = useState(0);
+    const { csrfToken, loading: csrfLoading } = useCsrf();
     
-    startTransition(async () => {
-      const resultMessage = await authenticate(undefined, formData);
-      if (resultMessage === 'success') {
-        // Successful login is handled by redirect inside the action
-        toast({ title: "Login Successful!" });
-        // The redirect in the action will navigate the user.
-      } else {
-        setErrorMessage(resultMessage);
-        const lockoutMatch = resultMessage?.match(/try again in (\d+) seconds/);
-        if (lockoutMatch && lockoutMatch[1]) {
-          setLockoutTime(parseInt(lockoutMatch[1], 10));
+    // This effect will run when the component mounts and the state has a message
+    // It's a bit of a workaround to get the lockout time from the server action
+    // A better approach might involve a more complex state object.
+    useEffect(() => {
+        const component = document.querySelector('[data-error-message]');
+        if (component) {
+            const errorMessage = component.textContent;
+            const lockoutMatch = errorMessage?.match(/try again in (\d+) seconds/);
+            if (lockoutMatch && lockoutMatch[1]) {
+              setLockoutTime(parseInt(lockoutMatch[1], 10));
+            }
         }
-      }
-    });
-  };
+    }, [pending]);
 
-  function LoginButton() {
-    const isButtonDisabled = isPending || lockoutTime > 0 || csrfLoading;
+
+    useEffect(() => {
+        if (lockoutTime > 0) {
+          const timer = setTimeout(() => {
+            setLockoutTime(lockoutTime - 1);
+          }, 1000);
+          return () => clearTimeout(timer);
+        }
+    }, [lockoutTime]);
+
+    const isButtonDisabled = pending || lockoutTime > 0 || csrfLoading;
+
     const buttonText = () => {
-        if (isPending) return 'Logging in...';
+        if (pending) return 'Logging in...';
         if (lockoutTime > 0) return `Try again in ${lockoutTime}s`;
         if (csrfLoading) return 'Initializing...';
         return 'Login';
@@ -73,7 +59,20 @@ export default function LoginPage() {
         {buttonText()}
       </Button>
     );
-  }
+}
+
+export default function LoginPage() {
+  const { csrfToken, loading: csrfLoading } = useCsrf();
+  const { toast } = useToast();
+
+  const initialState = { message: "", success: false };
+  const [state, dispatch] = useFormState(authenticate, initialState);
+
+  useEffect(() => {
+      if(state?.success === true) {
+          toast({ title: "Login Successful!" });
+      }
+  }, [state, toast]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
@@ -85,7 +84,7 @@ export default function LoginPage() {
           <CardTitle>Welcome Back</CardTitle>
           <CardDescription>Enter your credentials to access your account.</CardDescription>
         </CardHeader>
-        <form onSubmit={handleSubmit}>
+        <form action={dispatch}>
           <CardContent className="space-y-4">
             <input type="hidden" name="csrfToken" value={csrfToken || ''} />
             <div className="space-y-2">
@@ -109,11 +108,11 @@ export default function LoginPage() {
                 defaultValue="password"
               />
             </div>
-            {errorMessage && (
+            {state?.message && !state?.success && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  {errorMessage}
+                <AlertDescription data-error-message>
+                  {state.message}
                 </AlertDescription>
               </Alert>
             )}

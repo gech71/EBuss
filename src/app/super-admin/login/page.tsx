@@ -1,7 +1,6 @@
 
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
 import { authenticate } from "@/app/lib/actions";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,70 +11,43 @@ import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Gem } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { useCsrf } from "@/hooks/useCsrf";
+import { useFormState, useFormStatus } from "react-dom";
+import { useEffect, useState } from "react";
 
-export default function SuperAdminLoginPage() {
-  const [errorMessage, setErrorMessage] = useState<string | undefined>();
-  const [csrfToken, setCsrfToken] = useState<string>("");
-  const [isPending, startTransition] = useTransition();
-  const [lockoutTime, setLockoutTime] = useState(0);
-  const router = useRouter();
-  const { toast } = useToast();
-
-  useEffect(() => {
-    async function fetchCsrfToken() {
-      try {
-        const response = await fetch(new URL('/api/csrf', window.location.origin));
-        const { token } = await response.json();
-        setCsrfToken(token);
-      } catch (error) {
-        console.error("Failed to fetch CSRF token", error);
-        setErrorMessage("Could not initialize secure session. Please try again.");
-      }
-    }
-    fetchCsrfToken();
-  }, []);
-
-  useEffect(() => {
-    if (lockoutTime > 0) {
-      const timer = setTimeout(() => {
-        setLockoutTime(lockoutTime - 1);
-      }, 1000);
-      return () => clearTimeout(timer);
-    } else {
-        setErrorMessage(undefined);
-    }
-  }, [lockoutTime]);
-
-
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (lockoutTime > 0) return;
-
-    const formData = new FormData(event.currentTarget);
+function LoginButton() {
+    const { pending } = useFormStatus();
+    const [lockoutTime, setLockoutTime] = useState(0);
+    const { csrfToken, loading: csrfLoading } = useCsrf();
     
-    startTransition(async () => {
-      const resultMessage = await authenticate(undefined, formData);
-      if (resultMessage === 'success') {
-        // Successful login is handled by redirect inside the action
-        toast({ title: "Login Successful!" });
-        // The redirect in the action will navigate the user.
-      } else {
-        setErrorMessage(resultMessage);
-        const lockoutMatch = resultMessage?.match(/try again in (\d+) seconds/);
-        if (lockoutMatch && lockoutMatch[1]) {
-          setLockoutTime(parseInt(lockoutMatch[1], 10));
+    useEffect(() => {
+        const component = document.querySelector('[data-error-message]');
+        if (component) {
+            const errorMessage = component.textContent;
+            const lockoutMatch = errorMessage?.match(/try again in (\d+) seconds/);
+            if (lockoutMatch && lockoutMatch[1]) {
+              setLockoutTime(parseInt(lockoutMatch[1], 10));
+            }
         }
-      }
-    });
-  };
+    }, [pending]);
 
-  function LoginButton() {
-    const isButtonDisabled = isPending || lockoutTime > 0;
+
+    useEffect(() => {
+        if (lockoutTime > 0) {
+          const timer = setTimeout(() => {
+            setLockoutTime(lockoutTime - 1);
+          }, 1000);
+          return () => clearTimeout(timer);
+        }
+    }, [lockoutTime]);
+
+    const isButtonDisabled = pending || lockoutTime > 0 || csrfLoading;
+
     const buttonText = () => {
-        if (isPending) return 'Logging in...';
+        if (pending) return 'Logging in...';
         if (lockoutTime > 0) return `Try again in ${lockoutTime}s`;
+        if (csrfLoading) return 'Initializing...';
         return 'Login';
     }
 
@@ -84,7 +56,21 @@ export default function SuperAdminLoginPage() {
         {buttonText()}
       </Button>
     );
-  }
+}
+
+
+export default function SuperAdminLoginPage() {
+  const { csrfToken, loading: csrfLoading } = useCsrf();
+  const { toast } = useToast();
+  
+  const initialState = { message: "", success: false };
+  const [state, dispatch] = useFormState(authenticate, initialState);
+
+  useEffect(() => {
+      if(state?.success === true) {
+          toast({ title: "Login Successful!" });
+      }
+  }, [state, toast]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
@@ -99,7 +85,7 @@ export default function SuperAdminLoginPage() {
           </CardTitle>
           <CardDescription>Enter your credentials for platform administration.</CardDescription>
         </CardHeader>
-        <form onSubmit={handleSubmit}>
+        <form action={dispatch}>
           <CardContent className="space-y-4">
             <input type="hidden" name="csrfToken" value={csrfToken} />
             <div className="space-y-2">
@@ -123,11 +109,11 @@ export default function SuperAdminLoginPage() {
                 defaultValue="password"
               />
             </div>
-            {errorMessage && (
+            {state?.message && !state.success && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  {errorMessage}
+                <AlertDescription data-error-message>
+                  {state.message}
                 </AlertDescription>
               </Alert>
             )}
