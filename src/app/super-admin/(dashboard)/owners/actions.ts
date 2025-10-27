@@ -7,6 +7,16 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import type { CommissionTier, CommissionType } from '@prisma/client';
 
+// Simple ID generator
+function generateId(length: number): string {
+    const characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return result;
+}
+
 
 const tierSchema = z.object({
   id: z.string().optional(),
@@ -56,6 +66,7 @@ export async function createOwnerAction(formData: FormData) {
     try {
         await prisma.busOwner.create({
             data: {
+                id: generateId(15),
                 name,
                 bankAccountNumber,
                 commissionTiers: {
