@@ -5,23 +5,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { validateRequest } from '@/lib/server/auth';
 import { BookingStatus } from '@prisma/client';
-import { headers } from 'next/headers';
+import { logAction } from '@/app/lib/logger';
+import { getIP } from '@/app/lib/get-ip';
+
 
 const MAX_SCAN_ATTEMPTS_PER_MINUTE = 20;
 
-async function getIP(request: NextRequest) {
-    const headersList = headers();
-    const forwardedFor = headersList.get('x-forwarded-for');
-    if (forwardedFor) {
-        return forwardedFor.split(',')[0].trim();
-    }
-    const realIp = headersList.get('x-real-ip');
-    if (realIp) {
-        return realIp.trim();
-    }
-    // For local development, request.ip might be available
-    return request.ip ?? '127.0.0.1';
-}
 
 export async function POST(
   request: NextRequest,
@@ -41,7 +30,7 @@ export async function POST(
       });
       
       if (attempts >= MAX_SCAN_ATTEMPTS_PER_MINUTE) {
-          console.warn(`Rate limit exceeded for IP: ${ip}`);
+          await logAction({ ipAddress: ip, actionType: 'RATE_LIMIT_EXCEEDED', description: 'Rate limit exceeded for ticket scan API.' });
           return NextResponse.json({ message: 'Too many requests. Please try again in a minute.' }, { status: 429 });
       }
 
@@ -53,6 +42,7 @@ export async function POST(
     const { user } = await validateRequest();
 
     if (!user || !user.busOwnerId) {
+        await logAction({ actionType: 'TICKET_SCAN_UNAUTHORIZED', description: 'Unauthorized attempt to scan ticket.' });
         return NextResponse.json({ message: 'Unauthorized: You must be logged in as an admin to scan tickets.' }, { status: 401 });
     }
 
@@ -60,8 +50,7 @@ export async function POST(
     if (!ticketId) {
         return NextResponse.json({ message: 'Ticket ID is required.' }, { status: 400 });
     }
-    console.log(`Scan attempt by user ${user.id} for ticket ${ticketId}`);
-
+    
     const booking = await prisma.$transaction(async (tx) => {
         const bookingToScan = await tx.booking.findUnique({
             where: { id: ticketId },
@@ -106,14 +95,15 @@ export async function POST(
             },
         });
         
-        console.log(`Ticket ${ticketId} successfully validated and marked as USED.`);
+        await logAction({ userId: user.id, actionType: 'TICKET_SCAN_SUCCESS', description: `Ticket ${ticketId} validated and marked as USED.` });
         return updatedBooking;
     });
 
     return NextResponse.json({ booking });
 
   } catch (error: any) {
-    console.error('Failed to scan ticket:', error);
+    const { user } = await validateRequest(); // We need user for logging
+    await logAction({ userId: user?.id, actionType: 'TICKET_SCAN_FAIL', description: `Failed to scan ticket. Error: ${error?.message || 'Internal server error'}` });
     if (error.status && error.message) {
         return new NextResponse(JSON.stringify({ message: error.message }), {
             status: error.status,

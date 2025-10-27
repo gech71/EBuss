@@ -3,28 +3,17 @@
 
 import { redirect } from 'next/navigation';
 import prisma from '@/lib/prisma';
-import { cookies, headers } from 'next/headers';
+import { cookies } from 'next/headers';
 import bcrypt from 'bcrypt';
 import { createSession, deleteSession } from '@/app/lib/auth';
 import { validateRequest } from '@/lib/server/auth';
 import type { ActionResult } from 'next/dist/server/app-render/types';
 import { z } from 'zod';
+import { logAction } from './logger';
+import { getIP } from './get-ip';
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_ATTEMPT_WINDOW_SECONDS = 60;
-
-async function getIP() {
-  const h = await headers();
-    const forwardedFor = h.get('x-forwarded-for');
-    if (forwardedFor) {
-        return forwardedFor.split(',')[0].trim();
-    }
-    const realIp = h.get('x-real-ip');
-    if (realIp) {
-        return realIp.trim();
-    }
-    return null;
-}
 
 export async function validateCsrf(tokenFromRequest: string | FormData) {
     const cookieStore = await cookies();
@@ -39,7 +28,7 @@ export async function validateCsrf(tokenFromRequest: string | FormData) {
     }
 
     if (!token || !tokenFromCookie || token !== tokenFromCookie) {
-        console.warn(`[AUDIT] Invalid CSRF token received.`);
+        await logAction({ actionType: 'CSRF_VALIDATION_FAIL', description: 'Invalid CSRF token received.' });
         throw new Error('Invalid CSRF token.');
     }
 }
@@ -67,7 +56,7 @@ export async function authenticate(
       if (attempts.length >= MAX_LOGIN_ATTEMPTS) {
           const firstAttemptTime = attempts[0].timestamp.getTime();
           const timeLeft = Math.ceil((firstAttemptTime + (LOGIN_ATTEMPT_WINDOW_SECONDS * 1000) - now.getTime()) / 1000);
-          console.warn(`[AUDIT] Rate limit exceeded for login attempts from IP: ${ip}`);
+          await logAction({ ipAddress: ip, actionType: 'LOGIN_RATE_LIMIT', description: `Rate limit exceeded for login attempts from IP: ${ip}` });
           return `Too many login attempts. Please try again in ${timeLeft} seconds.`;
       }
   }
@@ -92,7 +81,7 @@ export async function authenticate(
       if (ip) {
         await prisma.loginAttempt.create({ data: { ipAddress: ip }});
       }
-      console.warn(`[AUDIT] Failed login attempt for email "${email}" from IP: ${ip}. Reason: User not found.`);
+      await logAction({ ipAddress: ip, actionType: 'LOGIN_FAIL', description: `Failed login attempt for email "${email}". Reason: User not found.` });
       return 'Invalid email or password.';
     }
 
@@ -105,14 +94,13 @@ export async function authenticate(
       if (ip) {
         await prisma.loginAttempt.create({ data: { ipAddress: ip }});
       }
-      console.warn(`[AUDIT] Failed login attempt for email "${email}" from IP: ${ip}. Reason: Invalid password.`);
+      await logAction({ userId: existingUser.id, ipAddress: ip, actionType: 'LOGIN_FAIL', description: `Failed login attempt for email "${email}". Reason: Invalid password.` });
       return 'Invalid email or password.';
     }
 
     // Create session
     await createSession(existingUser.id);
-    console.log(`[AUDIT] Successful login for user ${existingUser.id} ("${email}") from IP: ${ip}.`);
-
+    await logAction({ userId: existingUser.id, ipAddress: ip, actionType: 'LOGIN_SUCCESS', description: `Successful login for user ${existingUser.id} ("${email}").` });
 
     let redirectPath = '/';
     if (existingUser.role === 'SUPER_ADMIN') {
@@ -145,7 +133,7 @@ export async function logout(): Promise<ActionResult> {
 	}
 
 	await deleteSession();
-    console.log(`[AUDIT] User ${user.id} logged out successfully.`);
+    await logAction({ userId: user.id, actionType: 'LOGOUT', description: `User ${user.id} logged out successfully.` });
 	
     // We no longer redirect from the server action. Client will handle navigation.
     return { success: true };
@@ -173,7 +161,7 @@ export async function changePasswordAction(formData: FormData) {
     await validateCsrf(formData);
     const { user, session } = await validateRequest();
     if (!user || !session) {
-        console.error(`[AUDIT] Unauthorized password change attempt.`);
+        await logAction({ actionType: 'CHANGE_PASSWORD_UNAUTHORIZED', description: 'Unauthorized password change attempt.' });
         return { success: false, message: 'Unauthorized' };
     }
 
@@ -209,7 +197,7 @@ export async function changePasswordAction(formData: FormData) {
         );
 
         if (!validPassword) {
-            console.warn(`[AUDIT] User ${user.id} failed to change password. Reason: Incorrect current password.`);
+            await logAction({ userId: user.id, actionType: 'CHANGE_PASSWORD_FAIL', description: 'Incorrect current password provided.' });
             return { success: false, message: 'Incorrect current password.' };
         }
         
@@ -222,12 +210,12 @@ export async function changePasswordAction(formData: FormData) {
 
         // Invalidate the current session, forcing a re-login for security.
         await deleteSession();
-        console.log(`[AUDIT] User ${user.id} successfully changed their password and was logged out.`);
+        await logAction({ userId: user.id, actionType: 'CHANGE_PASSWORD_SUCCESS', description: 'Password changed successfully, user logged out.' });
         
         return { success: true, message: 'Password updated successfully. Please log in again.' };
 
     } catch (error) {
-        console.error(`[AUDIT] Error changing password for user ${user.id}:`, error);
+        await logAction({ userId: user.id, actionType: 'CHANGE_PASSWORD_FAIL', description: `Error changing password. Error: ${error instanceof Error ? error.message : 'Unknown'}` });
         return { success: false, message: 'An unexpected error occurred.' };
     }
 }

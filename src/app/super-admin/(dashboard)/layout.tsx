@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "@/components/ui/sidebar";
-import { LayoutDashboard, Users, Gem } from "lucide-react";
+import { LayoutDashboard, Users, Gem, FileClock } from "lucide-react";
 import { UserNav } from "@/components/UserNav";
 import { validateRequest } from "@/lib/server/auth";
 import { redirect } from "next/navigation";
@@ -66,6 +66,14 @@ export default async function SuperAdminLayout({
                     <Link href="/super-admin/settings">
                       <Gem />
                       <span>Settings</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                 <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Audit Logs">
+                    <Link href="/super-admin/logs">
+                      <FileClock />
+                      <span>Audit Logs</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

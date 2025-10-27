@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import crypto from 'crypto';
 import { PaymentStatus, BookingStatus } from '@prisma/client';
+import { logAction } from '@/app/lib/logger';
 
 async function POST(request: NextRequest) {
     const authHeader = request.headers.get('Authorization');
@@ -19,7 +20,7 @@ async function POST(request: NextRequest) {
     }
     const validationUrl = process.env.VALIDATE_TOKEN_URL;
     if (!validationUrl) {
-        console.error('Callback Error: VALIDATE_TOKEN_URL is not set.');
+        await logAction({ actionType: 'PAYMENT_CALLBACK_FAIL', description: 'Server configuration error: VALIDATE_TOKEN_URL is not set.' });
         return NextResponse.json({ message: 'Server configuration error.' }, { status: 500 });
     }
 
@@ -32,11 +33,11 @@ async function POST(request: NextRequest) {
 
         if (!externalResponse.ok) {
             const errorText = await externalResponse.text();
-            console.error('Callback Error: External token validation failed.', { status: externalResponse.status, error: errorText });
+            await logAction({ actionType: 'PAYMENT_CALLBACK_FAIL', description: `External token validation failed. Status: ${externalResponse.status}, Error: ${errorText}` });
             return NextResponse.json({ message: 'Invalid token.' }, { status: 401 });
         }
     } catch (error) {
-        console.error('Callback Error: Failed to call validation URL.', error);
+        await logAction({ actionType: 'PAYMENT_CALLBACK_FAIL', description: `Failed to call validation URL. Error: ${error instanceof Error ? error.message : 'Unknown'}` });
         return NextResponse.json({ message: 'Error validating token.' }, { status: 500 });
     }
 
@@ -45,7 +46,7 @@ async function POST(request: NextRequest) {
     try {
         requestBody = await request.json();
     } catch (e) {
-        console.error("Callback Error: Invalid JSON in request body.", e);
+        await logAction({ actionType: 'PAYMENT_CALLBACK_FAIL', description: `Invalid JSON in request body. Error: ${e instanceof Error ? e.message : 'Unknown'}` });
         return NextResponse.json({ message: "Invalid JSON format." }, { status: 400 });
     }
 
@@ -66,7 +67,7 @@ async function POST(request: NextRequest) {
         });
 
         if (!payment) {
-            console.error(`Callback Error: Payment with transactionId ${txnRef} not found.`);
+            await logAction({ actionType: 'PAYMENT_CALLBACK_FAIL', description: `Payment with transactionId ${txnRef} not found.` });
             return NextResponse.json({ message: 'Payment record not found.' }, { status: 404 });
         }
 
@@ -94,10 +95,11 @@ async function POST(request: NextRequest) {
             });
         });
         
+        await logAction({ actionType: 'PAYMENT_SUCCESS', description: `Payment confirmed for booking ${payment.bookingId} via transaction ${txnRef}.` });
         return NextResponse.json({ message: "Payment confirmed and updated.", bookingId: payment.bookingId }, { status: 200 });
 
     } catch (error) {
-        console.error('Callback Error: Failed to update database.', error);
+        await logAction({ actionType: 'PAYMENT_CALLBACK_DB_FAIL', description: `Database update failed for transaction ${txnRef}. Error: ${error instanceof Error ? error.message : 'Unknown'}` });
         return NextResponse.json({ message: 'Database update failed.' }, { status: 500 });
     }
 }

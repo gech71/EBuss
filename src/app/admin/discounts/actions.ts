@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { validateRequest } from '@/lib/server/auth';
 import { validateCsrf } from '@/app/lib/actions';
+import { logAction } from '@/app/lib/logger';
 
 const tierSchema = z.object({
   id: z.string().optional(),
@@ -26,7 +27,7 @@ export async function createDiscountAction(formData: FormData) {
     await validateCsrf(formData.get('csrfToken') as string);
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
-        console.error('[AUDIT] Unauthorized attempt to create discount.');
+        await logAction({ actionType: 'CREATE_DISCOUNT_ATTEMPT_FAIL', description: 'Unauthorized attempt to create discount.' });
         return { success: false, message: 'Unauthorized' };
     }
 
@@ -63,9 +64,9 @@ export async function createDiscountAction(formData: FormData) {
                 }
             }
         });
-        console.log(`[AUDIT] User ${user.id} created discount ${newDiscount.id} with name "${name}".`);
+        await logAction({ userId: user.id, actionType: 'CREATE_DISCOUNT', description: `Created discount '${name}' (${newDiscount.id}).` });
     } catch (error) {
-        console.error(`[AUDIT] Error creating discount by user ${user.id}:`, error);
+        await logAction({ userId: user.id, actionType: 'CREATE_DISCOUNT_FAIL', description: `Failed to create discount '${name}'. Error: ${error instanceof Error ? error.message : 'Unknown'}` });
         return { success: false, message: 'An unexpected error occurred.' };
     }
     
@@ -77,7 +78,7 @@ export async function updateDiscountAction(formData: FormData) {
     await validateCsrf(formData.get('csrfToken') as string);
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
-        console.error('[AUDIT] Unauthorized attempt to update discount.');
+        await logAction({ actionType: 'UPDATE_DISCOUNT_ATTEMPT_FAIL', description: 'Unauthorized attempt to update discount.' });
         return { success: false, message: 'Unauthorized' };
     }
     
@@ -131,10 +132,10 @@ export async function updateDiscountAction(formData: FormData) {
                 }))
             });
         });
-        console.log(`[AUDIT] User ${user.id} updated discount ${discountId}.`);
+        await logAction({ userId: user.id, actionType: 'UPDATE_DISCOUNT', description: `Updated discount '${name}' (${discountId}).` });
     } catch (error) {
          const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
-         console.error(`[AUDIT] Error updating discount ${discountId} by user ${user.id}:`, error);
+         await logAction({ userId: user.id, actionType: 'UPDATE_DISCOUNT_FAIL', description: `Failed to update discount ${discountId}. Error: ${message}` });
         return { success: false, message };
     }
 
@@ -147,7 +148,7 @@ export async function deleteDiscountAction(discountId: string, csrfToken: string
 
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
-        console.error(`[AUDIT] Unauthorized attempt to delete discount ${discountId}.`);
+        await logAction({ actionType: 'DELETE_DISCOUNT_ATTEMPT_FAIL', description: `Unauthorized attempt to delete discount ${discountId}.` });
         return { success: false, message: 'Unauthorized' };
     }
 
@@ -172,11 +173,11 @@ export async function deleteDiscountAction(discountId: string, csrfToken: string
             }
         });
 
-        console.log(`[AUDIT] User ${user.id} deleted discount ${discountId}.`);
+        await logAction({ userId: user.id, actionType: 'DELETE_DISCOUNT', description: `Deleted discount ${discountId}.` });
         revalidatePath('/admin/discounts');
         return { success: true, message: 'Discount has been deleted.' };
     } catch (error) {
-        console.error(`[AUDIT] Error deleting discount ${discountId} by user ${user.id}:`, error);
+        await logAction({ userId: user.id, actionType: 'DELETE_DISCOUNT_FAIL', description: `Error deleting discount ${discountId}. Error: ${error instanceof Error ? error.message : 'Unknown'}` });
         return { success: false, message: 'An unexpected error occurred.' };
     }
 }

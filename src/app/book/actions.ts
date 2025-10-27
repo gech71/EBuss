@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import { format } from 'date-fns';
 import { BookingStatus, PaymentStatus } from '@prisma/client';
 import { validateCsrf } from '@/app/lib/actions';
+import { logAction } from '@/app/lib/logger';
 
 const createBookingSchema = z.object({
   routeId: z.string().min(1),
@@ -103,7 +104,8 @@ export async function createBookingAction(formData: FormData) {
           status: 'OCCUPIED'
         }
       });
-      console.log(`[AUDIT] Booking ${booking.id} created for passenger ${passengerName} on route ${routeId}. Seats: ${selectedSeatNumbers.join(', ')}`);
+      
+      await logAction({ actionType: 'CREATE_BOOKING', description: `Booking ${booking.id} created for passenger ${passengerName} on route ${routeId}. Seats: ${selectedSeatNumbers.join(', ')}` });
       return booking;
     });
 
@@ -111,8 +113,8 @@ export async function createBookingAction(formData: FormData) {
     return { success: true, bookingId: newBooking.id };
     
   } catch (error) {
-    console.error(`[AUDIT] Booking failed for passenger ${passengerName}:`, error);
     const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
+    await logAction({ actionType: 'CREATE_BOOKING_FAIL', description: `Booking failed for passenger ${passengerName}. Error: ${message}` });
     return { success: false, message };
   }
 }
@@ -138,7 +140,7 @@ export async function createPaymentRequestAction(bookingId: string, amount: numb
     });
 
     if (!bookingWithOwner?.route?.bus?.owner?.bankAccountNumber) {
-        console.error(`[AUDIT] Payment failed: Could not find bus owner or bank account for booking ID: ${bookingId}`);
+        await logAction({ actionType: 'PAYMENT_REQUEST_FAIL', description: `Could not find bus owner or bank account for booking ID: ${bookingId}` });
         return { success: false, message: 'Bus owner account details not found.' };
     }
     
@@ -150,7 +152,7 @@ export async function createPaymentRequestAction(bookingId: string, amount: numb
     const CALLBACK_URL = `${process.env.NEXT_PUBLIC_BASE_URL}/api/portal/payment-callback`;
     
     if (!NIB_PAYMENT_URL || !NIB_PAYMENT_KEY) {
-        console.error("[AUDIT] Payment failed: Server is not configured for payments (missing NIB_PAYMENT_URL or NIB_PAYMENT_KEY).");
+        await logAction({ actionType: 'PAYMENT_REQUEST_FAIL', description: 'Server not configured for payments (missing NIB_PAYMENT_URL or NIB_PAYMENT_KEY).' });
         return { success: false, message: 'Server is not configured for payments.' };
     }
 
@@ -166,7 +168,7 @@ export async function createPaymentRequestAction(bookingId: string, amount: numb
                 status: 'PENDING',
             }
         });
-        console.log(`[AUDIT] Payment request created for booking ${bookingId} with transactionId ${transactionId}.`);
+        await logAction({ actionType: 'PAYMENT_REQUEST_INIT', description: `Payment request created for booking ${bookingId} with transactionId ${transactionId}.` });
 
         const signatureString = [
             `accountNo=${ACCOUNT_NO}`,
@@ -208,15 +210,15 @@ export async function createPaymentRequestAction(bookingId: string, amount: numb
                 where: { transactionId },
                 data: { paymentToken: responseData.token }
             });
-            console.log(`[AUDIT] Successfully received payment token for transaction ${transactionId}.`);
+            await logAction({ actionType: 'PAYMENT_TOKEN_SUCCESS', description: `Received payment token for transaction ${transactionId}.` });
             return { success: true, paymentToken: responseData.token };
         } else {
-             console.error(`[AUDIT] Failed to get payment token for transaction ${transactionId}. Response:`, responseData);
+             await logAction({ actionType: 'PAYMENT_TOKEN_FAIL', description: `Failed to get payment token for transaction ${transactionId}. Response: ${JSON.stringify(responseData)}` });
             return { success: false, message: responseData.message || 'Failed to get payment token.' };
         }
     } catch (error) {
-        console.error(`[AUDIT] Payment request failed for transaction ${transactionId}:`, error);
         const message = error instanceof Error ? error.message : 'An unexpected error occurred during payment initiation.';
+        await logAction({ actionType: 'PAYMENT_REQUEST_FAIL', description: `Payment request failed for transaction ${transactionId}: ${message}` });
         return { success: false, message };
     }
 }

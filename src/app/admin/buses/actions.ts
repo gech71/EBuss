@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { SeatStatus, SeatType } from '@prisma/client';
 import { validateRequest } from '@/lib/server/auth';
 import { validateCsrf } from '@/app/lib/actions';
+import { logAction } from '@/app/lib/logger';
 
 const seatSchema = z.object({
   seatNumber: z.string(),
@@ -27,7 +28,7 @@ export async function createBusAction(formData: FormData) {
     await validateCsrf(formData);
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
-        console.error('[AUDIT] Unauthorized attempt to create bus.');
+        await logAction({ actionType: 'CREATE_BUS_ATTEMPT_FAIL', description: 'Unauthorized attempt to create bus.' });
         return { success: false, message: 'Unauthorized' };
     }
 
@@ -71,9 +72,9 @@ export async function createBusAction(formData: FormData) {
                 }
             }
         });
-        console.log(`[AUDIT] User ${user.id} created bus ${newBus.id} with name "${name}".`);
+        await logAction({ userId: user.id, actionType: 'CREATE_BUS', description: `Created bus '${name}' (${newBus.id}).` });
     } catch (error) {
-        console.error("[AUDIT] Error creating bus:", { userId: user.id, error });
+        await logAction({ userId: user.id, actionType: 'CREATE_BUS_FAIL', description: `Failed to create bus '${name}'. Error: ${error instanceof Error ? error.message : 'Unknown'}` });
         return { success: false, message: 'An unexpected error occurred.' };
     }
 
@@ -86,7 +87,7 @@ export async function deleteBusAction(busId: string, csrfToken: string): Promise
   
   const { user } = await validateRequest();
   if (!user || !user.busOwnerId) {
-    console.error(`[AUDIT] Unauthorized attempt to delete bus ${busId}.`);
+    await logAction({ actionType: 'DELETE_BUS_ATTEMPT_FAIL', description: `Unauthorized attempt to delete bus ${busId}.` });
     return { success: false, message: 'Unauthorized' };
   }
   
@@ -94,7 +95,7 @@ export async function deleteBusAction(busId: string, csrfToken: string): Promise
     const routeCount = await prisma.route.count({ where: { busId: busId } });
 
     if (routeCount > 0) {
-       console.warn(`[AUDIT] User ${user.id} failed to delete bus ${busId} due to existing routes.`);
+       await logAction({ userId: user.id, actionType: 'DELETE_BUS_FAIL', description: `Failed to delete bus ${busId} (in use by ${routeCount} routes).` });
       return {
         success: false,
         message: `This bus is used in ${routeCount} route(s) and cannot be deleted.`,
@@ -108,11 +109,11 @@ export async function deleteBusAction(busId: string, csrfToken: string): Promise
       },
     });
 
-    console.log(`[AUDIT] User ${user.id} deleted bus ${busId}.`);
+    await logAction({ userId: user.id, actionType: 'DELETE_BUS', description: `Deleted bus ${busId}.` });
     revalidatePath('/admin/buses');
     return { success: true, message: 'Bus has been deleted.' };
   } catch (error) {
-    console.error(`[AUDIT] Error deleting bus ${busId} by user ${user.id}:`, error);
+    await logAction({ userId: user.id, actionType: 'DELETE_BUS_FAIL', description: `Error deleting bus ${busId}. Error: ${error instanceof Error ? error.message : 'Unknown'}` });
     return { success: false, message: 'An unexpected error occurred or you do not have permission.' };
   }
 }

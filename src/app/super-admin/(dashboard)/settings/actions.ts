@@ -7,6 +7,7 @@ import { z } from 'zod';
 import bcrypt from 'bcrypt';
 import { Role } from '@prisma/client';
 import { validateRequest } from '@/lib/server/auth';
+import { logAction } from '@/app/lib/logger';
 
 const passwordPolicy = z.string()
     .min(8, "Password must be at least 8 characters long.")
@@ -36,7 +37,7 @@ function generateId(length: number): string {
 export async function createUserAction(formData: FormData) {
     const { user: superAdmin } = await validateRequest();
     if (!superAdmin || superAdmin.role !== 'SUPER_ADMIN') {
-        console.error('[AUDIT] Unauthorized attempt to create admin user.');
+        await logAction({ actionType: 'CREATE_ADMIN_USER_UNAUTHORIZED', description: 'Unauthorized attempt to create admin user.' });
         return { success: false, message: 'Unauthorized.' };
     }
 
@@ -81,13 +82,13 @@ export async function createUserAction(formData: FormData) {
                 role: Role.ADMIN
             }
         });
-        console.log(`[AUDIT] Super admin ${superAdmin.id} created new admin user ${newUser.id} with email "${email}" for owner ${ownerId}.`);
+        await logAction({ userId: superAdmin.id, actionType: 'CREATE_ADMIN_USER', description: `Created new admin user '${name}' (${newUser.id}) for owner ${ownerId}.` });
 
         revalidatePath('/super-admin/settings');
         return { success: true, message: 'User created successfully.' };
 
     } catch (error) {
-        console.error(`[AUDIT] Error creating user by super admin ${superAdmin.id}:`, error);
+        await logAction({ userId: superAdmin.id, actionType: 'CREATE_ADMIN_USER_FAIL', description: `Error creating user. Error: ${error instanceof Error ? error.message : 'Unknown'}` });
         return { success: false, message: 'An unexpected error occurred while creating the user.' };
     }
 }

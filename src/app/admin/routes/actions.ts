@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { validateRequest } from '@/lib/server/auth';
 import { validateCsrf } from '@/app/lib/actions';
+import { logAction } from '@/app/lib/logger';
 
 const routeSchema = z.object({
   originId: z.string().min(1, 'Origin is required.'),
@@ -32,7 +33,7 @@ export async function createRouteAction(formData: FormData) {
     await validateCsrf(formData.get('csrfToken') as string);
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
-        console.error('[AUDIT] Unauthorized attempt to create route.');
+        await logAction({ actionType: 'CREATE_ROUTE_ATTEMPT_FAIL', description: 'Unauthorized attempt to create route.' });
         return { success: false, message: 'Unauthorized' };
     }
 
@@ -92,9 +93,9 @@ export async function createRouteAction(formData: FormData) {
             data: routesToCreate,
         });
 
-        console.log(`[AUDIT] User ${user.id} created ${routesToCreate.length} new routes for buses: ${busIds.join(', ')}.`);
+        await logAction({ userId: user.id, actionType: 'CREATE_ROUTE', description: `Created ${routesToCreate.length} routes for buses: ${busIds.join(', ')}.` });
     } catch (error) {
-        console.error(`[AUDIT] Error creating routes by user ${user.id}:`, error);
+        await logAction({ userId: user.id, actionType: 'CREATE_ROUTE_FAIL', description: `Failed to create routes. Error: ${error instanceof Error ? error.message : 'Unknown'}` });
         return { success: false, message: 'An unexpected error occurred.' };
     }
 
@@ -107,7 +108,7 @@ export async function updateRouteAction(formData: FormData) {
     await validateCsrf(formData.get('csrfToken') as string);
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
-        console.error('[AUDIT] Unauthorized attempt to update route.');
+        await logAction({ actionType: 'UPDATE_ROUTE_ATTEMPT_FAIL', description: 'Unauthorized attempt to update route.' });
         return { success: false, message: 'Unauthorized' };
     }
 
@@ -184,11 +185,11 @@ export async function updateRouteAction(formData: FormData) {
                }
            });
        });
-       console.log(`[AUDIT] User ${user.id} updated route ${routeId}.`);
+       await logAction({ userId: user.id, actionType: 'UPDATE_ROUTE', description: `Updated route ${routeId}.` });
 
     } catch (error) {
         const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
-        console.error(`[AUDIT] Error updating route ${routeId} by user ${user.id}:`, error);
+        await logAction({ userId: user.id, actionType: 'UPDATE_ROUTE_FAIL', description: `Failed to update route ${routeId}. Error: ${message}` });
         return { success: false, message };
     }
 
@@ -202,7 +203,7 @@ export async function deleteRouteAction(routeId: string, csrfToken: string): Pro
 
   const { user } = await validateRequest();
   if (!user || !user.busOwnerId) {
-      console.error(`[AUDIT] Unauthorized attempt to delete route ${routeId}.`);
+      await logAction({ actionType: 'DELETE_ROUTE_ATTEMPT_FAIL', description: `Unauthorized attempt to delete route ${routeId}.` });
       return { success: false, message: 'Unauthorized' };
   }
 
@@ -227,7 +228,7 @@ export async function deleteRouteAction(routeId: string, csrfToken: string): Pro
     });
 
     if (bookingCount > 0) {
-      console.warn(`[AUDIT] User ${user.id} failed to delete route ${routeId} as it has ${bookingCount} bookings.`);
+      await logAction({ userId: user.id, actionType: 'DELETE_ROUTE_FAIL', description: `Failed to delete route ${routeId} (has ${bookingCount} bookings).` });
       return {
         success: false,
         message: `This route cannot be deleted because it has ${bookingCount} associated booking(s).`,
@@ -240,11 +241,11 @@ export async function deleteRouteAction(routeId: string, csrfToken: string): Pro
       },
     });
 
-    console.log(`[AUDIT] User ${user.id} deleted route ${routeId}.`);
+    await logAction({ userId: user.id, actionType: 'DELETE_ROUTE', description: `Deleted route ${routeId}.` });
     revalidatePath('/admin/routes');
     return { success: true, message: 'Route has been deleted.' };
   } catch (error) {
-    console.error(`[AUDIT] Error deleting route ${routeId} by user ${user.id}:`, error);
+    await logAction({ userId: user.id, actionType: 'DELETE_ROUTE_FAIL', description: `Error deleting route ${routeId}. Error: ${error instanceof Error ? error.message : 'Unknown'}` });
     return { success: false, message: 'An unexpected error occurred.' };
   }
 }
