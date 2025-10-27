@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { SignJWT, jwtVerify } from 'jose';
 import prisma from '@/lib/prisma';
 import type { User } from '@prisma/client';
+import { NextRequest, NextResponse } from 'next/server';
 
 const secretKey = process.env.JWT_SECRET;
 const key = new TextEncoder().encode(secretKey);
@@ -64,25 +65,25 @@ export async function deleteSession() {
   sessionCookie.set('csrf_token', '', { expires: new Date(0), path: '/' });
 }
 
-export async function validateRequest(): Promise<{ user: User | null; session: SessionPayload | null; sessionCookie: string | null }> {
+export async function validateRequest(): Promise<{ user: User | null; session: SessionPayload | null; }> {
     const cookieStore = await cookies();
     const sessionCookieValue = cookieStore.get('session')?.value;
     
     if (!sessionCookieValue) {
-        return { user: null, session: null, sessionCookie: null };
+        return { user: null, session: null };
     }
 
     const sessionPayload = await decrypt(sessionCookieValue);
     
     if (!sessionPayload || !sessionPayload.userId) {
-        return { user: null, session: null, sessionCookie: null };
+        return { user: null, session: null };
     }
     
     const now = new Date();
     if (now > sessionPayload.expiresAt || now > sessionPayload.idleExpiresAt) {
         // Session or idle time has expired
         await deleteSession();
-        return { user: null, session: null, sessionCookie: null };
+        return { user: null, session: null };
     }
 
     const user = await prisma.user.findUnique({
@@ -90,7 +91,7 @@ export async function validateRequest(): Promise<{ user: User | null; session: S
     });
     
     if (!user) {
-        return { user: null, session: null, sessionCookie: null };
+        return { user: null, session: null };
     }
 
     // Refresh idle timeout by creating a new token with an updated idleExpiresAt
@@ -101,9 +102,18 @@ export async function validateRequest(): Promise<{ user: User | null; session: S
     };
     const newSessionCookie = await encrypt(newSessionPayload);
 
+    // Set the new session cookie
+    cookieStore.set('session', newSessionCookie, {
+        expires: newSessionPayload.expiresAt,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+        sameSite: 'strict',
+    });
+
+
     // Omit hashed_password from the returned user object
     const { hashed_password, ...userWithoutPassword } = user;
 
-    return { user: userWithoutPassword as User, session: sessionPayload, sessionCookie: newSessionCookie };
+    return { user: userWithoutPassword as User, session: sessionPayload };
 };
-
