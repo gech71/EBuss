@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import prisma from "@/lib/prisma";
-import { validateRequest } from "@/app/lib/auth";
+import { validateRequest } from "@/lib/server/auth";
 import { cookies } from "next/headers";
 
 async function getIsMiniApp() {

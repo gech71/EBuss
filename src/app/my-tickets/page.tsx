@@ -2,7 +2,7 @@
 import { Header } from '@/components/Header';
 import { cookies } from 'next/headers';
 import { MyTicketsClientPage } from '@/components/my-tickets/MyTicketsClientPage';
-import { validateRequest } from '@/app/lib/auth';
+import { validateRequest } from '@/lib/server/auth';
 
 async function getMiniAppData() {
     const cookieStore =  await cookies();

@@ -7,7 +7,7 @@ import { PlusCircle, ArrowRight, Percent } from "lucide-react";
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import prisma from '@/lib/prisma';
-import { validateRequest } from '@/app/lib/auth';
+import { validateRequest } from '@/lib/server/auth';
 import { redirect } from 'next/navigation';
 import { DiscountActions } from '@/components/admin/DiscountActions';
 

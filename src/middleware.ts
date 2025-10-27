@@ -26,11 +26,16 @@ export async function middleware(request: NextRequest) {
 
 
   // 3. Session Validation (Lightweight)
-  // We only decrypt the cookie here to check for existence and basic validity.
-  // The full user lookup from the DB is moved out of the middleware.
+  // This check is now lightweight and does not involve database access.
   const sessionCookieValue = request.cookies.get('session')?.value;
-  const sessionPayload = sessionCookieValue ? await decrypt(sessionCookieValue) : null;
-  const isAuthenticated = !!sessionPayload?.userId;
+  let isAuthenticated = false;
+  if (sessionCookieValue) {
+    const sessionPayload = await decrypt(sessionCookieValue);
+    if (sessionPayload?.userId && new Date() < new Date(sessionPayload.expiresAt) && new Date() < new Date(sessionPayload.idleExpiresAt)) {
+      isAuthenticated = true;
+    }
+  }
+
 
   let response = NextResponse.next({
     request: { headers: requestHeaders },
@@ -42,14 +47,14 @@ export async function middleware(request: NextRequest) {
   
   if (isProtectedRoute && !isAuthenticated) {
       const url = request.nextUrl.clone();
-      url.pathname = '/login';
-      response = NextResponse.redirect(url);
+      const loginPath = pathname.startsWith('/super-admin') ? '/super-admin/login' : '/login';
+      url.pathname = loginPath;
+      return NextResponse.redirect(url);
   } else if (isAuthRoute && isAuthenticated) {
       const url = request.nextUrl.clone();
-      // We can't know the user role here, so we redirect to a safe default.
-      // The destination page will handle role-specific redirects if needed.
-      url.pathname = '/admin'; 
-      response = NextResponse.redirect(url);
+      // Redirect to a safe default. The destination page will handle role-specific redirects.
+      url.pathname = '/'; 
+      return NextResponse.redirect(url);
   }
   
   // Set the CSRF cookie on the response
@@ -92,10 +97,6 @@ export async function middleware(request: NextRequest) {
     response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     response.headers.set('Access-Control-Allow-Credentials', 'true');
   }
-
-  // 7. Secure session cookie attributes
-  // The validateRequest function in `auth.ts` will now return the new cookie to be set
-  // This is handled on pages/layouts now, not in the middleware.
 
   return response;
 }

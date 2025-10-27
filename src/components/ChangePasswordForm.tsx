@@ -77,6 +77,8 @@ export function ChangePasswordForm() {
         });
         formRef.current?.reset();
         setNewPassword("");
+        // Redirect to login page after successful password change
+        window.location.href = '/login';
       } else {
         toast({
           title: "Update Failed",

@@ -3,7 +3,7 @@
 
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { validateRequest } from '@/app/lib/auth';
+import { validateRequest } from '@/lib/server/auth';
 
 // This endpoint is no longer used for scanning, but could be useful for fetching ticket details.
 // It is kept for potential future use but the primary scanning logic has moved to /api/ticket/[id]/scan.

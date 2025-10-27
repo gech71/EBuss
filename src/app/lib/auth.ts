@@ -11,7 +11,7 @@ const key = new TextEncoder().encode(secretKey);
 const SESSION_DURATION = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
 const IDLE_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
 
-interface SessionPayload {
+export interface SessionPayload {
     userId: string;
     expiresAt: Date; // Absolute session expiry
     idleExpiresAt: Date; // Idle timeout
@@ -65,33 +65,24 @@ export async function deleteSession() {
   sessionCookie.set('csrf_token', '', { expires: new Date(0), path: '/' });
 }
 
-export async function validateRequest(): Promise<{ user: User | null; session: SessionPayload | null; }> {
+export async function updateSession() {
     const cookieStore = await cookies();
     const sessionCookieValue = cookieStore.get('session')?.value;
     
     if (!sessionCookieValue) {
-        return { user: null, session: null };
+        return;
     }
 
     const sessionPayload = await decrypt(sessionCookieValue);
     
     if (!sessionPayload || !sessionPayload.userId) {
-        return { user: null, session: null };
+        return;
     }
     
     const now = new Date();
     if (now > sessionPayload.expiresAt || now > sessionPayload.idleExpiresAt) {
-        // Session or idle time has expired
         await deleteSession();
-        return { user: null, session: null };
-    }
-
-    const user = await prisma.user.findUnique({
-        where: { id: sessionPayload.userId },
-    });
-    
-    if (!user) {
-        return { user: null, session: null };
+        return;
     }
 
     // Refresh idle timeout by creating a new token with an updated idleExpiresAt
@@ -110,10 +101,4 @@ export async function validateRequest(): Promise<{ user: User | null; session: S
         path: '/',
         sameSite: 'strict',
     });
-
-
-    // Omit hashed_password from the returned user object
-    const { hashed_password, ...userWithoutPassword } = user;
-
-    return { user: userWithoutPassword as User, session: sessionPayload };
-};
+}

@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { PlusCircle } from "lucide-react";
 import Link from 'next/link';
 import prisma from "@/lib/prisma";
-import { validateRequest } from "@/app/lib/auth";
+import { validateRequest } from "@/lib/server/auth";
 import { redirect } from "next/navigation";
 import { BusActions } from "@/components/admin/BusActions";
 

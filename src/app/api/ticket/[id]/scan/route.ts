@@ -3,7 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { validateRequest } from '@/app/lib/auth';
+import { validateRequest } from '@/lib/server/auth';
 import { BookingStatus } from '@prisma/client';
 import { headers } from 'next/headers';
 

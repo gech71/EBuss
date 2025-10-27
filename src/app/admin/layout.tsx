@@ -4,7 +4,7 @@ import { Header } from "@/components/Header";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "@/components/ui/sidebar";
 import { LayoutDashboard, Route as RouteIcon, Bus, QrCode, MapPin, Percent, Settings } from "lucide-react";
 import { UserNav } from "@/components/UserNav";
-import { validateRequest } from "@/app/lib/auth";
+import { validateRequest } from "@/lib/server/auth";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { cookies } from "next/headers";

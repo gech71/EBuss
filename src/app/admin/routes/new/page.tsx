@@ -1,7 +1,7 @@
 
 import prisma from "@/lib/prisma";
 import { NewRouteForm } from "@/components/admin/NewRouteForm";
-import { validateRequest } from "@/app/lib/auth";
+import { validateRequest } from "@/lib/server/auth";
 import { redirect } from "next/navigation";
 
 export default async function NewRoutePage() {

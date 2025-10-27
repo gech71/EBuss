@@ -2,7 +2,7 @@
 import { Header } from '@/components/Header';
 import { TicketDisplay } from '@/components/booking/TicketDisplay';
 import { PaymentStatusChecker } from '@/components/booking/PaymentStatusChecker';
-import { validateRequest } from '@/app/lib/auth';
+import { validateRequest } from '@/lib/server/auth';
 import prisma from '@/lib/prisma';
 import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';

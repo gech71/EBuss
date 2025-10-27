@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { BookingForm } from '@/components/booking/BookingForm';
 import prisma from '@/lib/prisma';
-import { validateRequest } from '@/app/lib/auth';
+import { validateRequest } from '@/lib/server/auth';
 import { cookies } from 'next/headers';
 import { BookingStatus, SeatStatus } from '@prisma/client';
 

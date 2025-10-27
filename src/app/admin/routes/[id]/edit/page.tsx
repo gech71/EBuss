@@ -2,7 +2,7 @@
 import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { EditRouteForm } from "@/components/admin/EditRouteForm";
-import { validateRequest } from "@/app/lib/auth";
+import { validateRequest } from "@/lib/server/auth";
 import { redirect } from "next/navigation";
 
 interface EditRoutePageProps {

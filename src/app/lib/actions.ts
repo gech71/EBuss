@@ -5,7 +5,8 @@ import { redirect } from 'next/navigation';
 import prisma from '@/lib/prisma';
 import { cookies, headers } from 'next/headers';
 import bcrypt from 'bcrypt';
-import { createSession, deleteSession, validateRequest } from '@/app/lib/auth';
+import { createSession, deleteSession } from '@/app/lib/auth';
+import { validateRequest } from '@/lib/server/auth';
 import type { ActionResult } from 'next/dist/server/app-render/types';
 import { z } from 'zod';
 
@@ -215,10 +216,10 @@ export async function changePasswordAction(formData: FormData) {
             data: { hashed_password: newHashedPassword }
         });
 
-        // Recreate session for the current device
-        await createSession(user.id);
+        // Invalidate the current session, forcing a re-login for security.
+        await deleteSession();
         
-        return { success: true, message: 'Password updated successfully. You might need to log in again on other devices.' };
+        return { success: true, message: 'Password updated successfully. Please log in again.' };
 
     } catch (error) {
         console.error("Error changing password:", error);

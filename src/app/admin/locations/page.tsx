@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { PlusCircle } from "lucide-react";
 import prisma from '@/lib/prisma';
 import { LocationActions } from '@/components/admin/LocationActions';
-import { validateRequest } from '@/app/lib/auth';
+import { validateRequest } from '@/lib/server/auth';
 import { redirect } from 'next/navigation';
 
 export default async function AdminLocationsPage() {

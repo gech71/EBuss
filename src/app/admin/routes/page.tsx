@@ -7,7 +7,7 @@ import { PlusCircle } from "lucide-react";
 import Link from 'next/link';
 import prisma from "@/lib/prisma";
 import { RouteActions } from "@/components/admin/RouteActions";
-import { validateRequest } from "@/app/lib/auth";
+import { validateRequest } from "@/lib/server/auth";
 import { redirect } from "next/navigation";
 
 export default async function AdminRoutesPage() {

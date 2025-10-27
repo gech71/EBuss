@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { SeatStatus, SeatType } from '@prisma/client';
-import { validateRequest } from '@/app/lib/auth';
+import { validateRequest } from '@/lib/server/auth';
 import { validateCsrf } from '@/app/lib/actions';
 
 const seatSchema = z.object({

@@ -1,7 +1,7 @@
 
 import { notFound, redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
-import { validateRequest } from "@/app/lib/auth";
+import { validateRequest } from "@/lib/server/auth";
 import { EditLocationForm } from "@/components/admin/EditLocationForm";
 
 interface EditLocationPageProps {
