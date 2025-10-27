@@ -1,10 +1,19 @@
 
 import { PrismaClient, Role } from '@prisma/client';
 import bcrypt from 'bcrypt';
-import { generateId } from 'lucia';
 
 const prisma = new PrismaClient();
 const SALT_ROUNDS = 10;
+
+// Simple ID generator to replace lucia's generateId
+function generateId(length: number): string {
+    const characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return result;
+}
 
 async function main() {
   console.log('Start seeding...');
