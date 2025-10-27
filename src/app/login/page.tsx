@@ -117,7 +117,7 @@ export default function LoginPage() {
                 name="password"
                 type="password"
                 required 
-                defaultValue="Getaye@123"
+                defaultValue="password"
               />
             </div>
             {errorMessage && (

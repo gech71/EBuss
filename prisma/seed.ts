@@ -29,7 +29,7 @@ async function main() {
   console.log('Cleared previous data.');
 
   const superAdminPassword = await bcrypt.hash('password', SALT_ROUNDS);
-  const adminPassword = await bcrypt.hash('Getaye@123', SALT_ROUNDS);
+  const adminPassword = await bcrypt.hash('password', SALT_ROUNDS);
 
   // --- Create Bus Owners ---
   const owner1 = await prisma.busOwner.create({
