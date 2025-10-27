@@ -25,7 +25,7 @@ export async function middleware(request: NextRequest) {
 
 
   // 3. Session check
-  const sessionCookie = request.cookies.get('auth_session')?.value;
+  const sessionCookie = request.cookies.get('session')?.value;
   const isAuthenticated = !!sessionCookie;
 
   // 4. Route protection
@@ -89,9 +89,9 @@ export async function middleware(request: NextRequest) {
 
   // 7. Secure session cookie attributes
   if (sessionCookie) {
-    const currentCookie = response.cookies.get('auth_session');
+    const currentCookie = response.cookies.get('session');
     if (currentCookie) {
-         response.cookies.set('auth_session', currentCookie.value, {
+         response.cookies.set('session', currentCookie.value, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'strict',

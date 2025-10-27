@@ -1,70 +1,74 @@
 
-import { PrismaAdapter } from "@lucia-auth/adapter-prisma";
-import prisma from "@/lib/prisma";
-import { Lucia, TimeSpan, Session, User } from "lucia";
-import { cookies } from "next/headers";
-import { cache } from "react";
+import { cookies } from 'next/headers';
+import { SignJWT, jwtVerify } from 'jose';
+import prisma from '@/lib/prisma';
+import type { User } from '@prisma/client';
+import { cache } from 'react';
 
-const adapter = new PrismaAdapter(prisma.session, prisma.user);
+const secretKey = process.env.JWT_SECRET;
+const key = new TextEncoder().encode(secretKey);
 
-export const lucia = new Lucia(adapter, {
-    sessionExpiresIn: new TimeSpan(2, "h"), // 2 hour session life
-	sessionCookie: {
-		expires: true,
-		attributes: {
-			secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
-		}
-	},
-    getUserAttributes: (attributes) => {
-        return {
-            email: attributes.email,
-            name: attributes.name,
-            role: attributes.role,
-            busOwnerId: attributes.busOwnerId
-        }
+export async function encrypt(payload: any) {
+  return await new SignJWT(payload)
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('2h')
+    .sign(key);
+}
+
+export async function decrypt(input: string): Promise<any> {
+  try {
+    const { payload } = await jwtVerify(input, key, {
+      algorithms: ['HS256'],
+    });
+    return payload;
+  } catch (e) {
+    return null;
+  }
+}
+
+export async function createSession(userId: string) {
+    const expires = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
+    const session = await encrypt({ userId, expires });
+
+    cookies().set('session', session, {
+        expires,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+        sameSite: 'strict',
+    });
+}
+
+export async function deleteSession() {
+  cookies().set('session', '', { expires: new Date(0), path: '/' });
+  cookies().set('csrf_token', '', { expires: new Date(0), path: '/' });
+}
+
+export const validateRequest = cache(async (): Promise<{ user: User | null; session: any | null }> => {
+    const cookieStore = cookies();
+    const sessionCookie = cookieStore.get('session')?.value;
+    
+    if (!sessionCookie) {
+        return { user: null, session: null };
     }
-});
 
-// IMPORTANT!
-declare module "lucia" {
-	interface Register {
-		Lucia: typeof lucia;
-        DatabaseUserAttributes: DatabaseUserAttributes;
-	}
-}
+    const sessionPayload = await decrypt(sessionCookie);
+    
+    if (!sessionPayload || !sessionPayload.userId) {
+        return { user: null, session: null };
+    }
 
-interface DatabaseUserAttributes {
-    email: string;
-    name: string;
-    role: string;
-    busOwnerId: string | null;
-}
+    const user = await prisma.user.findUnique({
+        where: { id: sessionPayload.userId },
+    });
+    
+    if (!user) {
+        return { user: null, session: null };
+    }
 
-export const validateRequest = (async (): Promise<{ user: User; session: Session } | { user: null; session: null }> => {
-	const cookieStore = await cookies();
-	const sessionId = cookieStore.get(lucia.sessionCookieName)?.value ?? null;
-	if (!sessionId) {
-		return {
-			user: null,
-			session: null
-		};
-	}
+    // Omit hashed_password from the returned user object
+    const { hashed_password, ...userWithoutPassword } = user;
 
-	const result = await lucia.validateSession(sessionId);
-	
-	try {
-		if (result.session && result.session.fresh) {
-			const sessionCookie = lucia.createSessionCookie(result.session.id);
-			cookieStore.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
-		}
-		if (!result.session) {
-			const sessionCookie = lucia.createBlankSessionCookie();
-			cookieStore.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
-		}
-	} catch {
-		// Next.js throws error when attempting to set cookies when rendering page
-	}
-	
-	return result;
+    return { user: userWithoutPassword as User, session: sessionPayload };
 });

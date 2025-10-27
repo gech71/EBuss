@@ -1,9 +1,10 @@
 
 import { PrismaClient, Role } from '@prisma/client';
-import { Argon2id } from 'oslo/password';
+import bcrypt from 'bcrypt';
 import { generateId } from 'lucia';
 
 const prisma = new PrismaClient();
+const SALT_ROUNDS = 10;
 
 async function main() {
   console.log('Start seeding...');
@@ -27,8 +28,8 @@ async function main() {
   
   console.log('Cleared previous data.');
 
-  const superAdminPassword = await new Argon2id().hash('password');
-  const adminPassword = await new Argon2id().hash('Getaye@123');
+  const superAdminPassword = await bcrypt.hash('password', SALT_ROUNDS);
+  const adminPassword = await bcrypt.hash('Getaye@123', SALT_ROUNDS);
 
   // --- Create Bus Owners ---
   const owner1 = await prisma.busOwner.create({

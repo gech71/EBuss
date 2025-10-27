@@ -6,7 +6,7 @@ import { Button } from './ui/button';
 import { usePathname } from 'next/navigation';
 import { Shield, Gem, LogIn, Ticket } from 'lucide-react';
 import { SidebarTrigger } from './ui/sidebar';
-import type { User } from 'lucia';
+import type { User } from '@prisma/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface HeaderProps {

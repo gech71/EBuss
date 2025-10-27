@@ -77,6 +77,7 @@ export default function NewBusPage() {
         const seats = generateSeats(rows, cols, parsedAisleCols, lastRowFull);
         
         const formData = new FormData(event.currentTarget);
+        formData.append('name', name);
         formData.append('capacity', capacity.toString());
         formData.append('rows', rows.toString());
         formData.append('cols', cols.toString());
@@ -89,13 +90,14 @@ export default function NewBusPage() {
             } else {
                  toast({ title: "Success!", description: "New bus has been added."});
                  formRef.current?.reset();
+                 router.push('/admin/buses');
             }
         });
     };
 
     return (
         <form ref={formRef} onSubmit={handleSubmit}>
-             <input type="hidden" name="csrfToken" value={csrfToken} />
+             <input type="hidden" name="csrfToken" value={csrfToken || ''} />
             <Card className="max-w-xl mx-auto">
                 <CardHeader>
                     <CardTitle>Add New Bus</CardTitle>

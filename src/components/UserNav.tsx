@@ -14,7 +14,7 @@ import { LogOut } from 'lucide-react';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { useSidebar } from './ui/sidebar';
 import { cn } from '@/lib/utils';
-import type { User } from 'lucia';
+import type { User } from '@prisma/client';
 import { logout } from '@/app/lib/actions';
 import { useTransition } from 'react';
 import { useToast } from '@/hooks/use-toast';
