@@ -4,7 +4,7 @@
 import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
 import type { User } from '@prisma/client';
-import { decrypt, updateSession, SessionPayload } from '@/app/lib/auth';
+import { decrypt, SessionPayload } from '@/app/lib/auth';
 
 export async function validateRequest(): Promise<{ user: User | null; session: SessionPayload | null; }> {
     const cookieStore = await cookies();
@@ -23,7 +23,6 @@ export async function validateRequest(): Promise<{ user: User | null; session: S
     const now = new Date();
     if (now > sessionPayload.expiresAt || now > sessionPayload.idleExpiresAt) {
         // Session or idle time has expired
-        // No need to call deleteSession here, as the cookie will be invalid anyway
         return { user: null, session: null };
     }
 
@@ -34,9 +33,6 @@ export async function validateRequest(): Promise<{ user: User | null; session: S
     if (!user) {
         return { user: null, session: null };
     }
-
-    // The session is valid, update the idle timeout
-    await updateSession();
 
     // Omit hashed_password from the returned user object
     const { hashed_password, ...userWithoutPassword } = user;

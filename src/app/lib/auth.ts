@@ -8,8 +8,8 @@ import { NextRequest, NextResponse } from 'next/server';
 const secretKey = process.env.JWT_SECRET;
 const key = new TextEncoder().encode(secretKey);
 
-const SESSION_DURATION = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
-const IDLE_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
+export const SESSION_DURATION = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+export const IDLE_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
 
 export interface SessionPayload {
     userId: string;
@@ -63,42 +63,4 @@ export async function deleteSession() {
   const sessionCookie = await cookies();
   sessionCookie.set('session', '', { expires: new Date(0), path: '/' });
   sessionCookie.set('csrf_token', '', { expires: new Date(0), path: '/' });
-}
-
-export async function updateSession() {
-    const cookieStore = await cookies();
-    const sessionCookieValue = cookieStore.get('session')?.value;
-    
-    if (!sessionCookieValue) {
-        return;
-    }
-
-    const sessionPayload = await decrypt(sessionCookieValue);
-    
-    if (!sessionPayload || !sessionPayload.userId) {
-        return;
-    }
-    
-    const now = new Date();
-    if (now > sessionPayload.expiresAt || now > sessionPayload.idleExpiresAt) {
-        await deleteSession();
-        return;
-    }
-
-    // Refresh idle timeout by creating a new token with an updated idleExpiresAt
-    const newIdleExpiresAt = new Date(now.getTime() + IDLE_TIMEOUT);
-    const newSessionPayload: SessionPayload = {
-        ...sessionPayload,
-        idleExpiresAt: newIdleExpiresAt,
-    };
-    const newSessionCookie = await encrypt(newSessionPayload);
-
-    // Set the new session cookie
-    cookieStore.set('session', newSessionCookie, {
-        expires: newSessionPayload.expiresAt,
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        path: '/',
-        sameSite: 'strict',
-    });
 }

@@ -2,7 +2,7 @@
 // middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { decrypt } from './app/lib/auth';
+import { decrypt, encrypt, SESSION_DURATION, IDLE_TIMEOUT, SessionPayload } from './app/lib/auth';
 
 const ALLOWED_ORIGINS = ['https://yourdomain.com', 'https://admin.yourdomain.com'];
 
@@ -25,21 +25,37 @@ export async function middleware(request: NextRequest) {
   requestHeaders.set('X-CSRF-Token', csrfToken);
 
 
-  // 3. Session Validation (Lightweight)
-  // This check is now lightweight and does not involve database access.
+  // 3. Session Validation & Refresh
   const sessionCookieValue = request.cookies.get('session')?.value;
   let isAuthenticated = false;
-  if (sessionCookieValue) {
-    const sessionPayload = await decrypt(sessionCookieValue);
-    if (sessionPayload?.userId && new Date() < new Date(sessionPayload.expiresAt) && new Date() < new Date(sessionPayload.idleExpiresAt)) {
-      isAuthenticated = true;
-    }
-  }
-
-
   let response = NextResponse.next({
     request: { headers: requestHeaders },
   });
+
+  if (sessionCookieValue) {
+    const sessionPayload = await decrypt(sessionCookieValue);
+    const now = new Date();
+    if (sessionPayload?.userId && now < new Date(sessionPayload.expiresAt) && now < new Date(sessionPayload.idleExpiresAt)) {
+      isAuthenticated = true;
+
+      // Refresh the idle timeout by creating a new token with an updated idleExpiresAt
+      const newIdleExpiresAt = new Date(now.getTime() + IDLE_TIMEOUT);
+      const newSessionPayload: SessionPayload = {
+          ...sessionPayload,
+          idleExpiresAt: newIdleExpiresAt,
+      };
+      const newSessionCookie = await encrypt(newSessionPayload);
+      
+      response.cookies.set('session', newSessionCookie, {
+          expires: newSessionPayload.expiresAt,
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          path: '/',
+          sameSite: 'strict',
+      });
+    }
+  }
+
 
   // 4. Route Protection Logic
   const isProtectedRoute = pathname.startsWith('/admin') || pathname.startsWith('/super-admin');
