@@ -86,7 +86,7 @@ export function RouteSearch({ routes, locations, owners }: RouteSearchProps) {
 
   const groupedSearchResults = useMemo(() => {
     return searchResults.reduce((acc: GroupedRoutes, route) => {
-      const key = `${route.origin.name}-${route.destination.name}-${route.departureTime.toISOString()}`;
+      const key = `${route.origin.name}-${route.destination.name}-${new Date(route.departureTime).toISOString()}`;
       if (!acc[key]) {
         acc[key] = [];
       }
