@@ -14,6 +14,7 @@ import { GroupedRouteCard } from './GroupedRouteCard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 type EnrichedRoute = Route & { 
   bus: Bus & { owner: BusOwner }, 
@@ -39,11 +40,20 @@ export function RouteSearch({ routes, locations, owners }: RouteSearchProps) {
   const [searchResults, setSearchResults] = useState<EnrichedRoute[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedOwnerIds, setSelectedOwnerIds] = useState<string[]>([]);
+  const { toast } = useToast();
 
   const [openDate, setOpenDate] = useState(false);
   const [openOwners, setOpenOwners] = useState(false);
 
   const handleSearch = () => {
+    if (origin && origin === destination) {
+        toast({
+            title: "Invalid Search",
+            description: "Origin and destination cannot be the same.",
+            variant: "destructive"
+        });
+        return;
+    }
     const results = routes.filter(route => {
       const isOwnerMatch = selectedOwnerIds.length === 0 || selectedOwnerIds.includes(route.bus.ownerId);
       const isOriginMatch = !origin || route.origin.name === origin;

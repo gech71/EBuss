@@ -45,12 +45,13 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
     const [openBuses, setOpenBuses] = useState(false);
     
     const handleSubmit = (formData: FormData) => {
-        if (!originId || !destinationId || !departureDate || !arrivalDate || selectedBusIds.length === 0) {
-            toast({ title: "Error", description: "Please fill out all fields, including selecting at least one bus.", variant: "destructive" });
+        if (originId && originId === destinationId) {
+            toast({ title: "Invalid Selection", description: "Origin and destination cannot be the same.", variant: "destructive" });
             return;
         }
-         if (originId === destinationId) {
-            toast({ title: "Error", description: "Origin and destination cannot be the same.", variant: "destructive" });
+
+        if (!originId || !destinationId || !departureDate || !arrivalDate || selectedBusIds.length === 0) {
+            toast({ title: "Error", description: "Please fill out all fields, including selecting at least one bus.", variant: "destructive" });
             return;
         }
 

@@ -41,15 +41,16 @@ export function EditRouteForm({ route, locations, buses, discounts }: EditRouteF
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
 
-        if (!departureDate || !arrivalDate) {
-            toast({ title: "Error", description: "Please fill out all fields.", variant: "destructive" });
+        const originId = formData.get('originId') as string;
+        const destinationId = formData.get('destinationId') as string;
+        
+        if (originId && originId === destinationId) {
+            toast({ title: "Invalid Selection", description: "Origin and destination cannot be the same.", variant: "destructive" });
             return;
         }
 
-        const originId = formData.get('originId') as string;
-        const destinationId = formData.get('destinationId') as string;
-        if (originId === destinationId) {
-            toast({ title: "Error", description: "Origin and destination cannot be the same.", variant: "destructive" });
+        if (!departureDate || !arrivalDate) {
+            toast({ title: "Error", description: "Please fill out all fields.", variant: "destructive" });
             return;
         }
         
