@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -31,19 +32,19 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
     const formRef = useRef<HTMLFormElement>(null);
     const { csrfToken, loading: csrfLoading } = useCsrf();
     
-    const [originId, setOriginId] = useState<string>('');
-    const [destinationId, setDestinationId] = useState<string>('');
     const [departureDate, setDepartureDate] = useState<Date>();
-    const [departureTime, setDepartureTime] = useState('12:00');
     const [arrivalDate, setArrivalDate] = useState<Date>();
-    const [arrivalTime, setArrivalTime] = useState('16:00');
     const [selectedBusIds, setSelectedBusIds] = useState<string[]>([]);
     
-    const [openOrigin, setOpenOrigin] = useState(false);
-    const [openDestination, setOpenDestination] = useState(false);
     const [openBuses, setOpenBuses] = useState(false);
     
-    const handleSubmit = (formData: FormData) => {
+    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
+
+        const originId = formData.get('originId') as string;
+        const destinationId = formData.get('destinationId') as string;
+        
         if (originId && originId === destinationId) {
             toast({ title: "Invalid Selection", description: "Origin and destination cannot be the same.", variant: "destructive" });
             return;
@@ -54,12 +55,8 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
             return;
         }
 
-        formData.append('originId', originId);
-        formData.append('destinationId', destinationId);
         formData.append('departureDate', format(departureDate, 'yyyy-MM-dd'));
-        formData.append('departureTime', departureTime);
         formData.append('arrivalDate', format(arrivalDate, 'yyyy-MM-dd'));
-        formData.append('arrivalTime', arrivalTime);
         formData.append('busIds', JSON.stringify(selectedBusIds));
 
         startTransition(async () => {
@@ -69,6 +66,9 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
             } else {
                  toast({ title: "Success!", description: `${selectedBusIds.length} new route(s) have been added.` });
                  formRef.current?.reset();
+                 setDepartureDate(undefined);
+                 setArrivalDate(undefined);
+                 setSelectedBusIds([]);
             }
         });
     };
@@ -84,7 +84,7 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
     const selectedBuses = buses.filter(b => selectedBusIds.includes(b.id));
 
     return (
-        <form ref={formRef} action={handleSubmit}>
+        <form ref={formRef} onSubmit={handleSubmit}>
             <input type="hidden" name="csrfToken" value={csrfToken} />
             <Card className="max-w-xl mx-auto">
                 <CardHeader>
@@ -96,7 +96,7 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <Label htmlFor="origin">Origin</Label>
-                                 <Select name="originId" required value={originId} onValueChange={setOriginId}>
+                                 <Select name="originId" required>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select an origin..." />
                                     </SelectTrigger>
@@ -111,7 +111,7 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="destination">Destination</Label>
-                                <Select name="destinationId" required value={destinationId} onValueChange={setDestinationId}>
+                                <Select name="destinationId" required>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select a destination..." />
                                     </SelectTrigger>
@@ -126,7 +126,7 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                             </div>
                         </div>
                         <div className="space-y-4">
-                            <div className="space-y-2">
+                           <div className="space-y-2">
                                 <Label htmlFor="departureTime">Departure</Label>
                                 <div className="flex flex-col sm:flex-row gap-2">
                                     <Popover>
@@ -140,7 +140,7 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                                             <Calendar mode="single" selected={departureDate} onSelect={setDepartureDate} initialFocus />
                                         </PopoverContent>
                                     </Popover>
-                                    <Input type="time" value={departureTime} onChange={e => setDepartureTime(e.target.value)} />
+                                    <Input name="departureTime" type="time" defaultValue="12:00" />
                                 </div>
                             </div>
                              <div className="space-y-2">
@@ -157,7 +157,7 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                                             <Calendar mode="single" selected={arrivalDate} onSelect={setArrivalDate} initialFocus />
                                         </PopoverContent>
                                     </Popover>
-                                     <Input type="time" value={arrivalTime} onChange={e => setArrivalTime(e.target.value)} />
+                                     <Input name="arrivalTime" type="time" defaultValue="16:00" />
                                 </div>
                             </div>
                         </div>
