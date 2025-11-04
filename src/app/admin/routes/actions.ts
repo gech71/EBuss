@@ -22,10 +22,12 @@ const routeSchema = z.object({
 });
 
 const combineDateTime = (dateStr: string, timeStr: string): Date => {
-    const date = new Date(dateStr);
+    // This logic prevents timezone-related date shifts.
+    // '2025-11-05' becomes '2025-11-05T00:00:00.000Z'
+    const dateInUtc = new Date(dateStr + 'T00:00:00.000Z');
     const [hours, minutes] = timeStr.split(':').map(Number);
-    date.setHours(hours, minutes, 0, 0);
-    return date;
+    dateInUtc.setUTCHours(hours, minutes, 0, 0);
+    return dateInUtc;
 };
 
 
