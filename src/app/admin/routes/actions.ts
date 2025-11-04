@@ -26,6 +26,7 @@ const combineDateTime = (dateStr: string, timeStr: string): Date => {
     // '2025-11-05' becomes '2025-11-05T00:00:00.000Z'
     const dateInUtc = new Date(dateStr + 'T00:00:00.000Z');
     const [hours, minutes] = timeStr.split(':').map(Number);
+    // Use setUTCHours to ensure the time is set in UTC, avoiding timezone shifts.
     dateInUtc.setUTCHours(hours, minutes, 0, 0);
     return dateInUtc;
 };
@@ -61,6 +62,10 @@ export async function createRouteAction(formData: FormData) {
     }
 
     const { originId, destinationId, departureDate, departureTime, arrivalDate, arrivalTime, price, busIds, discountId } = validatedData.data;
+
+    if (originId === destinationId) {
+        return { success: false, message: 'Origin and destination cannot be the same.' };
+    }
 
     const fullDepartureTime = combineDateTime(departureDate, departureTime);
     const fullArrivalTime = combineDateTime(arrivalDate, arrivalTime);
@@ -146,6 +151,10 @@ export async function updateRouteAction(formData: FormData) {
 
     const { originId, destinationId, departureDate, departureTime, arrivalDate, arrivalTime, price, busIds, discountId } = validatedData.data;
     const busId = busIds[0];
+
+    if (originId === destinationId) {
+        return { success: false, message: 'Origin and destination cannot be the same.' };
+    }
 
     const fullDepartureTime = combineDateTime(departureDate, departureTime);
     const fullArrivalTime = combineDateTime(arrivalDate, arrivalTime);
