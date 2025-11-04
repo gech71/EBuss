@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { MoreHorizontal, LayoutGrid } from "lucide-react";
+import { MoreHorizontal, LayoutGrid, Edit } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils";
 import { ScrollArea } from "../ui/scroll-area";
 import { useCsrf } from "@/hooks/useCsrf";
 import { Armchair } from "lucide-react";
+import Link from "next/link";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 
 
 interface SeatProps {
@@ -42,12 +44,14 @@ function Seat({ seat }: SeatProps) {
 
 interface BusActionsProps {
   bus: Bus & { layout: (SeatLayout & { seats: PrismaSeat[] }) | null };
+  routeCount: number;
 }
 
-export function BusActions({ bus }: BusActionsProps) {
+export function BusActions({ bus, routeCount }: BusActionsProps) {
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
   const { csrfToken, loading: csrfLoading } = useCsrf();
+  const isEditDisabled = routeCount > 0;
 
   const handleDelete = async () => {
     if (!csrfToken) {
@@ -85,6 +89,14 @@ export function BusActions({ bus }: BusActionsProps) {
     return colA - colB;
   }) || [];
 
+  const EditMenuItem = () => (
+    <DropdownMenuItem asChild disabled={isEditDisabled} onSelect={(e) => isEditDisabled && e.preventDefault()}>
+        <Link href={!isEditDisabled ? `/admin/buses/${bus.id}/edit` : '#'}>
+            <Edit className="mr-2 h-4 w-4" /> Edit
+        </Link>
+    </DropdownMenuItem>
+  );
+
 
   return (
     <>
@@ -105,7 +117,22 @@ export function BusActions({ bus }: BusActionsProps) {
                   View Layout
                 </DropdownMenuItem>
               </DialogTrigger>
-              <DropdownMenuItem disabled>Edit</DropdownMenuItem>
+              
+              <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <div>
+                             <EditMenuItem />
+                        </div>
+                    </TooltipTrigger>
+                    {isEditDisabled && (
+                        <TooltipContent>
+                            <p>Cannot edit a bus assigned to routes.</p>
+                        </TooltipContent>
+                    )}
+                </Tooltip>
+              </TooltipProvider>
+
               <DropdownMenuSeparator />
               <AlertDialogTrigger asChild>
                 <DropdownMenuItem disabled={csrfLoading} className="text-destructive focus:text-destructive" onSelect={(e) => e.preventDefault()}>
