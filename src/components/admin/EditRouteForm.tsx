@@ -121,7 +121,7 @@ export function EditRouteForm({ route, locations, buses, discounts }: EditRouteF
                     
                     <Separator />
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="departureTime">Departure</Label>
                             <div className="flex flex-col sm:flex-row gap-2">
