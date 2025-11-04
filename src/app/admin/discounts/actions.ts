@@ -26,8 +26,11 @@ const discountSchema = z.object({
 
 // Helper to ensure dates are treated as UTC to prevent timezone shifts
 const createUtcDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+    // Input is an ISO string like '2025-11-05T00:18:16.123Z'. We only want the date part.
+    const datePart = dateStr.split('T')[0];
+    // Create a new Date object in UTC using the date part.
+    // This creates a date at midnight UTC, regardless of server timezone.
+    return new Date(datePart + 'T00:00:00.000Z');
 }
 
 export async function createDiscountAction(formData: FormData) {
