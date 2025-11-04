@@ -12,7 +12,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { CalendarIcon, Check, ChevronsUpDown } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, formatInTimeZone } from "date-fns-tz";
 import { useState, useTransition } from "react";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import type { Route, Bus, Discount, Location } from "@prisma/client";
@@ -34,9 +34,9 @@ export function EditRouteForm({ route, locations, buses, discounts }: EditRouteF
     const { csrfToken, loading: csrfLoading } = useCsrf();
 
     const [departureDate, setDepartureDate] = useState<Date | undefined>(new Date(route.departureTime));
-    const [departureTime, setDepartureTime] = useState(format(new Date(route.departureTime), "HH:mm"));
+    const [departureTime, setDepartureTime] = useState(formatInTimeZone(route.departureTime, 'UTC', "HH:mm"));
     const [arrivalDate, setArrivalDate] = useState<Date | undefined>(new Date(route.arrivalTime));
-    const [arrivalTime, setArrivalTime] = useState(format(new Date(route.arrivalTime), "HH:mm"));
+    const [arrivalTime, setArrivalTime] = useState(formatInTimeZone(route.arrivalTime, 'UTC', "HH:mm"));
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -121,7 +121,7 @@ export function EditRouteForm({ route, locations, buses, discounts }: EditRouteF
                     
                     <Separator />
                     
-                    <div className="space-y-4">
+                     <div className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="departureTime">Departure</Label>
                             <div className="flex flex-col sm:flex-row gap-2">
