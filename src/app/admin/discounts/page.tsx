@@ -9,7 +9,7 @@ import prisma from '@/lib/prisma';
 import { validateRequest } from '@/lib/server/auth';
 import { redirect } from 'next/navigation';
 import { DiscountActions } from '@/components/admin/DiscountActions';
-import { format } from 'date-fns';
+import { format } from 'date-fns-tz';
 
 export default async function AdminDiscountsPage() {
   const { user } = await validateRequest();
@@ -36,8 +36,9 @@ export default async function AdminDiscountsPage() {
     return <Badge className="bg-green-600 hover:bg-green-700">Active</Badge>;
   };
   
+  // Format the date as UTC to prevent timezone shifts on display
   const formatDateUTC = (date: Date) => {
-    return format(new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()), 'PPP');
+    return format(date, 'PPP', { timeZone: 'UTC' });
   }
 
   return (
