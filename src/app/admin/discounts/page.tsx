@@ -5,11 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PlusCircle, ArrowRight, Percent } from "lucide-react";
 import { Badge } from '@/components/ui/badge';
-import { formatInTimeZone } from 'date-fns-tz';
 import prisma from '@/lib/prisma';
 import { validateRequest } from '@/lib/server/auth';
 import { redirect } from 'next/navigation';
 import { DiscountActions } from '@/components/admin/DiscountActions';
+import { format } from 'date-fns';
 
 export default async function AdminDiscountsPage() {
   const { user } = await validateRequest();
@@ -35,6 +35,10 @@ export default async function AdminDiscountsPage() {
     if (now > endDate) return <Badge variant="secondary">Expired</Badge>;
     return <Badge className="bg-green-600 hover:bg-green-700">Active</Badge>;
   };
+  
+  const formatDateUTC = (date: Date) => {
+    return format(new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()), 'PPP');
+  }
 
   return (
       <Card>
@@ -70,7 +74,7 @@ export default async function AdminDiscountsPage() {
                       <Badge variant="outline">{discount.tiers.length} Tiers</Badge>
                   </TableCell>
                   <TableCell>
-                    {formatInTimeZone(discount.startDate, 'UTC', "PPP")} <ArrowRight className="inline h-4 w-4 mx-1" /> {formatInTimeZone(discount.endDate, 'UTC', "PPP")}
+                    {formatDateUTC(discount.startDate)} <ArrowRight className="inline h-4 w-4 mx-1" /> {formatDateUTC(discount.endDate)}
                   </TableCell>
                   <TableCell>{getStatus(discount.startDate, discount.endDate)}</TableCell>
                   <TableCell className="text-right">
