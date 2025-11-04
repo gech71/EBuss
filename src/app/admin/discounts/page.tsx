@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PlusCircle, ArrowRight, Percent } from "lucide-react";
 import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 import prisma from '@/lib/prisma';
 import { validateRequest } from '@/lib/server/auth';
 import { redirect } from 'next/navigation';
@@ -69,7 +69,9 @@ export default async function AdminDiscountsPage() {
                   <TableCell>
                       <Badge variant="outline">{discount.tiers.length} Tiers</Badge>
                   </TableCell>
-                  <TableCell>{format(discount.startDate, "PPP")} <ArrowRight className="inline h-4 w-4 mx-1" /> {format(discount.endDate, "PPP")}</TableCell>
+                  <TableCell>
+                    {formatInTimeZone(discount.startDate, 'UTC', "PPP")} <ArrowRight className="inline h-4 w-4 mx-1" /> {formatInTimeZone(discount.endDate, 'UTC', "PPP")}
+                  </TableCell>
                   <TableCell>{getStatus(discount.startDate, discount.endDate)}</TableCell>
                   <TableCell className="text-right">
                     <DiscountActions discountId={discount.id} />
