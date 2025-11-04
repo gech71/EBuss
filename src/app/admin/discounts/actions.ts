@@ -24,10 +24,10 @@ const discountSchema = z.object({
   tiers: z.array(tierSchema).min(1, "At least one discount tier is required."),
 });
 
-// Helper to ensure dates from the client (which are ISO strings) are correctly interpreted as UTC.
+// Helper to ensure dates from the client (which are date-only strings) are correctly interpreted as UTC dates.
 const createUtcDate = (dateStr: string) => {
-    // The date string from the client is already a UTC ISO string (e.g., "2025-11-05T00:00:00.000Z")
-    // We create a new Date object directly from it.
+    // We expect a string like "2025-11-05T00:00:00.000Z" from the form.
+    // Directly creating a new Date from this ISO string is reliable.
     return new Date(dateStr);
 }
 
