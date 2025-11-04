@@ -66,6 +66,12 @@ export async function createRouteAction(formData: FormData) {
     if (fullArrivalTime <= fullDepartureTime) {
         return { success: false, message: 'Arrival time must be after departure time.' };
     }
+    
+    const oneHourFromNow = new Date(Date.now() + 60 * 60 * 1000);
+    if (fullDepartureTime < oneHourFromNow) {
+        return { success: false, message: 'Departure time must be at least one hour from now.' };
+    }
+
 
     try {
         const busCount = await prisma.bus.count({
