@@ -16,12 +16,19 @@ const tierSchema = z.object({
   percentage: z.coerce.number().positive(),
 });
 
+// Use string for dates to handle them manually and avoid timezone issues with Zod's coerce.date()
 const discountSchema = z.object({
   name: z.string().min(1, "Discount name is required."),
-  startDate: z.coerce.date(),
-  endDate: z.coerce.date(),
+  startDate: z.string().min(1, "Start date is required."),
+  endDate: z.string().min(1, "End date is required."),
   tiers: z.array(tierSchema).min(1, "At least one discount tier is required."),
 });
+
+// Helper to ensure dates are treated as UTC to prevent timezone shifts
+const createUtcDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
 
 export async function createDiscountAction(formData: FormData) {
     await validateCsrf(formData.get('csrfToken') as string);
@@ -47,13 +54,16 @@ export async function createDiscountAction(formData: FormData) {
     }
 
     const { name, startDate, endDate, tiers } = validatedData.data;
+    
+    const finalStartDate = createUtcDate(startDate);
+    const finalEndDate = createUtcDate(endDate);
 
     try {
         const newDiscount = await prisma.discount.create({
             data: {
                 name,
-                startDate,
-                endDate,
+                startDate: finalStartDate,
+                endDate: finalEndDate,
                 ownerId: user.busOwnerId,
                 tiers: {
                     create: tiers.map(tier => ({
@@ -101,6 +111,9 @@ export async function updateDiscountAction(formData: FormData) {
     
     const { name, startDate, endDate, tiers } = validatedData.data;
 
+    const finalStartDate = createUtcDate(startDate);
+    const finalEndDate = createUtcDate(endDate);
+
     try {
         await prisma.$transaction(async (tx) => {
             const discount = await tx.discount.findFirst({
@@ -116,7 +129,11 @@ export async function updateDiscountAction(formData: FormData) {
                     id: discountId,
                     ownerId: user.busOwnerId
                 },
-                data: { name, startDate, endDate }
+                data: { 
+                    name, 
+                    startDate: finalStartDate,
+                    endDate: finalEndDate
+                }
             });
             
             await tx.discountTier.deleteMany({
