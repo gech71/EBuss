@@ -84,8 +84,9 @@ export function EditDiscountForm({ discount: initialDiscount }: EditDiscountForm
         const formData = new FormData(event.currentTarget);
         formData.append('id', initialDiscount.id);
         formData.append('name', name);
-        formData.append('startDate', dateRange.from.toISOString());
-        formData.append('endDate', dateRange.to.toISOString());
+        // Format date as yyyy-MM-dd to send a timezone-agnostic date to the server
+        formData.append('startDate', format(dateRange.from, 'yyyy-MM-dd'));
+        formData.append('endDate', format(dateRange.to, 'yyyy-MM-dd'));
         formData.append('tiers', JSON.stringify(tiers));
 
         startTransition(async () => {

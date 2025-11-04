@@ -26,9 +26,9 @@ const discountSchema = z.object({
 
 // Helper to ensure dates from the client are correctly interpreted as UTC dates at midnight.
 const createUtcDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    // Creates a new Date object for midnight UTC on the given date, regardless of local timezone.
-    return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+    // Expects a 'yyyy-MM-dd' string.
+    // Appending 'T00:00:00.000Z' forces the string to be parsed as UTC midnight.
+    return new Date(dateStr + 'T00:00:00.000Z');
 }
 
 export async function createDiscountAction(formData: FormData) {
