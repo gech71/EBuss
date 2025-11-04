@@ -179,7 +179,7 @@ export function EditDiscountForm({ discount: initialDiscount }: EditDiscountForm
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
-                     <Button type="button" variant="outline" onClick={() => router.push('/admin/discounts')}>Cancel</Button>
+                     <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
                     <Button type="submit" disabled={isPending || csrfLoading}>{isPending ? "Saving..." : "Save Changes"}</Button>
                 </CardFooter>
             </Card>

@@ -190,7 +190,7 @@ export function EditOwnerForm({ owner: initialOwner, otherOwnerNames }: EditOwne
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => router.push('/super-admin/owners')}>Cancel</Button>
+                    <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
                     <Button type="submit" disabled={isPending}>
                         {isPending ? 'Saving...' : 'Save Changes'}
                     </Button>

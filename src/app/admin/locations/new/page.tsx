@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import Link from 'next/link';
 import { createLocationAction } from "@/app/admin/locations/actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { useCsrf } from "@/hooks/useCsrf";
@@ -64,9 +63,7 @@ export default function NewLocationPage() {
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" asChild>
-                      <Link href="/admin/locations">Cancel</Link>
-                    </Button>
+                    <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
                     <SubmitButton disabled={csrfLoading}>Save Location</SubmitButton>
                 </CardFooter>
             </Card>
