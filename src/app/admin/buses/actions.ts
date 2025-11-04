@@ -170,6 +170,7 @@ export async function updateBusAction(formData: FormData) {
     }
 
     revalidatePath('/admin/buses');
+    revalidatePath(`/admin/buses/${busId}/edit`);
     redirect('/admin/buses');
 }
 
@@ -194,12 +195,23 @@ export async function deleteBusAction(busId: string, csrfToken: string): Promise
       };
     }
 
-    await prisma.bus.delete({
-      where: {
-        id: busId,
-        ownerId: user.busOwnerId,
-      },
+    // Since Bus and SeatLayout have a cascaded delete, we only need to delete the bus.
+    // The transaction ensures this is an all-or-nothing operation.
+    await prisma.$transaction(async (tx) => {
+        const busToDelete = await tx.bus.findUnique({ where: { id: busId, ownerId: user.busOwnerId }});
+        if (!busToDelete) {
+            throw new Error("Bus not found or you don't have permission to delete it.");
+        }
+        if (busToDelete.layoutId) {
+            await tx.seat.deleteMany({ where: { layoutId: busToDelete.layoutId } });
+        }
+        await tx.bus.delete({
+            where: {
+                id: busId,
+            },
+        });
     });
+
 
     await logAction({ userId: user.id, actionType: 'DELETE_BUS', description: `Deleted bus ${busId}.` });
     revalidatePath('/admin/buses');
