@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -93,8 +92,8 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                     <CardDescription>Define the details for the new bus route. You can select multiple buses to create the same route for each of them.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <Label htmlFor="origin">Origin</Label>
                                  <Select name="originId" required value={originId} onValueChange={setOriginId}>
@@ -126,10 +125,10 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                                 </Select>
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <Label htmlFor="departureTime">Departure</Label>
-                                <div className="flex gap-2">
+                                <div className="flex flex-col sm:flex-row gap-2">
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !departureDate && "text-muted-foreground")}>
@@ -146,7 +145,7 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                             </div>
                              <div className="space-y-2">
                                 <Label htmlFor="arrivalTime">Arrival</Label>
-                                <div className="flex gap-2">
+                                <div className="flex flex-col sm:flex-row gap-2">
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !arrivalDate && "text-muted-foreground")}>
@@ -207,7 +206,7 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                                 </PopoverContent>
                             </Popover>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <Label htmlFor="price">Price</Label>
                                 <Input id="price" name="price" type="number" step="0.01" placeholder="e.g., 45.00" required />
