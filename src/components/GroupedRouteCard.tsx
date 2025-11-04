@@ -17,7 +17,8 @@ interface GroupedRouteCardProps {
 export function GroupedRouteCard({ routes }: GroupedRouteCardProps) {
   const firstRoute = routes[0];
   const { origin, destination } = firstRoute;
-  const isExpired = new Date(firstRoute.departureTime) < new Date();
+  const departureDate = new Date(firstRoute.departureTime);
+  const isExpired = departureDate < new Date();
   
   // Check if any route in the group has a discount
   const hasDiscount = routes.some(route => route.discount);
@@ -39,7 +40,7 @@ export function GroupedRouteCard({ routes }: GroupedRouteCardProps) {
           <CardDescription>From {origin?.name || 'Unknown'}</CardDescription>
           <div className="flex items-center text-sm text-muted-foreground pt-1">
             <Clock className="w-4 h-4 mr-2 text-primary/70" />
-            <span>{new Date(firstRoute.departureTime).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })} at {new Date(firstRoute.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            <span>{departureDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })} at {departureDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
           </div>
         </CardHeader>
         <CardContent className="flex-grow space-y-2 p-4 pt-0">
