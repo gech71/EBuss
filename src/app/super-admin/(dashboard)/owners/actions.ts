@@ -111,8 +111,13 @@ export async function createOwnerAction(formData: FormData) {
             }
         });
 
-        // Send email with credentials
-        await sendCredentialsEmail(email, password);
+        // Send email with credentials, but don't block on failure
+        try {
+            await sendCredentialsEmail(email, password);
+        } catch (emailError) {
+            console.error("Failed to send credentials email, but owner was created successfully.", emailError);
+            console.log(`DEV ONLY: Credentials for ${email} -> Password: ${password}`);
+        }
 
         revalidatePath('/super-admin/owners');
     
