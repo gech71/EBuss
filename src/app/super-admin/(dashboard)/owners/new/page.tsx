@@ -10,13 +10,21 @@ export default async function NewOwnerPage() {
         }
     });
 
+    const allUsers = await prisma.user.findMany({
+        select: {
+            email: true
+        }
+    });
+
     const existingOwnerNames = allOwners.map(o => o.name);
     const existingAccountNumbers = allOwners.map(o => o.bankAccountNumber);
+    const existingEmails = allUsers.map(u => u.email);
 
     return (
         <NewOwnerForm 
             existingOwnerNames={existingOwnerNames} 
             existingAccountNumbers={existingAccountNumbers} 
+            existingEmails={existingEmails}
         />
     );
 }

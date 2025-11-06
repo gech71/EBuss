@@ -5,7 +5,10 @@ import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import type { CommissionTier, CommissionType } from '@prisma/client';
+import type { CommissionTier, CommissionType, Role } from '@prisma/client';
+import bcrypt from 'bcrypt';
+import crypto from 'crypto';
+import { sendCredentialsEmail } from '@/lib/server/email';
 
 // Simple ID generator
 function generateId(length: number): string {
@@ -33,6 +36,7 @@ const bankAccountSchema = z.string()
 
 const createOwnerSchema = z.object({
   name: z.string().min(1, "Owner name cannot be empty."),
+  email: z.string().email("Please enter a valid email address."),
   bankAccountNumber: bankAccountSchema,
   commissionTiers: z.array(tierSchema)
 });
@@ -44,10 +48,23 @@ const updateOwnerSchema = z.object({
   commissionTiers: z.array(tierSchema)
 });
 
+function generatePassword(length = 12) {
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+~`|}{[]:;?><,./-=";
+    let password = "";
+    for (let i = 0, n = charset.length; i < length; ++i) {
+        password += charset.charAt(Math.floor(crypto.randomInt(n)));
+    }
+    // Ensure password meets complexity requirements if any are needed
+    if (!password.match(/^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,}$/)) {
+        return generatePassword(length);
+    }
+    return password;
+}
 
 export async function createOwnerAction(formData: FormData) {
     const rawData = {
         name: formData.get('name'),
+        email: formData.get('email'),
         bankAccountNumber: formData.get('bankAccountNumber'),
         commissionTiers: JSON.parse(formData.get('commissionTiers') as string)
     };
@@ -61,10 +78,13 @@ export async function createOwnerAction(formData: FormData) {
         };
     }
 
-    const { name, bankAccountNumber, commissionTiers } = validatedData.data;
+    const { name, email, bankAccountNumber, commissionTiers } = validatedData.data;
+    
+    const password = generatePassword();
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     try {
-        await prisma.busOwner.create({
+        const owner = await prisma.busOwner.create({
             data: {
                 id: generateId(15),
                 name,
@@ -80,9 +100,34 @@ export async function createOwnerAction(formData: FormData) {
             }
         });
 
+        await prisma.user.create({
+            data: {
+                id: generateId(15),
+                name: name, // Use owner name for the user's name
+                email: email,
+                hashed_password: hashedPassword,
+                role: Role.ADMIN,
+                busOwnerId: owner.id,
+            }
+        });
+
+        // Send email with credentials
+        await sendCredentialsEmail(email, password);
+
         revalidatePath('/super-admin/owners');
     
     } catch (error) {
+        if (error instanceof Error && error.message.includes('Unique constraint failed')) {
+             if(error.message.includes('User_email_key')) {
+                return { success: false, message: 'A user with this email already exists.' };
+            }
+            if(error.message.includes('BusOwner_name_key')) {
+                return { success: false, message: 'A bus owner with this name already exists.' };
+            }
+             if(error.message.includes('BusOwner_bankAccountNumber_key')) {
+                return { success: false, message: 'This bank account number is already registered.' };
+            }
+        }
         console.error("Error creating owner:", error);
         return { success: false, message: 'An unexpected error occurred while creating the owner.' };
     }

@@ -17,6 +17,7 @@ import { createOwnerAction } from "@/app/super-admin/(dashboard)/owners/actions"
 interface NewOwnerFormProps {
     existingOwnerNames: string[];
     existingAccountNumbers: string[];
+    existingEmails: string[];
 }
 
 type CommissionTierState = {
@@ -26,12 +27,13 @@ type CommissionTierState = {
     value: number;
 };
 
-export function NewOwnerForm({ existingOwnerNames, existingAccountNumbers }: NewOwnerFormProps) {
+export function NewOwnerForm({ existingOwnerNames, existingAccountNumbers, existingEmails }: NewOwnerFormProps) {
     const { toast } = useToast();
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     
     const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
     const [bankAccountNumber, setBankAccountNumber] = useState('');
     const [tiers, setTiers] = useState<CommissionTierState[]>([
         { minSales: 1, maxSales: 100, type: 'PERCENTAGE', value: 0 }
@@ -66,12 +68,16 @@ export function NewOwnerForm({ existingOwnerNames, existingAccountNumbers }: New
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (!name) {
-            toast({ title: "Error", description: "Owner name cannot be empty.", variant: "destructive" });
+        if (!name || !email) {
+            toast({ title: "Error", description: "Owner name and email cannot be empty.", variant: "destructive" });
             return;
         }
         if (existingOwnerNames.some(n => n.toLowerCase() === name.toLowerCase())) {
              toast({ title: "Error", description: "An owner with this name already exists.", variant: "destructive" });
+             return;
+        }
+         if (existingEmails.some(e => e.toLowerCase() === email.toLowerCase())) {
+             toast({ title: "Error", description: "This email address is already in use.", variant: "destructive" });
              return;
         }
         if(existingAccountNumbers.includes(bankAccountNumber)) {
@@ -96,6 +102,7 @@ export function NewOwnerForm({ existingOwnerNames, existingAccountNumbers }: New
         
         const formData = new FormData();
         formData.append('name', name);
+        formData.append('email', email);
         formData.append('bankAccountNumber', bankAccountNumber);
         formData.append('commissionTiers', JSON.stringify(tiers));
 
@@ -130,7 +137,19 @@ export function NewOwnerForm({ existingOwnerNames, existingAccountNumbers }: New
                                 onChange={(e) => setName(e.target.value)}
                             />
                         </div>
-                         <div className="space-y-2">
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Admin Email</Label>
+                            <Input 
+                                id="email" 
+                                name="email"
+                                type="email"
+                                placeholder="e.g., admin@metrotransit.com" 
+                                required
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                            />
+                        </div>
+                         <div className="space-y-2 md:col-span-2">
                             <Label htmlFor="bankAccountNumber">Bank Account Number</Label>
                             <Input 
                                 id="bankAccountNumber" 
