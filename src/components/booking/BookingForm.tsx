@@ -74,21 +74,26 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
     const subtotal = selectedRoute.price * ticketCount;
     let discountAmount = 0;
     let appliedTier: DiscountTier | null = null;
+    
+    const now = new Date();
+    const isDiscountActive = selectedRoute.discount && 
+                             now >= new Date(selectedRoute.discount.startDate) && 
+                             now <= new Date(selectedRoute.discount.endDate);
 
-    if (selectedRoute.discount && ticketCount > 0) {
+    if (isDiscountActive && ticketCount > 0) {
       const applicableTier = selectedRoute.discount.tiers
         .filter(tier => ticketCount >= tier.minTickets && ticketCount <= tier.maxTickets)
-        .sort((a, b) => b.percentage - a.percentage)[0];
+        .sort((a, b) => Number(b.percentage) - Number(a.percentage))[0];
       
       if (applicableTier) {
-        discountAmount = (subtotal * applicableTier.percentage) / 100;
+        discountAmount = (subtotal * Number(applicableTier.percentage)) / 100;
         appliedTier = applicableTier;
       }
     }
     
     const finalPrice = subtotal - discountAmount;
     return { subtotal, discountAmount, finalPrice, appliedTier };
-  }, [ticketCount, selectedRoute.price, selectedRoute.discount]);
+  }, [ticketCount, selectedRoute]);
 
   const handleRouteChange = async (routeId: string) => {
     if (routeId === selectedRoute.id) return;
@@ -258,7 +263,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
                   </div>
                   {appliedTier && (
                       <div className="flex justify-between items-center text-sm text-green-600 font-semibold">
-                          <span className="flex items-center gap-2"><Percent />{selectedRoute.discount?.name} ({appliedTier.percentage}%)</span>
+                          <span className="flex items-center gap-2"><Percent />{selectedRoute.discount?.name} ({Number(appliedTier.percentage)}%)</span>
                           <span>-{discountAmount.toFixed(2)} ETB</span>
                       </div>
                   )}
