@@ -18,7 +18,7 @@ model User {
   role            Role     @default(USER)
   busOwnerId      String?
   busOwner        BusOwner? @relation("OwnerAdmins", fields: [busOwnerId], references: [id])
-  createdAt       DateTime @default(now())
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
 
   sessions Session[]
 }
@@ -26,7 +26,7 @@ model User {
 model Session {
   id        String   @id
   userId    String
-  expiresAt DateTime
+  expiresAt DateTime @db.Timestamptz(3)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
@@ -34,8 +34,8 @@ model BusOwner {
   id                String           @id
   name              String           @unique
   bankAccountNumber String           @unique
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  createdAt         DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime         @updatedAt @db.Timestamptz(3)
   admins            User[]           @relation("OwnerAdmins")
   buses             Bus[]
   locations         Location[]
@@ -62,8 +62,8 @@ model Bus {
   routes    Route[]
   layoutId  String      @unique
   layout    SeatLayout  @relation(fields: [layoutId], references: [id], onDelete: Cascade)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  createdAt DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime    @updatedAt @db.Timestamptz(3)
 }
 
 model SeatLayout {
@@ -72,7 +72,7 @@ model SeatLayout {
   cols      Int
   seats     Seat[]
   bus       Bus?
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
 }
 
 model Seat {
@@ -91,7 +91,7 @@ model Location {
   owner          BusOwner @relation(fields: [ownerId], references: [id])
   routesOrigin   Route[] @relation("Origin")
   routesDest     Route[] @relation("Destination")
-  createdAt      DateTime @default(now())
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
 
   @@unique([name, ownerId])
 }
@@ -100,8 +100,8 @@ model Route {
   id            String    @id @default(cuid())
   originId      String
   destinationId String
-  departureTime DateTime
-  arrivalTime   DateTime
+  departureTime DateTime  @db.Timestamptz(3)
+  arrivalTime   DateTime  @db.Timestamptz(3)
   price         Decimal
   busId         String
   origin        Location  @relation("Origin", fields: [originId], references: [id])
@@ -110,8 +110,8 @@ model Route {
   bookings      Booking[]
   discountId    String?
   discount      Discount? @relation(fields: [discountId], references: [id], onDelete: SetNull)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @db.Timestamptz(3)
 }
 
 model Booking {
@@ -122,10 +122,10 @@ model Booking {
   routeId         String
   route           Route          @relation(fields: [routeId], references: [id])
   bookedSeats     BookedSeat[]
-  bookingTime     DateTime       @default(now())
+  bookingTime     DateTime       @default(now()) @db.Timestamptz(3)
   status          BookingStatus  @default(PENDING)
   paymentStatus   PaymentStatus  @default(PENDING)
-  expiresAt       DateTime?
+  expiresAt       DateTime?      @db.Timestamptz(3)
   payments        Payment[]
 
   @@index([passengerPhone])
@@ -147,21 +147,23 @@ model Payment {
   transactionId   String        @unique
   referenceNumber String?
   paymentToken    String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt       DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
 }
 
 model Discount {
-  id        String         @id @default(cuid())
-  name      String
-  startDate DateTime
-  endDate   DateTime
-  ownerId   String
-  owner     BusOwner       @relation(fields: [ownerId], references: [id])
-  tiers     DiscountTier[]
-  routes    Route[]
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  id         String       @id @default(cuid())
+  name       String
+  type       DiscountType   @default(TICKET_COUNT_BASED)
+  percentage Decimal? // Used for DATE_BASED discounts
+  startDate  DateTime       @db.Timestamptz(3)
+  endDate    DateTime       @db.Timestamptz(3)
+  ownerId    String
+  owner      BusOwner       @relation(fields: [ownerId], references: [id])
+  tiers      DiscountTier[]
+  routes     Route[]
+  createdAt  DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime       @updatedAt @db.Timestamptz(3)
 }
 
 model DiscountTier {
@@ -176,7 +178,7 @@ model DiscountTier {
 model LoginAttempt {
   id        String   @id @default(cuid())
   ipAddress String
-  timestamp DateTime @default(now())
+  timestamp DateTime @default(now()) @db.Timestamptz(3)
 
   @@index([ipAddress, timestamp])
 }
@@ -184,7 +186,7 @@ model LoginAttempt {
 model ApiRequestAttempt {
   id        String   @id @default(cuid())
   ipAddress String
-  timestamp DateTime @default(now())
+  timestamp DateTime @default(now()) @db.Timestamptz(3)
 
   @@index([ipAddress, timestamp])
 }
@@ -197,7 +199,7 @@ model AuditLog {
   ipAddress   String?
   actionType  String
   description String
-  createdAt   DateTime @default(now())
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
 
   @@index([createdAt])
 }
@@ -238,4 +240,9 @@ enum PaymentStatus {
 enum CommissionType {
   PERCENTAGE
   FIXED
+}
+
+enum DiscountType {
+  DATE_BASED
+  TICKET_COUNT_BASED
 }

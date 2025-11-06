@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import type { Route, Bus, SeatLayout, Seat, Discount, DiscountTier, Location } from "@prisma/client";
+import type { Route, Bus, SeatLayout, Seat, Discount, DiscountTier, Location, DiscountType } from "@prisma/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -18,11 +18,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { useCsrf } from "@/hooks/useCsrf";
 
+type EnrichedDiscount = (Discount & { tiers: DiscountTier[]; percentage: number | null });
+
 type RouteWithDetails = Route & {
     origin: Location;
     destination: Location;
     bus: Bus & { layout: SeatLayout & { seats: Seat[] } };
-    discount: (Discount & { tiers: DiscountTier[] }) | null;
+    discount: EnrichedDiscount | null;
 };
 
 type AlternativeRoute = Route & { bus: Bus };
@@ -70,29 +72,39 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
 
   const ticketCount = selectedSeats.length;
 
-  const { subtotal, discountAmount, finalPrice, appliedTier } = useMemo(() => {
+  const { subtotal, discountAmount, finalPrice, appliedDiscountName, appliedDiscountValue } = useMemo(() => {
     const subtotal = selectedRoute.price * ticketCount;
     let discountAmount = 0;
-    let appliedTier: DiscountTier | null = null;
+    let appliedDiscountName: string | null = null;
+    let appliedDiscountValue: string | null = null;
     
     const now = new Date();
-    const isDiscountActive = selectedRoute.discount && 
-                             now >= new Date(selectedRoute.discount.startDate) && 
-                             now <= new Date(selectedRoute.discount.endDate);
+    const discount = selectedRoute.discount;
+
+    const isDiscountActive = discount && 
+                             now >= new Date(discount.startDate) && 
+                             now <= new Date(discount.endDate);
 
     if (isDiscountActive && ticketCount > 0) {
-      const applicableTier = selectedRoute.discount.tiers
-        .filter(tier => ticketCount >= tier.minTickets && ticketCount <= tier.maxTickets)
-        .sort((a, b) => Number(b.percentage) - Number(a.percentage))[0];
-      
-      if (applicableTier) {
-        discountAmount = (subtotal * Number(applicableTier.percentage)) / 100;
-        appliedTier = applicableTier;
-      }
+        if (discount.type === 'DATE_BASED' && discount.percentage) {
+            discountAmount = (subtotal * discount.percentage) / 100;
+            appliedDiscountName = discount.name;
+            appliedDiscountValue = `${discount.percentage}%`;
+        } else if (discount.type === 'TICKET_COUNT_BASED') {
+            const applicableTier = discount.tiers
+                .filter(tier => ticketCount >= tier.minTickets && ticketCount <= tier.maxTickets)
+                .sort((a, b) => Number(b.percentage) - Number(a.percentage))[0];
+            
+            if (applicableTier) {
+                discountAmount = (subtotal * Number(applicableTier.percentage)) / 100;
+                appliedDiscountName = discount.name;
+                appliedDiscountValue = `${Number(applicableTier.percentage)}%`;
+            }
+        }
     }
     
     const finalPrice = subtotal - discountAmount;
-    return { subtotal, discountAmount, finalPrice, appliedTier };
+    return { subtotal, discountAmount, finalPrice, appliedDiscountName, appliedDiscountValue };
   }, [ticketCount, selectedRoute]);
 
   const handleRouteChange = async (routeId: string) => {
@@ -171,7 +183,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
   return (
     <>
       <form onSubmit={handleSubmit}>
-        <input type="hidden" name="csrfToken" value={csrfToken} />
+        <input type="hidden" name="csrfToken" value={csrfToken || ''} />
         <Card>
           <CardHeader>
             <CardTitle className="font-headline text-3xl">Confirm Your Booking</CardTitle>
@@ -261,9 +273,9 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
                       <span className="text-muted-foreground">Subtotal</span>
                       <span>{subtotal.toFixed(2)} ETB</span>
                   </div>
-                  {appliedTier && (
+                  {appliedDiscountName && (
                       <div className="flex justify-between items-center text-sm text-green-600 font-semibold">
-                          <span className="flex items-center gap-2"><Percent />{selectedRoute.discount?.name} ({Number(appliedTier.percentage)}%)</span>
+                          <span className="flex items-center gap-2"><Percent />{appliedDiscountName} ({appliedDiscountValue})</span>
                           <span>-{discountAmount.toFixed(2)} ETB</span>
                       </div>
                   )}
@@ -327,5 +339,3 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
     </>
   );
 }
-
-    

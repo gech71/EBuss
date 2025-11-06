@@ -17,6 +17,8 @@ import type { DateRange } from "react-day-picker";
 import { Separator } from "@/components/ui/separator";
 import { createDiscountAction } from "@/app/admin/discounts/actions";
 import { useCsrf } from "@/hooks/useCsrf";
+import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
+import { DiscountType } from "@prisma/client";
 
 type TierState = {
     minTickets: number;
@@ -32,7 +34,9 @@ export function NewDiscountForm() {
     const { csrfToken, loading: csrfLoading } = useCsrf();
     
     const [name, setName] = useState('');
+    const [type, setType] = useState<DiscountType>('TICKET_COUNT_BASED');
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
+    const [percentage, setPercentage] = useState<number | undefined>();
     const [tiers, setTiers] = useState<TierState[]>([
         { minTickets: 0, maxTickets: 0, percentage: 0 }
     ]);
@@ -63,21 +67,31 @@ export function NewDiscountForm() {
             return;
         }
 
-        for (const tier of tiers) {
-            if (tier.minTickets <= 0 || tier.maxTickets <= 0 || tier.percentage <= 0) {
-                toast({ title: "Error", description: "Please fill out all tier fields with valid numbers.", variant: "destructive" });
-                return;
-            }
-            if(tier.minTickets > tier.maxTickets) {
-                toast({ title: "Error", description: "Min tickets cannot be greater than max tickets in a tier.", variant: "destructive" });
-                return;
+        if (type === 'DATE_BASED' && (!percentage || percentage <= 0)) {
+            toast({ title: "Error", description: "Please provide a valid percentage for a date-based discount.", variant: "destructive" });
+            return;
+        }
+
+        if (type === 'TICKET_COUNT_BASED') {
+            for (const tier of tiers) {
+                if (tier.minTickets <= 0 || tier.maxTickets <= 0 || tier.percentage <= 0) {
+                    toast({ title: "Error", description: "Please fill out all tier fields with valid numbers.", variant: "destructive" });
+                    return;
+                }
+                if(tier.minTickets > tier.maxTickets) {
+                    toast({ title: "Error", description: "Min tickets cannot be greater than max tickets in a tier.", variant: "destructive" });
+                    return;
+                }
             }
         }
 
         const formData = new FormData(event.currentTarget);
-        formData.append('startDate', dateRange.from.toISOString());
-        formData.append('endDate', dateRange.to.toISOString());
-        formData.append('tiers', JSON.stringify(tiers));
+        formData.set('startDate', format(dateRange.from, 'yyyy-MM-dd'));
+        formData.set('endDate', format(dateRange.to, 'yyyy-MM-dd'));
+        
+        if (type === 'TICKET_COUNT_BASED') {
+            formData.set('tiers', JSON.stringify(tiers));
+        }
 
         startTransition(async () => {
             const result = await createDiscountAction(formData);
@@ -92,17 +106,32 @@ export function NewDiscountForm() {
 
     return (
         <form ref={formRef} onSubmit={handleSubmit}>
-            <input type="hidden" name="csrfToken" value={csrfToken} />
+            <input type="hidden" name="csrfToken" value={csrfToken || ''} />
             <Card className="max-w-3xl mx-auto">
                 <CardHeader>
-                    <CardTitle>Add New Tiered Discount</CardTitle>
-                    <CardDescription>Define the rules and tiers for a new promotional discount.</CardDescription>
+                    <CardTitle>Add New Discount</CardTitle>
+                    <CardDescription>Define the type, rules, and tiers for a new promotional discount.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                      <div className="space-y-2">
                         <Label htmlFor="name">Discount Name</Label>
                         <Input id="name" name="name" placeholder="e.g., Summer Group Offer" required value={name} onChange={e => setName(e.target.value)} />
                     </div>
+
+                    <div className="space-y-3">
+                        <Label>Discount Type</Label>
+                        <RadioGroup name="type" value={type} onValueChange={(value: DiscountType) => setType(value)} className="flex gap-4">
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="TICKET_COUNT_BASED" id="r1" />
+                                <Label htmlFor="r1">Ticket Count Based</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="DATE_BASED" id="r2" />
+                                <Label htmlFor="r2">Date Based</Label>
+                            </div>
+                        </RadioGroup>
+                    </div>
+
                     <div className="space-y-2">
                          <Label>Validity Period</Label>
                          <Popover>
@@ -145,39 +174,47 @@ export function NewDiscountForm() {
                     
                     <Separator />
 
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                            <h3 className="text-lg font-medium">Discount Tiers</h3>
-                            <Button type="button" size="sm" onClick={addTier}>
-                                <PlusCircle className="mr-2 h-4 w-4"/>
-                                Add Tier
-                            </Button>
-                        </div>
-
-                        {tiers.map((tier, index) => (
-                            <div key={index} className="p-4 border rounded-lg space-y-4 relative bg-muted/50">
-                                <Label className="font-semibold">Tier {index + 1}</Label>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor={`minTickets-${index}`}>Min Tickets</Label>
-                                        <Input id={`minTickets-${index}`} type="number" placeholder="e.g., 5" required value={tier.minTickets || ''} onChange={e => handleTierChange(index, 'minTickets', Number(e.target.value))} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor={`maxTickets-${index}`}>Max Tickets</Label>
-                                        <Input id={`maxTickets-${index}`} type="number" placeholder="e.g., 10" required value={tier.maxTickets || ''} onChange={e => handleTierChange(index, 'maxTickets', Number(e.target.value))} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor={`percentage-${index}`}>Discount (%)</Label>
-                                        <Input id={`percentage-${index}`} type="number" placeholder="e.g., 10" required value={tier.percentage || ''} onChange={e => handleTierChange(index, 'percentage', Number(e.target.value))} />
-                                    </div>
-                                </div>
-                                <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => removeTier(index)} disabled={tiers.length <= 1}>
-                                    <Trash2 className="h-4 w-4"/>
-                                    <span className="sr-only">Remove Tier</span>
+                    {type === 'TICKET_COUNT_BASED' && (
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center">
+                                <h3 className="text-lg font-medium">Discount Tiers</h3>
+                                <Button type="button" size="sm" onClick={addTier}>
+                                    <PlusCircle className="mr-2 h-4 w-4"/>
+                                    Add Tier
                                 </Button>
                             </div>
-                        ))}
-                    </div>
+
+                            {tiers.map((tier, index) => (
+                                <div key={index} className="p-4 border rounded-lg space-y-4 relative bg-muted/50">
+                                    <Label className="font-semibold">Tier {index + 1}</Label>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor={`minTickets-${index}`}>Min Tickets</Label>
+                                            <Input id={`minTickets-${index}`} type="number" placeholder="e.g., 5" required value={tier.minTickets || ''} onChange={e => handleTierChange(index, 'minTickets', Number(e.target.value))} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor={`maxTickets-${index}`}>Max Tickets</Label>
+                                            <Input id={`maxTickets-${index}`} type="number" placeholder="e.g., 10" required value={tier.maxTickets || ''} onChange={e => handleTierChange(index, 'maxTickets', Number(e.target.value))} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor={`percentage-${index}`}>Discount (%)</Label>
+                                            <Input id={`percentage-${index}`} type="number" placeholder="e.g., 10" required value={tier.percentage || ''} onChange={e => handleTierChange(index, 'percentage', Number(e.target.value))} />
+                                        </div>
+                                    </div>
+                                    <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => removeTier(index)} disabled={tiers.length <= 1}>
+                                        <Trash2 className="h-4 w-4"/>
+                                        <span className="sr-only">Remove Tier</span>
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    {type === 'DATE_BASED' && (
+                        <div className="space-y-2">
+                            <Label htmlFor="percentage">Discount Percentage</Label>
+                            <Input name="percentage" id="percentage" type="number" placeholder="e.g., 15" required value={percentage || ''} onChange={e => setPercentage(Number(e.target.value))} />
+                        </div>
+                    )}
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
                      <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>

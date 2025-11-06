@@ -3,13 +3,14 @@ import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, ArrowRight, Percent } from "lucide-react";
+import { PlusCircle, ArrowRight, Percent, Calendar } from "lucide-react";
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import prisma from '@/lib/prisma';
 import { validateRequest } from '@/lib/server/auth';
 import { redirect } from 'next/navigation';
 import { DiscountActions } from '@/components/admin/DiscountActions';
+import { DiscountType } from '@prisma/client';
 
 export default async function AdminDiscountsPage() {
   const { user } = await validateRequest();
@@ -36,6 +37,13 @@ export default async function AdminDiscountsPage() {
     return <Badge className="bg-green-600 hover:bg-green-700">Active</Badge>;
   };
 
+  const getDiscountInfo = (discount: (typeof discounts)[0]) => {
+      if (discount.type === DiscountType.DATE_BASED) {
+          return <Badge variant="outline" className="gap-1"><Calendar className="h-3 w-3"/> {Number(discount.percentage)}%</Badge>
+      }
+      return <Badge variant="outline">{discount.tiers.length} Tiers</Badge>
+  }
+
   return (
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -54,7 +62,7 @@ export default async function AdminDiscountsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
-                <TableHead>Tiers</TableHead>
+                <TableHead>Details</TableHead>
                 <TableHead>Validity Period</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>
@@ -67,9 +75,9 @@ export default async function AdminDiscountsPage() {
                 <TableRow key={discount.id}>
                   <TableCell className="font-medium">{discount.name}</TableCell>
                   <TableCell>
-                      <Badge variant="outline">{discount.tiers.length} Tiers</Badge>
+                      {getDiscountInfo(discount)}
                   </TableCell>
-                  <TableCell>{format(discount.startDate, "PPP")} <ArrowRight className="inline h-4 w-4 mx-1" /> {format(discount.endDate, "PPP")}</TableCell>
+                  <TableCell>{format(new Date(discount.startDate), "PPP")} <ArrowRight className="inline h-4 w-4 mx-1" /> {format(new Date(discount.endDate), "PPP")}</TableCell>
                   <TableCell>{getStatus(discount.startDate, discount.endDate)}</TableCell>
                   <TableCell className="text-right">
                     <DiscountActions discountId={discount.id} />

@@ -132,6 +132,7 @@ export default async function BookPage({ params }: BookPageProps) {
     price: Number(routeData.price),
     discount: routeData.discount ? {
         ...routeData.discount,
+        percentage: routeData.discount.percentage ? Number(routeData.discount.percentage) : null,
         tiers: routeData.discount.tiers.map(tier => ({...tier, percentage: Number(tier.percentage)}))
     } : null
   };

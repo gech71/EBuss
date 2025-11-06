@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { validateRequest } from '@/lib/server/auth';
 import { validateCsrf } from '@/app/lib/actions';
 import { logAction } from '@/app/lib/logger';
+import { DiscountType } from '@prisma/client';
 
 const tierSchema = z.object({
   id: z.string().optional(),
@@ -18,9 +19,11 @@ const tierSchema = z.object({
 
 const discountSchema = z.object({
   name: z.string().min(1, "Discount name is required."),
-  startDate: z.coerce.date(),
-  endDate: z.coerce.date(),
-  tiers: z.array(tierSchema).min(1, "At least one discount tier is required."),
+  type: z.nativeEnum(DiscountType),
+  startDate: z.string().transform((str) => new Date(str + 'T00:00:00.000Z')),
+  endDate: z.string().transform((str) => new Date(str + 'T00:00:00.000Z')),
+  percentage: z.coerce.number().optional(),
+  tiers: z.array(tierSchema).optional(),
 });
 
 export async function createDiscountAction(formData: FormData) {
@@ -31,11 +34,14 @@ export async function createDiscountAction(formData: FormData) {
         return { success: false, message: 'Unauthorized' };
     }
 
+    const type = formData.get('type') as DiscountType;
     const rawData = {
         name: formData.get('name'),
+        type: type,
         startDate: formData.get('startDate'),
         endDate: formData.get('endDate'),
-        tiers: JSON.parse(formData.get('tiers') as string),
+        percentage: type === 'DATE_BASED' ? formData.get('percentage') : undefined,
+        tiers: type === 'TICKET_COUNT_BASED' ? JSON.parse(formData.get('tiers') as string) : undefined,
     };
 
     const validatedData = discountSchema.safeParse(rawData);
@@ -45,22 +51,24 @@ export async function createDiscountAction(formData: FormData) {
             message: validatedData.error.errors.map(e => e.message).join(', ')
         };
     }
-
-    const { name, startDate, endDate, tiers } = validatedData.data;
+    
+    const { name, startDate, endDate, tiers, percentage } = validatedData.data;
 
     try {
         const newDiscount = await prisma.discount.create({
             data: {
                 name,
+                type,
                 startDate,
                 endDate,
+                percentage: type === 'DATE_BASED' ? percentage : null,
                 ownerId: user.busOwnerId,
                 tiers: {
-                    create: tiers.map(tier => ({
+                    create: type === 'TICKET_COUNT_BASED' && tiers ? tiers.map(tier => ({
                         minTickets: tier.minTickets,
                         maxTickets: tier.maxTickets,
                         percentage: tier.percentage,
-                    }))
+                    })) : undefined
                 }
             }
         });
@@ -83,12 +91,15 @@ export async function updateDiscountAction(formData: FormData) {
     }
     
     const discountId = formData.get('id') as string;
+    const type = formData.get('type') as DiscountType;
 
     const rawData = {
         name: formData.get('name'),
+        type: type,
         startDate: formData.get('startDate'),
         endDate: formData.get('endDate'),
-        tiers: JSON.parse(formData.get('tiers') as string),
+        percentage: type === 'DATE_BASED' ? formData.get('percentage') : undefined,
+        tiers: type === 'TICKET_COUNT_BASED' ? JSON.parse(formData.get('tiers') as string) : undefined,
     };
 
     const validatedData = discountSchema.safeParse(rawData);
@@ -99,7 +110,7 @@ export async function updateDiscountAction(formData: FormData) {
         };
     }
     
-    const { name, startDate, endDate, tiers } = validatedData.data;
+    const { name, startDate, endDate, tiers, percentage } = validatedData.data;
 
     try {
         await prisma.$transaction(async (tx) => {
@@ -116,21 +127,30 @@ export async function updateDiscountAction(formData: FormData) {
                     id: discountId,
                     ownerId: user.busOwnerId
                 },
-                data: { name, startDate, endDate }
+                data: { 
+                    name, 
+                    startDate, 
+                    endDate, 
+                    type, 
+                    percentage: type === 'DATE_BASED' ? percentage : null,
+                }
             });
             
+            // Always delete old tiers, new ones will be created if applicable
             await tx.discountTier.deleteMany({
                 where: { discountId: discountId }
             });
             
-            await tx.discountTier.createMany({
-                data: tiers.map(tier => ({
-                    minTickets: tier.minTickets,
-                    maxTickets: tier.maxTickets,
-                    percentage: tier.percentage,
-                    discountId: discountId,
-                }))
-            });
+            if (type === 'TICKET_COUNT_BASED' && tiers) {
+                await tx.discountTier.createMany({
+                    data: tiers.map(tier => ({
+                        minTickets: tier.minTickets,
+                        maxTickets: tier.maxTickets,
+                        percentage: tier.percentage,
+                        discountId: discountId,
+                    }))
+                });
+            }
         });
         await logAction({ userId: user.id, actionType: 'UPDATE_DISCOUNT', description: `Updated discount '${name}' (${discountId}).` });
     } catch (error) {
