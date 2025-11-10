@@ -6,7 +6,7 @@ import type { Route, Bus, Location, BusOwner, Discount } from '@prisma/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowRight, Clock, Building, Percent } from 'lucide-react';
+import { ArrowRight, Clock, Building, Percent, Repeat } from 'lucide-react';
 import { Separator } from './ui/separator';
 import { Badge } from './ui/badge';
 
@@ -16,7 +16,7 @@ interface GroupedRouteCardProps {
 
 export function GroupedRouteCard({ routes }: GroupedRouteCardProps) {
   const firstRoute = routes[0];
-  const { origin, destination } = firstRoute;
+  const { origin, destination, ticketType } = firstRoute;
   const departureDate = new Date(firstRoute.departureTime);
   const isExpired = departureDate < new Date();
   
@@ -42,6 +42,12 @@ export function GroupedRouteCard({ routes }: GroupedRouteCardProps) {
             <Clock className="w-4 h-4 mr-2 text-primary/70" />
             <span>{departureDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })} at {departureDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
           </div>
+            {ticketType === 'ROUND_TRIP' && (
+                <div className="flex items-center text-sm text-muted-foreground pt-1">
+                    <Repeat className="w-4 h-4 mr-2 text-primary/70" />
+                    <span>Round-trip available</span>
+                </div>
+            )}
         </CardHeader>
         <CardContent className="flex-grow space-y-2 p-4 pt-0">
           <div className='space-y-3'>
