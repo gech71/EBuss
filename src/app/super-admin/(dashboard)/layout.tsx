@@ -1,4 +1,5 @@
 
+
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "@/components/ui/sidebar";
@@ -35,6 +36,12 @@ export default async function SuperAdminLayout({
    if (user.role !== 'SUPER_ADMIN') {
     return redirect('/unauthorized');
   }
+  
+  // Enforce password change if required
+  if (user.passwordChangeRequired && !children.props.segmentPath.includes('settings')) {
+    redirect('/super-admin/settings');
+  }
+
   const isMiniApp = await getIsMiniApp();
   
   return (
@@ -91,3 +98,4 @@ export default async function SuperAdminLayout({
     </SidebarProvider>
   );
 }
+

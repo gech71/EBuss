@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { cookies } from 'next/headers';
@@ -37,5 +38,7 @@ export async function validateRequest(): Promise<{ user: User | null; session: S
     // Omit hashed_password from the returned user object
     const { hashed_password, ...userWithoutPassword } = user;
 
+    // The user object returned now includes the `passwordChangeRequired` flag
     return { user: userWithoutPassword as User, session: sessionPayload };
 };
+

@@ -8,6 +8,7 @@ import { validateRequest } from "@/lib/server/auth";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { cookies } from "next/headers";
+import { usePathname } from "next/navigation";
 
 async function getIsMiniApp() {
   const cookieStore = await cookies();
@@ -36,6 +37,12 @@ export default async function AdminLayout({
   if (user.role !== 'ADMIN') {
     return redirect('/unauthorized');
   }
+
+  // Enforce password change if required
+  if (user.passwordChangeRequired && !children.props.segmentPath.includes('settings')) {
+    redirect('/admin/settings');
+  }
+  
   const isMiniApp = await getIsMiniApp();
 
   let ownerName = null;
@@ -125,3 +132,4 @@ export default async function AdminLayout({
     </SidebarProvider>
   );
 }
+
