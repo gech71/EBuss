@@ -263,7 +263,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
                                 <Label htmlFor="returnDate">Return Date</Label>
                                 <Popover>
                                     <PopoverTrigger asChild>
-                                        <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !returnDate && "text-muted-foreground")} disabled>
+                                        <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !returnDate && "text-muted-foreground")}>
                                             <Calendar className="mr-2 h-4 w-4" />
                                             {returnDate ? format(returnDate, "PPP") : <span>Pick a return date</span>}
                                         </Button>
