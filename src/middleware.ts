@@ -1,4 +1,5 @@
 
+
 // middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
@@ -47,7 +48,7 @@ export async function middleware(request: NextRequest) {
       const newSessionCookie = await encrypt(newSessionPayload);
       
       response.cookies.set('session', newSessionCookie, {
-          expires: newSessionPayload.expiresAt,
+          expires: new Date(newSessionPayload.expiresAt),
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           path: '/',

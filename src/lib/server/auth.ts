@@ -22,7 +22,7 @@ export async function validateRequest(): Promise<{ user: User | null; session: S
     }
     
     const now = new Date();
-    if (now > sessionPayload.expiresAt || now > sessionPayload.idleExpiresAt) {
+    if (now > new Date(sessionPayload.expiresAt) || now > new Date(sessionPayload.idleExpiresAt)) {
         // Session or idle time has expired
         return { user: null, session: null };
     }
@@ -41,4 +41,5 @@ export async function validateRequest(): Promise<{ user: User | null; session: S
     // The user object returned now includes the `passwordChangeRequired` flag
     return { user: userWithoutPassword as User, session: sessionPayload };
 };
+
 

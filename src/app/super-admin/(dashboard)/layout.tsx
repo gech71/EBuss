@@ -36,9 +36,9 @@ export default async function SuperAdminLayout({
    if (user.role !== 'SUPER_ADMIN') {
     return redirect('/unauthorized');
   }
-  
+   const pathname = (children as any)?.props?.childProp?.segment;
   // Enforce password change if required
-  if (user.passwordChangeRequired && !children.props.segmentPath.includes('settings')) {
+  if (user.passwordChangeRequired && pathname !== 'settings') {
     redirect('/super-admin/settings');
   }
 
@@ -98,4 +98,5 @@ export default async function SuperAdminLayout({
     </SidebarProvider>
   );
 }
+
 

@@ -1,4 +1,5 @@
 
+
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "@/components/ui/sidebar";
@@ -37,9 +38,9 @@ export default async function AdminLayout({
   if (user.role !== 'ADMIN') {
     return redirect('/unauthorized');
   }
-
+  const pathname = (children as any)?.props?.childProp?.segment;
   // Enforce password change if required
-  if (user.passwordChangeRequired && !children.props.segmentPath.includes('settings')) {
+  if (user.passwordChangeRequired && pathname !=='settings') {
     redirect('/admin/settings');
   }
   
@@ -132,4 +133,5 @@ export default async function AdminLayout({
     </SidebarProvider>
   );
 }
+
 
