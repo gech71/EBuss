@@ -7,7 +7,7 @@ import { LayoutDashboard, Users, Gem, FileClock } from "lucide-react";
 import { UserNav } from "@/components/UserNav";
 import { validateRequest } from "@/lib/server/auth";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 async function getIsMiniApp() {
   const cookieStore = await cookies();
@@ -36,9 +36,13 @@ export default async function SuperAdminLayout({
    if (user.role !== 'SUPER_ADMIN') {
     return redirect('/unauthorized');
   }
-   const pathname = (children as any)?.props?.childProp?.segment;
+
+  // Correctly get the pathname from headers
+  const heads = headers();
+  const pathname = heads.get('next-url');
+  
   // Enforce password change if required
-  if (user.passwordChangeRequired && pathname !== 'settings') {
+  if (user.passwordChangeRequired && pathname !== '/super-admin/settings') {
     redirect('/super-admin/settings');
   }
 
@@ -98,5 +102,3 @@ export default async function SuperAdminLayout({
     </SidebarProvider>
   );
 }
-
-

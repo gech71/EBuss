@@ -8,8 +8,7 @@ import { UserNav } from "@/components/UserNav";
 import { validateRequest } from "@/lib/server/auth";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
-import { cookies } from "next/headers";
-import { usePathname } from "next/navigation";
+import { cookies, headers } from "next/headers";
 
 async function getIsMiniApp() {
   const cookieStore = await cookies();
@@ -38,9 +37,13 @@ export default async function AdminLayout({
   if (user.role !== 'ADMIN') {
     return redirect('/unauthorized');
   }
-  const pathname = (children as any)?.props?.childProp?.segment;
+
+  // Correctly get the pathname from headers
+  const heads = headers();
+  const pathname = heads.get('next-url');
+
   // Enforce password change if required
-  if (user.passwordChangeRequired && pathname !=='settings') {
+  if (user.passwordChangeRequired && pathname !== '/admin/settings') {
     redirect('/admin/settings');
   }
   
@@ -133,5 +136,3 @@ export default async function AdminLayout({
     </SidebarProvider>
   );
 }
-
-
