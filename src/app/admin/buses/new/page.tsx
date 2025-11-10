@@ -101,12 +101,12 @@ export default function NewBusPage() {
              <input type="hidden" name="csrfToken" value={csrfToken || ''} />
             <Card className="max-w-xl mx-auto">
                 <CardHeader>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-start justify-between mb-4">
                         <div>
                             <CardTitle>Add New Bus</CardTitle>
                             <CardDescription>Define the properties and seat layout for the new bus.</CardDescription>
                         </div>
-                        <BackButton showText={false} variant="ghost" className="w-8 h-8 p-0" />
+                        <BackButton />
                     </div>
                 </CardHeader>
                 <CardContent>

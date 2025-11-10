@@ -110,12 +110,12 @@ export function NewDiscountForm() {
             <input type="hidden" name="csrfToken" value={csrfToken || ''} />
             <Card className="max-w-3xl mx-auto">
                 <CardHeader>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-start justify-between mb-4">
                         <div>
                             <CardTitle>Add New Discount</CardTitle>
                             <CardDescription>Define the type, rules, and tiers for a new promotional discount.</CardDescription>
                         </div>
-                        <BackButton showText={false} variant="ghost" className="w-8 h-8 p-0" />
+                        <BackButton />
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-6">

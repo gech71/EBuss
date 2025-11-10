@@ -43,12 +43,12 @@ export default function NewLocationPage() {
             <input type="hidden" name="csrfToken" value={csrfToken} />
             <Card className="max-w-xl mx-auto">
                 <CardHeader>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-start justify-between mb-4">
                         <div>
                             <CardTitle>Add New Location</CardTitle>
                             <CardDescription>Enter the name for the new bus stop or city.</CardDescription>
                         </div>
-                        <BackButton showText={false} variant="ghost" className="w-8 h-8 p-0" />
+                        <BackButton />
                     </div>
                 </CardHeader>
                 <CardContent>

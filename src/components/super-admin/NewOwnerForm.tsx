@@ -122,12 +122,12 @@ export function NewOwnerForm({ existingOwnerNames, existingAccountNumbers, exist
         <form onSubmit={handleSubmit}>
             <Card className="max-w-3xl mx-auto">
                 <CardHeader>
-                     <div className="flex items-center justify-between">
+                     <div className="flex items-start justify-between mb-4">
                         <div>
                            <CardTitle>Add New Bus Owner</CardTitle>
                            <CardDescription>Enter the details for the new bus owner account and their commission structure.</CardDescription>
                         </div>
-                        <BackButton showText={false} variant="ghost" className="w-8 h-8 p-0" />
+                        <BackButton />
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
