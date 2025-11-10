@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { validateRequest } from '@/lib/server/auth';
 import { validateCsrf } from '@/app/lib/actions';
 import { logAction } from '@/app/lib/logger';
+import { TicketType } from '@prisma/client';
 
 const routeSchema = z.object({
   originId: z.string().min(1, 'Origin is required.'),
@@ -19,6 +20,7 @@ const routeSchema = z.object({
   price: z.coerce.number().positive('Price must be a positive number.'),
   busIds: z.array(z.string()).min(1, 'At least one bus must be selected.'),
   discountId: z.string().optional().nullable(),
+  ticketType: z.nativeEnum(TicketType),
 });
 
 const combineDateTime = (dateStr: string, timeStr: string): Date => {
@@ -50,6 +52,7 @@ export async function createRouteAction(formData: FormData) {
         price: formData.get('price'),
         busIds: JSON.parse(formData.get('busIds') as string),
         discountId: formData.get('discountId') || null,
+        ticketType: formData.get('ticketType'),
     };
     
     const validatedData = routeSchema.safeParse(rawData);
@@ -61,7 +64,7 @@ export async function createRouteAction(formData: FormData) {
         };
     }
 
-    const { originId, destinationId, departureDate, departureTime, arrivalDate, arrivalTime, price, busIds, discountId } = validatedData.data;
+    const { originId, destinationId, departureDate, departureTime, arrivalDate, arrivalTime, price, busIds, discountId, ticketType } = validatedData.data;
 
     if (originId === destinationId) {
         return { success: false, message: 'Origin and destination cannot be the same.' };
@@ -100,6 +103,7 @@ export async function createRouteAction(formData: FormData) {
             price,
             busId,
             discountId: discountId === 'none' ? null : discountId,
+            ticketType,
         }));
 
         await prisma.route.createMany({
@@ -136,6 +140,7 @@ export async function updateRouteAction(formData: FormData) {
         price: formData.get('price'),
         busIds: JSON.parse(formData.get('busIds') as string),
         discountId: formData.get('discountId') || null,
+        ticketType: formData.get('ticketType'),
     };
     
     const validatedData = routeSchema.extend({
@@ -149,7 +154,7 @@ export async function updateRouteAction(formData: FormData) {
         };
     }
 
-    const { originId, destinationId, departureDate, departureTime, arrivalDate, arrivalTime, price, busIds, discountId } = validatedData.data;
+    const { originId, destinationId, departureDate, departureTime, arrivalDate, arrivalTime, price, busIds, discountId, ticketType } = validatedData.data;
     const busId = busIds[0];
 
     if (originId === destinationId) {
@@ -199,6 +204,7 @@ export async function updateRouteAction(formData: FormData) {
                     price,
                     busId,
                     discountId: discountId === 'none' ? null : discountId,
+                    ticketType,
                }
            });
        });

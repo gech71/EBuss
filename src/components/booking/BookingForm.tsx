@@ -3,20 +3,23 @@
 
 import { useState, useMemo, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import type { Route, Bus, SeatLayout, Seat, Discount, DiscountTier, Location, DiscountType } from "@prisma/client";
+import type { Route, Bus, SeatLayout, Seat, Discount, DiscountTier, Location, DiscountType, TicketType } from "@prisma/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Armchair, ArrowRight, Bus as BusIcon, Calendar, Clock, Percent, User, Users, XCircle, Info } from "lucide-react";
+import { Armchair, ArrowRight, Bus as BusIcon, Calendar, Clock, Percent, User, Users, XCircle, Info, Repeat } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SeatMap } from "./SeatMap";
 import { createBookingAction, createPaymentRequestAction } from "@/app/book/actions";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { useCsrf } from "@/hooks/useCsrf";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 type EnrichedDiscount = (Discount & { tiers: DiscountTier[]; percentage: number | null });
 
@@ -54,6 +57,8 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
   const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
   const [passengerName, setPassengerName] = useState("");
   const [passengerPhone, setPassengerPhone] = useState(phoneNumber || "");
+  const [isRoundTrip, setIsRoundTrip] = useState(false);
+  const [returnDate, setReturnDate] = useState<Date | undefined>();
   
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showWebPaymentAlert, setShowWebPaymentAlert] = useState(false);
@@ -73,7 +78,8 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
   const ticketCount = selectedSeats.length;
 
   const { subtotal, discountAmount, finalPrice, appliedDiscountName, appliedDiscountValue } = useMemo(() => {
-    const subtotal = selectedRoute.price * ticketCount;
+    const multiplier = isRoundTrip ? 2 : 1;
+    const subtotal = selectedRoute.price * ticketCount * multiplier;
     let discountAmount = 0;
     let appliedDiscountName: string | null = null;
     let appliedDiscountValue: string | null = null;
@@ -105,7 +111,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
     
     const finalPrice = subtotal - discountAmount;
     return { subtotal, discountAmount, finalPrice, appliedDiscountName, appliedDiscountValue };
-  }, [ticketCount, selectedRoute]);
+  }, [ticketCount, selectedRoute, isRoundTrip]);
 
   const handleRouteChange = async (routeId: string) => {
     if (routeId === selectedRoute.id) return;
@@ -126,6 +132,10 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
     if (!passengerName || !passengerPhone) {
       toast({ title: "Passenger details required", description: "Please enter your name and phone number.", variant: "destructive" });
       return;
+    }
+     if (isRoundTrip && !returnDate) {
+        toast({ title: "Return date required", description: "Please select a return date for your round-trip ticket.", variant: "destructive" });
+        return;
     }
 
     if (!authToken) {
@@ -218,6 +228,38 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
                   <div className="flex items-center gap-2"><BusIcon className="h-4 w-4" /> <span>{selectedRoute.bus.name}</span></div>
               </div>
             </div>
+
+            {selectedRoute.ticketType === 'ROUND_TRIP' && (
+                <div>
+                    <h3 className="font-semibold text-lg flex items-center gap-2 mb-2"><Repeat /> Trip Type</h3>
+                     <RadioGroup onValueChange={(value) => setIsRoundTrip(value === 'true')} defaultValue="false" className="flex gap-4">
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="false" id="one_way" />
+                            <Label htmlFor="one_way">One-Way</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="true" id="round_trip" />
+                            <Label htmlFor="round_trip">Round-Trip</Label>
+                        </div>
+                    </RadioGroup>
+                    {isRoundTrip && (
+                         <div className="mt-4 space-y-2">
+                            <Label htmlFor="returnDate">Return Date</Label>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !returnDate && "text-muted-foreground")}>
+                                        <Calendar className="mr-2 h-4 w-4" />
+                                        {returnDate ? format(returnDate, "PPP") : <span>Pick a return date</span>}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0">
+                                    <Calendar mode="single" selected={returnDate} onSelect={setReturnDate} initialFocus disabled={{ before: new Date(selectedRoute.departureTime) }}/>
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                    )}
+                </div>
+            )}
             
             <div>
               <h3 className="font-semibold text-lg flex items-center gap-2 mb-2"><Armchair /> Select Your Seats</h3>
@@ -261,7 +303,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
               <div className="space-y-2 p-4 border rounded-lg bg-muted/30">
                   <div className="flex justify-between items-center text-sm">
                       <span className="text-muted-foreground flex items-center gap-2"><Users />Tickets</span>
-                      <span>{ticketCount} x {selectedRoute.price.toFixed(2)} ETB</span>
+                      <span>{ticketCount} x {selectedRoute.price.toFixed(2)} ETB {isRoundTrip && "x 2"}</span>
                   </div>
                   {ticketCount > 0 && (
                     <div className="flex justify-between items-start text-sm">

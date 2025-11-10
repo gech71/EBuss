@@ -8,8 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { CalendarIcon, Check, ChevronsUpDown } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format, formatInTimeZone } from "date-fns-tz";
@@ -19,6 +18,8 @@ import type { Route, Bus, Discount, Location } from "@prisma/client";
 import { updateRouteAction } from "@/app/admin/routes/actions";
 import { Separator } from "@/components/ui/separator";
 import { useCsrf } from "@/hooks/useCsrf";
+import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
+import { TicketType } from "@prisma/client";
 
 interface EditRouteFormProps {
     route: Route;
@@ -189,6 +190,19 @@ export function EditRouteForm({ route, locations, buses, discounts }: EditRouteF
                                 </SelectContent>
                             </Select>
                         </div>
+                    </div>
+                     <div className="space-y-3">
+                        <Label>Ticket Type</Label>
+                        <RadioGroup name="ticketType" defaultValue={route.ticketType} className="flex gap-4">
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value={TicketType.ONE_WAY} id="one_way" />
+                                <Label htmlFor="one_way">One-Way</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value={TicketType.ROUND_TRIP} id="round_trip" />
+                                <Label htmlFor="round_trip">Round-Trip</Label>
+                            </div>
+                        </RadioGroup>
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">

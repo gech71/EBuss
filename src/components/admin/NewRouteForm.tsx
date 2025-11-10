@@ -19,6 +19,8 @@ import type { Bus, Discount, Location } from "@prisma/client";
 import { createRouteAction } from "@/app/admin/routes/actions";
 import { useCsrf } from "@/hooks/useCsrf";
 import { BackButton } from "../BackButton";
+import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
+import { TicketType } from "@prisma/client";
 
 interface NewRouteFormProps {
     locations: Location[];
@@ -231,6 +233,19 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                                     </SelectContent>
                                 </Select>
                             </div>
+                        </div>
+                        <div className="space-y-3">
+                            <Label>Ticket Type</Label>
+                            <RadioGroup name="ticketType" defaultValue={TicketType.ONE_WAY} className="flex gap-4">
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value={TicketType.ONE_WAY} id="one_way" />
+                                    <Label htmlFor="one_way">One-Way</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value={TicketType.ROUND_TRIP} id="round_trip" />
+                                    <Label htmlFor="round_trip">Round-Trip</Label>
+                                </div>
+                            </RadioGroup>
                         </div>
                     </div>
                 </CardContent>
