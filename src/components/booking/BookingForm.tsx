@@ -249,11 +249,11 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
                                 <Info className="h-4 w-4" />
                                 <AlertTitle>Round-Trip Pricing</AlertTitle>
                                 <AlertDescription>
-                                    The total price will be double the one-way fare. Your return trip will be open-ended and can be booked later.
+                                    The total price will be double the one-way fare. You must select a return date. Your return trip details will be confirmed after booking.
                                 </AlertDescription>
                             </Alert>
                             <div className="mt-4 space-y-2">
-                                <Label htmlFor="returnDate">Return Date (Optional)</Label>
+                                <Label htmlFor="returnDate">Return Date</Label>
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !returnDate && "text-muted-foreground")}>
