@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Armchair, ArrowRight, Bus as BusIcon, Calendar, Clock, Percent, User, Users, XCircle, Info, Repeat } from "lucide-react";
+import { Armchair, ArrowRight, Bus as BusIcon, Calendar as CalendarIcon, Clock, Percent, User, Users, XCircle, Info, Repeat } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SeatMap } from "./SeatMap";
 import { createBookingAction, createPaymentRequestAction } from "@/app/book/actions";
@@ -22,6 +22,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { BackButton } from "../BackButton";
+import { Calendar } from "@/components/ui/calendar";
 
 type EnrichedDiscount = (Discount & { tiers: DiscountTier[]; percentage: number | null });
 
@@ -231,7 +232,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
                    )}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 text-sm mt-4 text-muted-foreground">
-                  <div className="flex items-center gap-2"><Calendar className="h-4 w-4" /> <span>{new Date(selectedRoute.departureTime).toLocaleDateString()}</span></div>
+                  <div className="flex items-center gap-2"><CalendarIcon className="h-4 w-4" /> <span>{new Date(selectedRoute.departureTime).toLocaleDateString()}</span></div>
                   <div className="flex items-center gap-2"><Clock className="h-4 w-4" /> <span>{new Date(selectedRoute.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
                   <div className="flex items-center gap-2"><BusIcon className="h-4 w-4" /> <span>{selectedRoute.bus.name}</span></div>
               </div>
@@ -264,7 +265,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !returnDate && "text-muted-foreground")}>
-                                            <Calendar className="mr-2 h-4 w-4" />
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
                                             {returnDate ? format(returnDate, "PPP") : <span>Pick a return date</span>}
                                         </Button>
                                     </PopoverTrigger>
