@@ -102,6 +102,16 @@ export async function authenticate(
     await createSession(existingUser.id);
     await logAction({ userId: existingUser.id, ipAddress: ip, actionType: 'LOGIN_SUCCESS', description: `Successful login for user ${existingUser.id} ("${email}").` });
 
+    if (existingUser.passwordChangeRequired) {
+        let redirectPath = '/';
+        if (existingUser.role === 'SUPER_ADMIN') {
+            redirectPath = '/super-admin/settings';
+        } else if (existingUser.role === 'ADMIN') {
+            redirectPath = '/admin/settings';
+        }
+        redirect(redirectPath);
+    }
+
     let redirectPath = '/';
     if (existingUser.role === 'SUPER_ADMIN') {
       redirectPath = '/super-admin';
@@ -204,7 +214,10 @@ export async function changePasswordAction(formData: FormData) {
         
         await prisma.user.update({
             where: { id: user.id },
-            data: { hashed_password: newHashedPassword }
+            data: { 
+                hashed_password: newHashedPassword,
+                passwordChangeRequired: false // Set the flag to false
+            }
         });
 
         // Invalidate the current session, forcing a re-login for security.

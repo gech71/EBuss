@@ -79,7 +79,8 @@ export async function createUserAction(formData: FormData) {
                 email: email.toLowerCase(),
                 hashed_password: hashedPassword,
                 busOwnerId: ownerId,
-                role: Role.ADMIN
+                role: Role.ADMIN,
+                passwordChangeRequired: true, // Force password change on first login
             }
         });
         await logAction({ userId: superAdmin.id, actionType: 'CREATE_ADMIN_USER', description: `Created new admin user '${name}' (${newUser.id}) for owner ${ownerId}.` });

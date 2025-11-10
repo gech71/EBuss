@@ -3,6 +3,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { decrypt, encrypt, SESSION_DURATION, IDLE_TIMEOUT, SessionPayload } from './app/lib/auth';
+import prisma from './lib/prisma'; // Import Prisma client
 
 const ALLOWED_ORIGINS = ['https://yourdomain.com', 'https://admin.yourdomain.com'];
 
@@ -28,6 +29,8 @@ export async function middleware(request: NextRequest) {
   // 3. Session Validation & Refresh
   const sessionCookieValue = request.cookies.get('session')?.value;
   let isAuthenticated = false;
+  let passwordChangeRequired = false;
+  let userRole: string | null = null;
   let response = NextResponse.next({
     request: { headers: requestHeaders },
   });
@@ -37,6 +40,17 @@ export async function middleware(request: NextRequest) {
     const now = new Date();
     if (sessionPayload?.userId && now < new Date(sessionPayload.expiresAt) && now < new Date(sessionPayload.idleExpiresAt)) {
       isAuthenticated = true;
+
+      // Check for passwordChangeRequired flag from the database
+      const user = await prisma.user.findUnique({
+          where: { id: sessionPayload.userId },
+          select: { passwordChangeRequired: true, role: true }
+      });
+
+      if (user) {
+        passwordChangeRequired = user.passwordChangeRequired;
+        userRole = user.role;
+      }
 
       // Refresh the idle timeout by creating a new token with an updated idleExpiresAt
       const newIdleExpiresAt = new Date(now.getTime() + IDLE_TIMEOUT);
@@ -71,6 +85,16 @@ export async function middleware(request: NextRequest) {
       // Redirect to a safe default. The destination page will handle role-specific redirects.
       url.pathname = '/'; 
       return NextResponse.redirect(url);
+  } else if (isAuthenticated && passwordChangeRequired) {
+    let settingsPath = '';
+    if (userRole === 'ADMIN') settingsPath = '/admin/settings';
+    if (userRole === 'SUPER_ADMIN') settingsPath = '/super-admin/settings';
+
+    if (settingsPath && pathname !== settingsPath) {
+        const url = request.nextUrl.clone();
+        url.pathname = settingsPath;
+        return NextResponse.redirect(url);
+    }
   }
   
   // Set the CSRF cookie on the response

@@ -17,10 +17,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Users } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Users, Info } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { validateRequest } from "@/lib/server/auth";
 
 export default async function SuperAdminSettingsPage() {
+  const { user } = await validateRequest();
+  const showPasswordMessage = user?.passwordChangeRequired;
+
   const owners = await prisma.busOwner.findMany({
     orderBy: {
       name: "asc",
@@ -43,6 +48,15 @@ export default async function SuperAdminSettingsPage() {
 
   return (
     <div className="space-y-6">
+       {showPasswordMessage && (
+         <Alert>
+           <Info className="h-4 w-4" />
+           <AlertTitle>Password Change Required</AlertTitle>
+           <AlertDescription>
+             For security reasons, you must change your password before you can access other parts of the dashboard.
+           </AlertDescription>
+         </Alert>
+       )}
        <Card>
         <CardHeader>
           <CardTitle>Account Settings</CardTitle>
