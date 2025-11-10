@@ -134,10 +134,6 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
       toast({ title: "Passenger details required", description: "Please enter your name and phone number.", variant: "destructive" });
       return;
     }
-     if (isRoundTrip && !returnDate) {
-        toast({ title: "Return date required", description: "Please select a return date for your round-trip ticket.", variant: "destructive" });
-        return;
-    }
 
     if (!authToken) {
         setShowWebPaymentAlert(true);
@@ -249,14 +245,14 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
                                 <Info className="h-4 w-4" />
                                 <AlertTitle>Round-Trip Pricing</AlertTitle>
                                 <AlertDescription>
-                                    The total price will be double the one-way fare. You must select a return date. Your return trip details will be confirmed after booking.
+                                    The total price will be double the one-way fare. Your return trip will be open-ended and can be booked later.
                                 </AlertDescription>
                             </Alert>
                             <div className="mt-4 space-y-2">
                                 <Label htmlFor="returnDate">Return Date</Label>
                                 <Popover>
                                     <PopoverTrigger asChild>
-                                        <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !returnDate && "text-muted-foreground")}>
+                                        <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !returnDate && "text-muted-foreground")} disabled>
                                             <Calendar className="mr-2 h-4 w-4" />
                                             {returnDate ? format(returnDate, "PPP") : <span>Pick a return date</span>}
                                         </Button>
