@@ -89,8 +89,13 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
             <input type="hidden" name="csrfToken" value={csrfToken} />
             <Card className="max-w-xl mx-auto">
                 <CardHeader>
-                    <CardTitle>Add New Route</CardTitle>
-                    <CardDescription>Define the details for the new bus route. You can select multiple buses to create the same route for each of them.</CardDescription>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle>Add New Route</CardTitle>
+                            <CardDescription>Define the details for the new bus route. You can select multiple buses to create the same route for each of them.</CardDescription>
+                        </div>
+                        <BackButton showText={false} variant="ghost" className="w-8 h-8 p-0" />
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-6">
@@ -230,7 +235,6 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
-                     <BackButton>Cancel</BackButton>
                     <Button type="submit" disabled={isPending || csrfLoading}>{isPending ? "Saving..." : "Save Route"}</Button>
                 </CardFooter>
             </Card>

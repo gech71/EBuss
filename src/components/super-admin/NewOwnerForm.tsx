@@ -122,8 +122,13 @@ export function NewOwnerForm({ existingOwnerNames, existingAccountNumbers, exist
         <form onSubmit={handleSubmit}>
             <Card className="max-w-3xl mx-auto">
                 <CardHeader>
-                    <CardTitle>Add New Bus Owner</CardTitle>
-                    <CardDescription>Enter the details for the new bus owner account and their commission structure.</CardDescription>
+                     <div className="flex items-center justify-between">
+                        <div>
+                           <CardTitle>Add New Bus Owner</CardTitle>
+                           <CardDescription>Enter the details for the new bus owner account and their commission structure.</CardDescription>
+                        </div>
+                        <BackButton showText={false} variant="ghost" className="w-8 h-8 p-0" />
+                    </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -216,7 +221,6 @@ export function NewOwnerForm({ existingOwnerNames, existingAccountNumbers, exist
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
-                    <BackButton>Cancel</BackButton>
                     <Button type="submit" disabled={isPending}>
                         {isPending ? 'Saving...' : 'Save Owner'}
                     </Button>

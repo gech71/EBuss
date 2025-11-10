@@ -101,8 +101,13 @@ export default function NewBusPage() {
              <input type="hidden" name="csrfToken" value={csrfToken || ''} />
             <Card className="max-w-xl mx-auto">
                 <CardHeader>
-                    <CardTitle>Add New Bus</CardTitle>
-                    <CardDescription>Define the properties and seat layout for the new bus.</CardDescription>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle>Add New Bus</CardTitle>
+                            <CardDescription>Define the properties and seat layout for the new bus.</CardDescription>
+                        </div>
+                        <BackButton showText={false} variant="ghost" className="w-8 h-8 p-0" />
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-6">
@@ -144,7 +149,6 @@ export default function NewBusPage() {
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
-                    <BackButton>Cancel</BackButton>
                     <Button type="submit" disabled={isPending || csrfLoading}>{isPending ? "Saving..." : "Save Bus"}</Button>
                 </CardFooter>
             </Card>
