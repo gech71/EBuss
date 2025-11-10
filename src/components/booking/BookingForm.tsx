@@ -273,7 +273,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-0">
-                                        <Calendar mode="single" selected={returnDate} onSelect={setReturnDate} initialFocus disabled={{ before: departureDay }}/>
+                                        <Calendar mode="single" selected={returnDate} onSelect={setReturnDate} initialFocus disabled={{ before: new Date(departureDay.getTime() + 24 * 60 * 60 * 1000) }}/>
                                     </PopoverContent>
                                 </Popover>
                             </div>
@@ -402,5 +402,3 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
     </>
   );
 }
-
-    
