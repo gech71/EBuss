@@ -244,20 +244,29 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
                         </div>
                     </RadioGroup>
                     {isRoundTrip && (
-                         <div className="mt-4 space-y-2">
-                            <Label htmlFor="returnDate">Return Date</Label>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !returnDate && "text-muted-foreground")}>
-                                        <Calendar className="mr-2 h-4 w-4" />
-                                        {returnDate ? format(returnDate, "PPP") : <span>Pick a return date</span>}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
-                                    <Calendar mode="single" selected={returnDate} onSelect={setReturnDate} initialFocus disabled={{ before: new Date(selectedRoute.departureTime) }}/>
-                                </PopoverContent>
-                            </Popover>
-                        </div>
+                        <>
+                            <Alert className="mt-4">
+                                <Info className="h-4 w-4" />
+                                <AlertTitle>Round-Trip Pricing</AlertTitle>
+                                <AlertDescription>
+                                    The total price will be double the one-way fare. Your return trip will be open-ended and can be booked later.
+                                </AlertDescription>
+                            </Alert>
+                            <div className="mt-4 space-y-2">
+                                <Label htmlFor="returnDate">Return Date (Optional)</Label>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !returnDate && "text-muted-foreground")}>
+                                            <Calendar className="mr-2 h-4 w-4" />
+                                            {returnDate ? format(returnDate, "PPP") : <span>Pick a return date</span>}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0">
+                                        <Calendar mode="single" selected={returnDate} onSelect={setReturnDate} initialFocus disabled={{ before: new Date(selectedRoute.departureTime) }}/>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                        </>
                     )}
                 </div>
             )}
@@ -304,7 +313,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
               <div className="space-y-2 p-4 border rounded-lg bg-muted/30">
                   <div className="flex justify-between items-center text-sm">
                       <span className="text-muted-foreground flex items-center gap-2"><Users />Tickets</span>
-                      <span>{ticketCount} x {selectedRoute.price.toFixed(2)} ETB {isRoundTrip && "x 2"}</span>
+                      <span>{ticketCount} x {selectedRoute.price.toFixed(2)} ETB {isRoundTrip && <span className="font-bold text-primary">x 2</span>}</span>
                   </div>
                   {ticketCount > 0 && (
                     <div className="flex justify-between items-start text-sm">
