@@ -194,6 +194,9 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
     });
   };
 
+  const departureDay = new Date(selectedRoute.departureTime);
+  departureDay.setHours(0, 0, 0, 0);
+
   return (
     <>
       <form onSubmit={handleSubmit}>
@@ -257,7 +260,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
                                 <Info className="h-4 w-4" />
                                 <AlertTitle>Round-Trip Pricing</AlertTitle>
                                 <AlertDescription>
-                                    The total price will be double the one-way fare. You must select a return date. Your return trip details will be confirmed after booking.
+                                    The total price will be double the one-way fare. You must select a return date.
                                 </AlertDescription>
                             </Alert>
                             <div className="mt-4 space-y-2">
@@ -270,7 +273,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-0">
-                                        <Calendar mode="single" selected={returnDate} onSelect={setReturnDate} initialFocus disabled={{ before: new Date(selectedRoute.departureTime) }}/>
+                                        <Calendar mode="single" selected={returnDate} onSelect={setReturnDate} initialFocus disabled={{ before: departureDay }}/>
                                     </PopoverContent>
                                 </Popover>
                             </div>
@@ -399,3 +402,5 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
     </>
   );
 }
+
+    
