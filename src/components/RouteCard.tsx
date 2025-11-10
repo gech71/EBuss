@@ -52,12 +52,19 @@ export function RouteCard({ route }: RouteCardProps) {
             <Ticket className="w-4 h-4 mr-2" />
             <span>{bus?.name || 'Standard Bus'}</span>
         </div>
-         {ticketType === 'ROUND_TRIP' && (
-            <div className="flex items-center text-sm text-muted-foreground">
-                <Repeat className="w-4 h-4 mr-2" />
-                <span>Round-trip available</span>
-            </div>
-        )}
+        <div className="flex items-center text-sm text-muted-foreground">
+          {ticketType === 'ROUND_TRIP' ? (
+              <>
+                  <Repeat className="w-4 h-4 mr-2" />
+                  <span>Round-trip available</span>
+              </>
+          ) : (
+              <>
+                  <ArrowRight className="w-4 h-4 mr-2" />
+                  <span>One-way</span>
+              </>
+          )}
+        </div>
         <div className="flex items-center text-sm font-semibold text-primary pt-1">
             <Building className="w-4 h-4 mr-1" />
             <span>{bus?.owner.name || 'Unknown Operator'}</span>
