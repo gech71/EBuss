@@ -21,6 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
+import { BackButton } from "../BackButton";
 
 type EnrichedDiscount = (Discount & { tiers: DiscountTier[]; percentage: number | null });
 
@@ -134,6 +135,11 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
       toast({ title: "Passenger details required", description: "Please enter your name and phone number.", variant: "destructive" });
       return;
     }
+    if (isRoundTrip && !returnDate) {
+        toast({ title: "Return date required", description: "Please select a return date for your round-trip ticket.", variant: "destructive" });
+        return;
+    }
+
 
     if (!authToken) {
         setShowWebPaymentAlert(true);
@@ -193,8 +199,13 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
         <input type="hidden" name="csrfToken" value={csrfToken || ''} />
         <Card>
           <CardHeader>
-            <CardTitle className="font-headline text-3xl">Confirm Your Booking</CardTitle>
-            <CardDescription>Review your trip details and select your seats.</CardDescription>
+            <div className="flex items-start justify-between">
+                <div>
+                    <CardTitle className="font-headline text-3xl">Confirm Your Booking</CardTitle>
+                    <CardDescription>Review your trip details and select your seats.</CardDescription>
+                </div>
+                <BackButton />
+            </div>
           </CardHeader>
           <CardContent className="space-y-8">
             <div className="p-4 border rounded-lg bg-muted/30">
@@ -245,7 +256,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
                                 <Info className="h-4 w-4" />
                                 <AlertTitle>Round-Trip Pricing</AlertTitle>
                                 <AlertDescription>
-                                    The total price will be double the one-way fare. Your return trip will be open-ended and can be booked later.
+                                    The total price will be double the one-way fare. You must select a return date. Your return trip details will be confirmed after booking.
                                 </AlertDescription>
                             </Alert>
                             <div className="mt-4 space-y-2">
