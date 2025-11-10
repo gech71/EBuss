@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { createBusAction } from "@/app/admin/buses/actions";
 import { useCsrf } from "@/hooks/useCsrf";
+import { BackButton } from "@/components/BackButton";
 
 // Helper function to generate seat layouts, adapted from the original data file.
 const generateSeats = (rows: number, cols: number, aisleCols: number[], lastRowFull: boolean = false) => {
@@ -143,7 +144,7 @@ export default function NewBusPage() {
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
+                    <BackButton>Cancel</BackButton>
                     <Button type="submit" disabled={isPending || csrfLoading}>{isPending ? "Saving..." : "Save Bus"}</Button>
                 </CardFooter>
             </Card>

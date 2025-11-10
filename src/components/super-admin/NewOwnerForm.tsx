@@ -13,6 +13,7 @@ import { PlusCircle, Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { CommissionType } from "@prisma/client";
 import { createOwnerAction } from "@/app/super-admin/(dashboard)/owners/actions";
+import { BackButton } from "../BackButton";
 
 interface NewOwnerFormProps {
     existingOwnerNames: string[];
@@ -215,7 +216,7 @@ export function NewOwnerForm({ existingOwnerNames, existingAccountNumbers, exist
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
+                    <BackButton>Cancel</BackButton>
                     <Button type="submit" disabled={isPending}>
                         {isPending ? 'Saving...' : 'Save Owner'}
                     </Button>

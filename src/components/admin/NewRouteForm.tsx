@@ -18,6 +18,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import type { Bus, Discount, Location } from "@prisma/client";
 import { createRouteAction } from "@/app/admin/routes/actions";
 import { useCsrf } from "@/hooks/useCsrf";
+import { BackButton } from "../BackButton";
 
 interface NewRouteFormProps {
     locations: Location[];
@@ -229,7 +230,7 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
-                     <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
+                     <BackButton>Cancel</BackButton>
                     <Button type="submit" disabled={isPending || csrfLoading}>{isPending ? "Saving..." : "Save Route"}</Button>
                 </CardFooter>
             </Card>

@@ -19,6 +19,7 @@ import { createDiscountAction } from "@/app/admin/discounts/actions";
 import { useCsrf } from "@/hooks/useCsrf";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { DiscountType } from "@prisma/client";
+import { BackButton } from "../BackButton";
 
 type TierState = {
     minTickets: number;
@@ -217,7 +218,7 @@ export function NewDiscountForm() {
                     )}
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
-                     <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
+                     <BackButton>Cancel</BackButton>
                     <Button type="submit" disabled={isPending || csrfLoading}>{isPending ? "Saving..." : "Save Discount"}</Button>
                 </CardFooter>
             </Card>
