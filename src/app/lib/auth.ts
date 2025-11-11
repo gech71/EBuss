@@ -10,8 +10,8 @@ import { NextRequest, NextResponse } from 'next/server';
 const secretKey = process.env.JWT_SECRET;
 const key = new TextEncoder().encode(secretKey);
 
-export const SESSION_DURATION = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
-export const IDLE_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
+const SESSION_DURATION = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+const IDLE_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
 
 export interface SessionPayload {
     userId: string;

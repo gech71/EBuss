@@ -3,9 +3,12 @@
 // middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { decrypt, encrypt, SESSION_DURATION, IDLE_TIMEOUT, SessionPayload } from './app/lib/auth';
+import { decrypt, encrypt, SessionPayload } from './app/lib/auth';
 
 const ALLOWED_ORIGINS = ['https://yourdomain.com', 'https://admin.yourdomain.com'];
+const SESSION_DURATION = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+const IDLE_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
+
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
