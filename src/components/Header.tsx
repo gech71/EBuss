@@ -3,11 +3,14 @@
 import Link from 'next/link';
 import { Logo } from './Logo';
 import { Button } from './ui/button';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Shield, Gem, LogIn, Ticket } from 'lucide-react';
 import { SidebarTrigger } from './ui/sidebar';
 import type { User } from '@prisma/client';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { logout } from '@/app/lib/actions';
+import { useTransition } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 interface HeaderProps {
     user: User | null;
@@ -16,10 +19,26 @@ interface HeaderProps {
 
 export function Header({ user, isMiniApp = false }: HeaderProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const isMobile = useIsMobile();
+  const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
 
   const isAdminPage = pathname.startsWith('/admin') && !pathname.startsWith('/super-admin');
   const isSuperAdminPage = pathname.startsWith('/super-admin');
+
+  const handleLoginClick = async () => {
+    // If there's a user, log them out first. Otherwise just navigate.
+    if (user) {
+        startTransition(async () => {
+            await logout();
+            toast({ title: "Logged Out", description: "You have been successfully logged out." });
+            router.push('/login');
+        });
+    } else {
+        router.push('/login');
+    }
+  };
 
   const renderNavContent = () => {
     // Priority 1: Mini App
@@ -73,11 +92,9 @@ export function Header({ user, isMiniApp = false }: HeaderProps) {
                     <span className="sr-only md:not-sr-only md:ml-2">My Tickets</span>
                 </Link>
             </Button>
-            <Button asChild variant="outline" size={isMobile ? "icon" : "sm"}>
-                <Link href="/login">
-                    <LogIn />
-                    <span className="sr-only md:not-sr-only md:ml-2">Login</span>
-                </Link>
+            <Button onClick={handleLoginClick} variant="outline" size={isMobile ? "icon" : "sm"} disabled={isPending}>
+                <LogIn />
+                <span className="sr-only md:not-sr-only md:ml-2">{isPending ? 'Logging out...' : 'Login'}</span>
             </Button>
         </div>
     );
