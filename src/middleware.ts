@@ -35,6 +35,8 @@ export async function middleware(request: NextRequest) {
   if (sessionCookieValue) {
     sessionPayload = await decrypt(sessionCookieValue);
     const now = new Date();
+    
+    // Only refresh the session if it's valid (not null, not expired)
     if (sessionPayload?.userId && now < new Date(sessionPayload.expiresAt) && now < new Date(sessionPayload.idleExpiresAt)) {
       const newIdleExpiresAt = new Date(now.getTime() + IDLE_TIMEOUT);
       const newSessionPayload: SessionPayload = {
@@ -51,7 +53,8 @@ export async function middleware(request: NextRequest) {
           sameSite: 'strict',
       });
     } else {
-      sessionPayload = null; // Session is invalid
+      // If session is invalid or expired, clear it
+      sessionPayload = null;
     }
   }
 
@@ -66,24 +69,22 @@ export async function middleware(request: NextRequest) {
 
   // Enforce password change if required
   if (isAuthenticated && sessionPayload.passwordChangeRequired) {
-    // If user needs to change password and is NOT on the force-password-change page, redirect them.
     if (!isForcePasswordChangeRoute) {
         return NextResponse.redirect(new URL('/force-password-change', request.url));
     }
   } else if (isAuthenticated && isForcePasswordChangeRoute) {
-    // If user does NOT need to change password but is on the page, redirect them away.
-    return NextResponse.redirect(new URL('/', request.url));
+    return NextResponse.redirect(new URL('/admin', request.url));
   }
 
   // Redirect unauthenticated users from protected routes
-  if ((isAdminRoute || isSuperAdminRoute || isForcePasswordChangeRoute) && !isAuthenticated) {
+  if ((isAdminRoute || isSuperAdminRoute) && !isAuthenticated && !isAuthRoute) {
       const loginPath = isSuperAdminRoute ? '/super-admin/login' : '/login';
       return NextResponse.redirect(new URL(loginPath, request.url));
   }
 
   // Redirect authenticated users away from login pages
   if (isAuthRoute && isAuthenticated) {
-      const redirectPath = sessionPayload.passwordChangeRequired ? '/force-password-change' : '/';
+      const redirectPath = sessionPayload.passwordChangeRequired ? '/force-password-change' : '/admin';
       return NextResponse.redirect(new URL(redirectPath, request.url));
   }
   
