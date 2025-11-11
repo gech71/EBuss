@@ -14,10 +14,12 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Check, X } from "lucide-react";
+import { Eye, EyeOff, Check, X, LogIn } from "lucide-react";
 import { changePasswordAction } from "@/app/lib/actions";
 import { cn } from "@/lib/utils";
 import { useCsrf } from "@/hooks/useCsrf";
+import { useRouter } from "next/navigation";
+import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 
 const passwordRules = [
     { text: "At least 8 characters long", regex: /.{8,}/ },
@@ -47,6 +49,7 @@ function PasswordStrength({ password }: { password?: string }) {
 
 export function ChangePasswordForm() {
   const { toast } = useToast();
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
@@ -54,6 +57,8 @@ export function ChangePasswordForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const [newPassword, setNewPassword] = useState("");
   const { csrfToken, loading: csrfLoading } = useCsrf();
+  const [isSuccess, setIsSuccess] = useState(false);
+
 
   const handleSubmit = (formData: FormData) => {
     const newPasswordValue = formData.get("newPassword") as string;
@@ -75,10 +80,7 @@ export function ChangePasswordForm() {
           title: "Password Updated",
           description: result.message,
         });
-        formRef.current?.reset();
-        setNewPassword("");
-        // Redirect to login page after successful password change
-        window.location.href = '/login';
+        setIsSuccess(true);
       } else {
         toast({
           title: "Update Failed",
@@ -88,6 +90,24 @@ export function ChangePasswordForm() {
       }
     });
   };
+
+  if (isSuccess) {
+    return (
+       <Alert className="border-green-500">
+            <Check className="h-4 w-4 text-green-500" />
+            <AlertTitle className="text-green-600">Success!</AlertTitle>
+            <AlertDescription>
+                Your password has been changed. You will now be redirected to the login page.
+            </AlertDescription>
+             <div className="mt-4 flex justify-end">
+                <Button onClick={() => router.push('/login')}>
+                    <LogIn className="mr-2" />
+                    Proceed to Login
+                </Button>
+            </div>
+        </Alert>
+    );
+  }
 
   return (
     <Card className="max-w-xl border-0 shadow-none">

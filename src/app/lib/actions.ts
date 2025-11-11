@@ -12,6 +12,7 @@ import type { ActionResult } from 'next/dist/server/app-render/types';
 import { z } from 'zod';
 import { logAction } from './logger';
 import { getIP } from './get-ip';
+import type { Role } from '@prisma/client';
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_ATTEMPT_WINDOW_SECONDS = 60;
@@ -98,9 +99,11 @@ export async function authenticate(
       await logAction({ userId: existingUser.id, ipAddress: ip, actionType: 'LOGIN_FAIL', description: `Failed login attempt for email "${email}". Reason: Invalid password.` });
       return { message: 'Invalid email or password.', success: false };
     }
+    
+    const { id, passwordChangeRequired, role } = existingUser;
 
     // Create session, including the password change flag
-    await createSession(existingUser.id, existingUser.passwordChangeRequired);
+    await createSession({ userId: id, passwordChangeRequired, role });
     await logAction({ userId: existingUser.id, ipAddress: ip, actionType: 'LOGIN_SUCCESS', description: `Successful login for user ${existingUser.id} ("${email}").` });
 
     if (existingUser.passwordChangeRequired) {

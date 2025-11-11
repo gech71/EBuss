@@ -3,8 +3,6 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { decrypt, encrypt, SessionPayload } from './app/lib/auth';
 
-const ALLOWED_ORIGINS = ['https://yourdomain.com', 'https://admin.yourdomain.com'];
-const SESSION_DURATION = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
 const IDLE_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
 
 export async function middleware(request: NextRequest) {
@@ -24,14 +22,25 @@ export async function middleware(request: NextRequest) {
   }
   requestHeaders.set('X-CSRF-Token', csrfToken);
 
-
-  // 3. Session Validation & Refresh
-  const sessionCookieValue = request.cookies.get('session')?.value;
-  let sessionPayload: SessionPayload | null = null;
   let response = NextResponse.next({
     request: { headers: requestHeaders },
   });
 
+  // Set the CSRF cookie on every response
+  response.cookies.set({
+    name: 'csrf_token',
+    value: csrfToken,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: '/',
+  });
+  
+
+  // 3. Session Validation & Refresh
+  const sessionCookieValue = request.cookies.get('session')?.value;
+  let sessionPayload: SessionPayload | null = null;
+  
   if (sessionCookieValue) {
     sessionPayload = await decrypt(sessionCookieValue);
     const now = new Date();
@@ -55,6 +64,8 @@ export async function middleware(request: NextRequest) {
     } else {
       // If session is invalid or expired, clear it
       sessionPayload = null;
+      // Also clear the cookie from the browser
+      response.cookies.set('session', '', { expires: new Date(0), path: '/' });
     }
   }
 
@@ -62,42 +73,37 @@ export async function middleware(request: NextRequest) {
   // 4. Route Protection Logic
   const isAuthenticated = !!sessionPayload;
   
+  const isPublicRoute = pathname === '/' || pathname.startsWith('/book') || pathname.startsWith('/ticket') || pathname.startsWith('/my-tickets');
   const isAdminRoute = pathname.startsWith('/admin');
   const isSuperAdminRoute = pathname.startsWith('/super-admin');
-  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/super-admin/login');
+  const isAuthRoute = pathname === '/login' || pathname === '/register' || pathname === '/super-admin/login';
   const isForcePasswordChangeRoute = pathname === '/force-password-change';
 
-  // Enforce password change if required
+  // If password change is required
   if (isAuthenticated && sessionPayload.passwordChangeRequired) {
+    // And user is NOT on the change password page, redirect them
     if (!isForcePasswordChangeRoute) {
-        return NextResponse.redirect(new URL('/force-password-change', request.url));
+      return NextResponse.redirect(new URL('/force-password-change', request.url));
     }
-  } else if (isAuthenticated && isForcePasswordChangeRoute) {
-    return NextResponse.redirect(new URL('/admin', request.url));
+  }
+  // If password change is NOT required but user is on the change password page
+  else if (isAuthenticated && !sessionPayload.passwordChangeRequired && isForcePasswordChangeRoute) {
+     // Redirect them to their dashboard
+    const home = sessionPayload.role === 'SUPER_ADMIN' ? '/super-admin' : '/admin';
+    return NextResponse.redirect(new URL(home, request.url));
   }
 
-  // Redirect unauthenticated users from protected routes
-  if ((isAdminRoute || isSuperAdminRoute) && !isAuthenticated && !isAuthRoute) {
-      const loginPath = isSuperAdminRoute ? '/super-admin/login' : '/login';
-      return NextResponse.redirect(new URL(loginPath, request.url));
+  // If user is authenticated and tries to access login pages, redirect them to dashboard
+  if (isAuthenticated && isAuthRoute) {
+    const home = sessionPayload.role === 'SUPER_ADMIN' ? '/super-admin' : '/admin';
+    return NextResponse.redirect(new URL(home, request.url));
   }
 
-  // Redirect authenticated users away from login pages
-  if (isAuthRoute && isAuthenticated) {
-      const redirectPath = sessionPayload.passwordChangeRequired ? '/force-password-change' : '/admin';
-      return NextResponse.redirect(new URL(redirectPath, request.url));
+  // If user is NOT authenticated and tries to access a protected route
+  if (!isAuthenticated && (isAdminRoute || isSuperAdminRoute) && !isAuthRoute) {
+    const loginPath = isSuperAdminRoute ? '/super-admin/login' : '/login';
+    return NextResponse.redirect(new URL(loginPath, request.url));
   }
-  
-  // Set the CSRF cookie on the response
-  response.cookies.set({
-    name: 'csrf_token',
-    value: csrfToken,
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    path: '/',
-  });
-
 
   // 5. Dynamic Security headers (CSP)
   response.headers.set('Content-Security-Policy', `
@@ -120,19 +126,9 @@ export async function middleware(request: NextRequest) {
 
   response.headers.set('Permissions-Policy', 'geolocation=(), microphone=(), camera=(self)');
 
-  // 6. CORS for API requests
-  const origin = request.headers.get('origin');
-  if (origin && ALLOWED_ORIGINS.includes(origin)) {
-    response.headers.set('Access-Control-Allow-Origin', origin);
-    response.headers.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    response.headers.set('Access-Control-Allow-Credentials', 'true');
-  }
-
   return response;
 }
 
-// 8. Apply middleware to all routes except Next.js internals
 export const config = {
   matcher: [
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)).*)',

@@ -4,20 +4,20 @@
 import { cookies } from 'next/headers';
 import { SignJWT, jwtVerify } from 'jose';
 import prisma from '@/lib/prisma';
-import type { User } from '@prisma/client';
+import type { Role, User } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 
 const secretKey = process.env.JWT_SECRET;
 const key = new TextEncoder().encode(secretKey);
 
 const SESSION_DURATION = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
-const IDLE_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
 
 export interface SessionPayload {
     userId: string;
     expiresAt: Date; // Absolute session expiry
     idleExpiresAt: Date; // Idle timeout
     passwordChangeRequired: boolean;
+    role: Role;
 }
 
 export async function encrypt(payload: SessionPayload) {
@@ -44,12 +44,18 @@ export async function decrypt(input: string): Promise<SessionPayload | null> {
   }
 }
 
-export async function createSession(userId: string, passwordChangeRequired: boolean) {
+export async function createSession(payload: Pick<SessionPayload, 'userId' | 'passwordChangeRequired' | 'role'>) {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + SESSION_DURATION);
-    const idleExpiresAt = new Date(now.getTime() + IDLE_TIMEOUT);
+    const idleExpiresAt = new Date(now.getTime() + (30 * 60 * 1000)); // 30 min idle
 
-    const sessionPayload: SessionPayload = { userId, expiresAt, idleExpiresAt, passwordChangeRequired };
+    const sessionPayload: SessionPayload = { 
+        userId: payload.userId,
+        passwordChangeRequired: payload.passwordChangeRequired,
+        role: payload.role,
+        expiresAt, 
+        idleExpiresAt, 
+    };
     
     const session = await encrypt(sessionPayload);
 	const sessionCookie = await cookies();
