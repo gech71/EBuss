@@ -9,8 +9,11 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Info } from "lucide-react";
+import { cookies } from "next/headers";
 
 export default function ForcePasswordChangePage() {
+  const cookieStore = cookies();
+  const csrfToken = cookieStore.get("csrf_token")?.value;
 
   return (
     <div className="space-y-6">
@@ -29,7 +32,7 @@ export default function ForcePasswordChangePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-           <ChangePasswordForm />
+           <ChangePasswordForm csrfToken={csrfToken} />
         </CardContent>
       </Card>
     </div>
