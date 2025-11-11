@@ -8,6 +8,7 @@ import bcrypt from 'bcrypt';
 import { Role } from '@prisma/client';
 import { validateRequest } from '@/lib/server/auth';
 import { logAction } from '@/app/lib/logger';
+import { sendCredentialsEmail } from '@/lib/server/email';
 
 const passwordPolicy = z.string()
     .min(8, "Password must be at least 8 characters long.")
@@ -84,6 +85,13 @@ export async function createUserAction(formData: FormData) {
             }
         });
         await logAction({ userId: superAdmin.id, actionType: 'CREATE_ADMIN_USER', description: `Created new admin user '${name}' (${newUser.id}) for owner ${ownerId}.` });
+        
+        try {
+            await sendCredentialsEmail(email, email, password);
+        } catch (emailError) {
+            console.error("Failed to send credentials email for new admin user, but user was created successfully.", emailError);
+            console.log(`DEV ONLY: Credentials for ${email} -> Password: ${password}`);
+        }
 
         revalidatePath('/super-admin/settings');
         return { success: true, message: 'User created successfully.' };
