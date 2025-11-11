@@ -14,9 +14,10 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Check, X } from "lucide-react";
-import { changePasswordAction } from "@/app/lib/actions";
+import { Eye, EyeOff, Check, X, LogOut } from "lucide-react";
+import { changePasswordAction, logout } from "@/app/lib/actions";
 import { cn } from "@/lib/utils";
+import { Separator } from "./ui/separator";
 
 const passwordRules = [
     { text: "At least 8 characters long", regex: /.{8,}/ },
@@ -51,6 +52,7 @@ interface ChangePasswordFormProps {
 export function ChangePasswordForm({ csrfToken }: ChangePasswordFormProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
+  const [isLoggingOut, startLogoutTransition] = useTransition();
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -71,6 +73,10 @@ export function ChangePasswordForm({ csrfToken }: ChangePasswordFormProps) {
     }
 
     startTransition(async () => {
+      if (!csrfToken) {
+          toast({ title: "Error", description: "Invalid session. Please refresh.", variant: "destructive" });
+          return;
+      }
       const result = await changePasswordAction(formData);
       if (result?.success) {
         toast({
@@ -91,14 +97,16 @@ export function ChangePasswordForm({ csrfToken }: ChangePasswordFormProps) {
     });
   };
 
+  const handleLogout = async () => {
+    startLogoutTransition(async () => {
+      await logout();
+      toast({ title: "Logged Out", description: "You have been successfully logged out." });
+      window.location.href = '/';
+    });
+  };
+
   return (
     <Card className="max-w-xl border-0 shadow-none">
-      <CardHeader className="p-0">
-        <CardTitle>Change Password</CardTitle>
-        <CardDescription>
-          Enter your current and new password to update your account.
-        </CardDescription>
-      </CardHeader>
       <form ref={formRef} action={handleSubmit}>
         <input type="hidden" name="csrfToken" value={csrfToken || ''} />
         <CardContent className="space-y-4 pt-6 p-0">
@@ -162,9 +170,14 @@ export function ChangePasswordForm({ csrfToken }: ChangePasswordFormProps) {
               </div>
            </div>
         </CardContent>
-        <CardFooter className="p-0 pt-6">
+        <CardFooter className="p-0 pt-6 flex-col items-stretch gap-4">
           <Button type="submit" disabled={isPending || !csrfToken}>
             {isPending ? "Updating..." : "Update Password"}
+          </Button>
+          <Separator />
+           <Button type="button" variant="outline" onClick={handleLogout} disabled={isLoggingOut}>
+             <LogOut className="mr-2 h-4 w-4" />
+            {isLoggingOut ? "Logging out..." : "Logout & Return to Homepage"}
           </Button>
         </CardFooter>
       </form>
