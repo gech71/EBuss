@@ -1,5 +1,3 @@
-
-
 // middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
@@ -8,7 +6,6 @@ import { decrypt, encrypt, SessionPayload } from './app/lib/auth';
 const ALLOWED_ORIGINS = ['https://yourdomain.com', 'https://admin.yourdomain.com'];
 const SESSION_DURATION = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
 const IDLE_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
-
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -25,7 +22,6 @@ export async function middleware(request: NextRequest) {
     crypto.getRandomValues(array);
     csrfToken = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
   }
-  // We set the token on the request headers so it's available in API routes and Server Components
   requestHeaders.set('X-CSRF-Token', csrfToken);
 
 
@@ -40,7 +36,6 @@ export async function middleware(request: NextRequest) {
     sessionPayload = await decrypt(sessionCookieValue);
     const now = new Date();
     if (sessionPayload?.userId && now < new Date(sessionPayload.expiresAt) && now < new Date(sessionPayload.idleExpiresAt)) {
-      // Refresh the idle timeout by creating a new token with an updated idleExpiresAt
       const newIdleExpiresAt = new Date(now.getTime() + IDLE_TIMEOUT);
       const newSessionPayload: SessionPayload = {
           ...sessionPayload,
@@ -67,30 +62,29 @@ export async function middleware(request: NextRequest) {
   const isAdminRoute = pathname.startsWith('/admin');
   const isSuperAdminRoute = pathname.startsWith('/super-admin');
   const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/super-admin/login');
-  
+  const isForcePasswordChangeRoute = pathname === '/force-password-change';
+
   // Enforce password change if required
   if (isAuthenticated && sessionPayload.passwordChangeRequired) {
-    const isAdminSettings = pathname === '/admin/settings';
-    const isSuperAdminSettings = pathname === '/super-admin/settings';
-
-    // If user needs to change password and is NOT on the correct settings page, redirect them.
-    if (isAdminRoute && !isAdminSettings) {
-        return NextResponse.redirect(new URL('/admin/settings', request.url));
+    // If user needs to change password and is NOT on the force-password-change page, redirect them.
+    if (!isForcePasswordChangeRoute) {
+        return NextResponse.redirect(new URL('/force-password-change', request.url));
     }
-    if (isSuperAdminRoute && !isSuperAdminSettings) {
-        return NextResponse.redirect(new URL('/super-admin/settings', request.url));
-    }
+  } else if (isAuthenticated && isForcePasswordChangeRoute) {
+    // If user does NOT need to change password but is on the page, redirect them away.
+    return NextResponse.redirect(new URL('/', request.url));
   }
 
   // Redirect unauthenticated users from protected routes
-  if ((isAdminRoute || isSuperAdminRoute) && !isAuthenticated) {
+  if ((isAdminRoute || isSuperAdminRoute || isForcePasswordChangeRoute) && !isAuthenticated) {
       const loginPath = isSuperAdminRoute ? '/super-admin/login' : '/login';
       return NextResponse.redirect(new URL(loginPath, request.url));
   }
 
   // Redirect authenticated users away from login pages
   if (isAuthRoute && isAuthenticated) {
-      return NextResponse.redirect(new URL('/', request.url));
+      const redirectPath = sessionPayload.passwordChangeRequired ? '/force-password-change' : '/';
+      return NextResponse.redirect(new URL(redirectPath, request.url));
   }
   
   // Set the CSRF cookie on the response

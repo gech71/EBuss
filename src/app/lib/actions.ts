@@ -104,13 +104,7 @@ export async function authenticate(
     await logAction({ userId: existingUser.id, ipAddress: ip, actionType: 'LOGIN_SUCCESS', description: `Successful login for user ${existingUser.id} ("${email}").` });
 
     if (existingUser.passwordChangeRequired) {
-        let redirectPath = '/';
-        if (existingUser.role === 'SUPER_ADMIN') {
-            redirectPath = '/super-admin/settings';
-        } else if (existingUser.role === 'ADMIN') {
-            redirectPath = '/admin/settings';
-        }
-        redirect(redirectPath);
+        redirect('/force-password-change');
     }
 
     let redirectPath = '/';
