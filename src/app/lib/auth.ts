@@ -1,4 +1,6 @@
 
+'use server';
+
 import { cookies } from 'next/headers';
 import { SignJWT, jwtVerify } from 'jose';
 import prisma from '@/lib/prisma';
@@ -15,6 +17,7 @@ export interface SessionPayload {
     userId: string;
     expiresAt: Date; // Absolute session expiry
     idleExpiresAt: Date; // Idle timeout
+    passwordChangeRequired: boolean;
 }
 
 export async function encrypt(payload: SessionPayload) {
@@ -41,12 +44,12 @@ export async function decrypt(input: string): Promise<SessionPayload | null> {
   }
 }
 
-export async function createSession(userId: string) {
+export async function createSession(userId: string, passwordChangeRequired: boolean) {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + SESSION_DURATION);
     const idleExpiresAt = new Date(now.getTime() + IDLE_TIMEOUT);
 
-    const sessionPayload: SessionPayload = { userId, expiresAt, idleExpiresAt };
+    const sessionPayload: SessionPayload = { userId, expiresAt, idleExpiresAt, passwordChangeRequired };
     
     const session = await encrypt(sessionPayload);
 	const sessionCookie = await cookies();

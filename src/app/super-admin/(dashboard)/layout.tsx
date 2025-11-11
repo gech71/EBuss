@@ -37,15 +37,6 @@ export default async function SuperAdminLayout({
     return redirect('/unauthorized');
   }
 
-  // Correctly get the pathname from headers
-  const heads = headers();
-  const pathname = heads.get('next-url');
-  
-  // Enforce password change if required
-  if (user.passwordChangeRequired && pathname !== '/super-admin/settings') {
-    redirect('/super-admin/settings');
-  }
-
   const isMiniApp = await getIsMiniApp();
   
   return (

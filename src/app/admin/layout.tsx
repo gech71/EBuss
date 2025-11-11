@@ -9,6 +9,8 @@ import { validateRequest } from "@/lib/server/auth";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { cookies, headers } from "next/headers";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Info } from "lucide-react";
 
 async function getIsMiniApp() {
   const cookieStore = await cookies();
@@ -36,15 +38,6 @@ export default async function AdminLayout({
   }
   if (user.role !== 'ADMIN') {
     return redirect('/unauthorized');
-  }
-
-  // Correctly get the pathname from headers
-  const heads = headers();
-  const pathname = heads.get('next-url');
-
-  // Enforce password change if required
-  if (user.passwordChangeRequired && pathname !== '/admin/settings') {
-    redirect('/admin/settings');
   }
   
   const isMiniApp = await getIsMiniApp();

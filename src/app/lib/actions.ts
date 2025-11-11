@@ -99,8 +99,8 @@ export async function authenticate(
       return { message: 'Invalid email or password.', success: false };
     }
 
-    // Create session
-    await createSession(existingUser.id);
+    // Create session, including the password change flag
+    await createSession(existingUser.id, existingUser.passwordChangeRequired);
     await logAction({ userId: existingUser.id, ipAddress: ip, actionType: 'LOGIN_SUCCESS', description: `Successful login for user ${existingUser.id} ("${email}").` });
 
     if (existingUser.passwordChangeRequired) {

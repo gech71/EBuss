@@ -28,17 +28,15 @@ export async function middleware(request: NextRequest) {
 
   // 3. Session Validation & Refresh
   const sessionCookieValue = request.cookies.get('session')?.value;
-  let isAuthenticated = false;
+  let sessionPayload: SessionPayload | null = null;
   let response = NextResponse.next({
     request: { headers: requestHeaders },
   });
 
   if (sessionCookieValue) {
-    const sessionPayload = await decrypt(sessionCookieValue);
+    sessionPayload = await decrypt(sessionCookieValue);
     const now = new Date();
     if (sessionPayload?.userId && now < new Date(sessionPayload.expiresAt) && now < new Date(sessionPayload.idleExpiresAt)) {
-      isAuthenticated = true;
-
       // Refresh the idle timeout by creating a new token with an updated idleExpiresAt
       const newIdleExpiresAt = new Date(now.getTime() + IDLE_TIMEOUT);
       const newSessionPayload: SessionPayload = {
@@ -54,23 +52,42 @@ export async function middleware(request: NextRequest) {
           path: '/',
           sameSite: 'strict',
       });
+    } else {
+      sessionPayload = null; // Session is invalid
     }
   }
 
 
   // 4. Route Protection Logic
-  const isProtectedRoute = pathname.startsWith('/admin') || pathname.startsWith('/super-admin');
+  const isAuthenticated = !!sessionPayload;
+  
+  const isAdminRoute = pathname.startsWith('/admin');
+  const isSuperAdminRoute = pathname.startsWith('/super-admin');
   const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/super-admin/login');
   
-  if (isProtectedRoute && !isAuthenticated) {
-      const url = request.nextUrl.clone();
-      const loginPath = pathname.startsWith('/super-admin') ? '/super-admin/login' : '/login';
-      url.pathname = loginPath;
-      return NextResponse.redirect(url);
-  } else if (isAuthRoute && isAuthenticated) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/'; // Redirect authenticated users away from login pages
-      return NextResponse.redirect(url);
+  // Enforce password change if required
+  if (isAuthenticated && sessionPayload.passwordChangeRequired) {
+    const isAdminSettings = pathname === '/admin/settings';
+    const isSuperAdminSettings = pathname === '/super-admin/settings';
+
+    // If user needs to change password and is NOT on the correct settings page, redirect them.
+    if (isAdminRoute && !isAdminSettings) {
+        return NextResponse.redirect(new URL('/admin/settings', request.url));
+    }
+    if (isSuperAdminRoute && !isSuperAdminSettings) {
+        return NextResponse.redirect(new URL('/super-admin/settings', request.url));
+    }
+  }
+
+  // Redirect unauthenticated users from protected routes
+  if ((isAdminRoute || isSuperAdminRoute) && !isAuthenticated) {
+      const loginPath = isSuperAdminRoute ? '/super-admin/login' : '/login';
+      return NextResponse.redirect(new URL(loginPath, request.url));
+  }
+
+  // Redirect authenticated users away from login pages
+  if (isAuthRoute && isAuthenticated) {
+      return NextResponse.redirect(new URL('/', request.url));
   }
   
   // Set the CSRF cookie on the response
