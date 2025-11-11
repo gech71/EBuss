@@ -7,12 +7,13 @@ export async function sendCredentialsEmail(to: string, username: string, passwor
   // Switched to Mailtrap for development.
   // In production, you would use a service like SendGrid, Postmark, or AWS SES.
   const transporter = nodemailer.createTransport({
-    host: "sandbox.smtp.mailtrap.io",
-    port: 2525,
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false, // use TLS
     auth: {
-      user: process.env.MAILTRAP_USER,
-      pass: process.env.MAILTRAP_PASS
-    }
+      user: process.env.SMTP_USER, // your Gmail address
+      pass: process.env.SMTP_PASS, // your Gmail App Password
+    },
   });
 
   const mailOptions = {
