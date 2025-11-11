@@ -11,6 +11,7 @@ Follow these steps to set up and run the application in your local development e
 - Node.js (v18 or later recommended)
 - npm or another package manager
 - A local PostgreSQL database instance running. You can easily set one up using Docker.
+- A [Mailtrap](https://mailtrap.io/) account for testing email sending.
 
 ### 1. Install Dependencies
 
@@ -28,12 +29,12 @@ Create a `.env` file in the root of the project by copying the example.
 cp .env.example .env
 ```
 
-Now, open the `.env` file and replace the placeholder with the connection string for your local PostgreSQL database.
+Now, open the `.env` file and update the following variables:
 
-The format is: `postgresql://USER:PASSWORD@HOST:PORT/DATABASE`
+- **DATABASE_URL**: Replace the placeholder with the connection string for your local PostgreSQL database. The format is: `postgresql://USER:PASSWORD@HOST:PORT/DATABASE`
+  **Example:** `DATABASE_URL="postgresql://postgres:mysecretpassword@localhost:5432/ezbus"`
 
-**Example:**
-`DATABASE_URL="postgresql://postgres:mysecretpassword@localhost:5432/ezbus"`
+- **MAILTRAP_USER & MAILTRAP_PASS**: Go to your Mailtrap account, select an inbox, and find your SMTP credentials. Add your username and password to the `.env` file. This is required for sending credential emails to newly created users.
 
 ### 3. Apply the Database Schema
 
