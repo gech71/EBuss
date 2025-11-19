@@ -108,19 +108,11 @@ export async function createOwnerAction(formData: FormData) {
                 hashed_password: hashedPassword,
                 role: Role.ADMIN,
                 busOwnerId: owner.id,
+                passwordChangeRequired: true,
             }
         });
 
-        // Send email with credentials, but don't block on failure
-        try {
-            await sendCredentialsEmail(email, email, password);
-        } catch (emailError) {
-            console.error("Failed to send credentials email, but owner was created successfully.", emailError);
-            // Log for dev, but don't expose password in production logs if possible
-            console.log(`DEV ONLY: Credentials for ${email} -> Password: ${password}`);
-            // Decide if you want to return a specific message to the UI
-            // For now, we will let it proceed as a success but with a warning in the console.
-        }
+        console.log(`DEV ONLY: Credentials for ${email} -> Password: ${password}`);
 
         revalidatePath('/super-admin/owners');
     
