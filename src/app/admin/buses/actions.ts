@@ -130,7 +130,7 @@ export async function updateBusAction(formData: FormData) {
         };
     }
     
-    const { name, capacity, rows, cols, seats }_ = validatedData.data;
+    const { name, capacity, rows, cols, seats } = validatedData.data;
     
     // Perform check before starting transaction
     const routeCount = await prisma.route.count({ where: { busId: busId } });
