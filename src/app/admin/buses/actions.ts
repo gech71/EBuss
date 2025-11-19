@@ -155,20 +155,18 @@ export async function updateBusAction(formData: FormData) {
                 data: { name, capacity }
             });
 
-            // Step 2: Delete old layout and seats
+            // Step 2: Delete old layout and seats if it exists
             if (busToUpdate.layout) {
                 await tx.seat.deleteMany({ where: { layoutId: busToUpdate.layout.id }});
                 await tx.seatLayout.delete({ where: { id: busToUpdate.layout.id }});
             }
 
-            // Step 3: Create new layout and connect it to the bus
+            // Step 3: Create new layout and seats, explicitly connecting to the bus by ID
             await tx.seatLayout.create({
                 data: {
                     rows,
                     cols,
-                    bus: {
-                        connect: { id: busId }
-                    },
+                    busId: busId, // Explicitly set the foreign key
                     seats: {
                         create: seats
                     }
@@ -226,5 +224,3 @@ export async function deleteBusAction(busId: string, csrfToken: string): Promise
     return { success: false, message: 'An unexpected error occurred or you do not have permission.' };
   }
 }
-
-    
