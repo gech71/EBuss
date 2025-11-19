@@ -7,8 +7,27 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { SeatStatus, SeatType } from '@prisma/client';
 import { validateRequest } from '@/lib/server/auth';
-import { validateCsrf } from '@/app/lib/actions';
 import { logAction } from '@/app/lib/logger';
+import { cookies } from 'next/headers';
+
+async function validateCsrf(tokenFromRequest: string | FormData) {
+    const cookieStore = cookies();
+    const tokenFromCookie = cookieStore.get('csrf_token')?.value;
+
+    let token: string | null;
+
+    if (tokenFromRequest instanceof FormData) {
+        token = tokenFromRequest.get('csrfToken') as string | null;
+    } else {
+        token = tokenFromRequest;
+    }
+
+    if (!token || !tokenFromCookie || token !== tokenFromCookie) {
+        await logAction({ actionType: 'CSRF_VALIDATION_FAIL', description: 'Invalid CSRF token received.' });
+        throw new Error('Invalid CSRF token.');
+    }
+}
+
 
 const seatSchema = z.object({
   seatNumber: z.string(),
@@ -25,7 +44,7 @@ const busSchema = z.object({
 });
 
 export async function createBusAction(formData: FormData) {
-    await validateCsrf(formData);
+    await validateCsrf(formData.get('csrfToken') as string);
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         await logAction({ actionType: 'CREATE_BUS_ATTEMPT_FAIL', description: 'Unauthorized attempt to create bus.' });
@@ -83,7 +102,7 @@ export async function createBusAction(formData: FormData) {
 }
 
 export async function updateBusAction(formData: FormData) {
-    await validateCsrf(formData);
+    await validateCsrf(formData.get('csrfToken') as string);
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         await logAction({ actionType: 'UPDATE_BUS_ATTEMPT_FAIL', description: 'Unauthorized attempt to update bus.' });
@@ -130,30 +149,28 @@ export async function updateBusAction(formData: FormData) {
                  throw new Error("This bus cannot be edited because it is assigned to active routes.");
             }
 
-            // Update bus details
+            // Step 1: Update bus details
             await tx.bus.update({
                 where: { id: busId },
                 data: { name, capacity }
             });
 
-            // Delete old layout and seats
+            // Step 2: Delete old layout and seats
             if (busToUpdate.layout) {
                 await tx.seat.deleteMany({ where: { layoutId: busToUpdate.layout.id }});
                 await tx.seatLayout.delete({ where: { id: busToUpdate.layout.id }});
             }
 
-            // Create new layout
-            await tx.bus.update({
-                where: { id: busId },
+            // Step 3: Create new layout and connect it to the bus
+            await tx.seatLayout.create({
                 data: {
-                    layout: {
-                        create: {
-                            rows,
-                            cols,
-                            seats: {
-                                create: seats,
-                            }
-                        }
+                    rows,
+                    cols,
+                    bus: {
+                        connect: { id: busId }
+                    },
+                    seats: {
+                        create: seats
                     }
                 }
             });
@@ -169,6 +186,7 @@ export async function updateBusAction(formData: FormData) {
 
     revalidatePath('/admin/buses');
     revalidatePath(`/admin/buses/${busId}/edit`);
+    // A successful action will now return a success object, and the client will redirect.
     return { success: true };
 }
 
@@ -208,3 +226,5 @@ export async function deleteBusAction(busId: string, csrfToken: string): Promise
     return { success: false, message: 'An unexpected error occurred or you do not have permission.' };
   }
 }
+
+    
