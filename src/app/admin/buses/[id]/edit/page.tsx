@@ -44,4 +44,3 @@ export default async function EditBusPage({ params }: EditBusPageProps) {
        <EditBusForm bus={bus} />
     );
 }
-
