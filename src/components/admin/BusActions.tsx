@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { MoreHorizontal, LayoutGrid } from "lucide-react";
+import { MoreHorizontal, LayoutGrid, Pencil } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { ScrollArea } from "../ui/scroll-area";
 import { useCsrf } from "@/hooks/useCsrf";
 import { Armchair } from "lucide-react";
+import Link from "next/link";
 
 
 interface SeatProps {
@@ -51,6 +52,7 @@ export function BusActions({ bus }: BusActionsProps) {
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
   const { csrfToken, loading: csrfLoading } = useCsrf();
+  const canEdit = bus._count.routes === 0;
 
   const handleDelete = async () => {
     if (!csrfToken) {
@@ -108,7 +110,14 @@ export function BusActions({ bus }: BusActionsProps) {
                   View Layout
                 </DropdownMenuItem>
               </DialogTrigger>
-              <DropdownMenuItem disabled>Edit</DropdownMenuItem>
+              <Link href={canEdit ? `/admin/buses/${bus.id}/edit` : '#'} passHref legacyBehavior>
+                <DropdownMenuItem asChild disabled={!canEdit} onSelect={(e) => { if (!canEdit) e.preventDefault(); }}>
+                  <a>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit
+                  </a>
+                </DropdownMenuItem>
+              </Link>
               <DropdownMenuSeparator />
               <AlertDialogTrigger asChild>
                 <DropdownMenuItem disabled={csrfLoading} className="text-destructive focus:text-destructive" onSelect={(e) => e.preventDefault()}>
