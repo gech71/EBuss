@@ -130,7 +130,7 @@ export async function updateBusAction(formData: FormData) {
         };
     }
     
-    const { name, capacity, rows, cols, seats } = validatedData.data;
+    const { name, capacity, rows, cols, seats }_ = validatedData.data;
     
     // Perform check before starting transaction
     const routeCount = await prisma.route.count({ where: { busId: busId } });
@@ -207,25 +207,19 @@ export async function deleteBusAction(busId: string, csrfToken: string): Promise
     }
 
     const busToDelete = await prisma.bus.findFirst({
-      where: { id: busId, ownerId: user.busOwnerId },
-      include: { layout: true },
+      where: { id: busId, ownerId: user.busOwnerId }
     });
 
     if (!busToDelete) {
       return { success: false, message: "Bus not found or you don't have permission to delete it." };
     }
     
-    // Explicitly delete related records in a transaction
-    await prisma.$transaction(async (tx) => {
-        if (busToDelete.layout) {
-            await tx.seat.deleteMany({ where: { layoutId: busToDelete.layout.id } });
-            await tx.seatLayout.delete({ where: { id: busToDelete.layout.id } });
-        }
-        await tx.bus.delete({
-            where: {
-                id: busId,
-            },
-        });
+    // The Prisma schema handles cascading deletes for the SeatLayout and Seats
+    // when a Bus is deleted, so we only need to delete the bus.
+    await prisma.bus.delete({
+        where: {
+            id: busId,
+        },
     });
 
 
