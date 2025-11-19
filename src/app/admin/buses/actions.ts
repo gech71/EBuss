@@ -127,7 +127,7 @@ export async function updateBusAction(formData: FormData) {
     if (!validatedData.success) {
         return {
             success: false,
-            message: validatedData.error.errors.map(e => e.message).join(', ')
+            message: validatedData.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
         };
     }
     
