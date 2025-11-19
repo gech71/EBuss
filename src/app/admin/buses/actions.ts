@@ -1,4 +1,3 @@
-
 'use server';
 
 import prisma from '@/lib/prisma';
@@ -146,8 +145,8 @@ export async function updateBusAction(formData: FormData) {
                 include: { layout: true }
             });
 
-            if (!busToUpdate) {
-                throw new Error("Bus not found or you don't have permission to edit it.");
+            if (!busToUpdate || !busToUpdate.layout) {
+                throw new Error("Bus not found, layout is missing, or you don't have permission to edit it.");
             }
 
             // Step 1: Update bus details
@@ -156,25 +155,17 @@ export async function updateBusAction(formData: FormData) {
                 data: { name, capacity }
             });
 
-            // Step 2: Delete old layout and seats if it exists
-            if (busToUpdate.layout) {
-                await tx.seat.deleteMany({ where: { layoutId: busToUpdate.layout.id }});
-                await tx.seatLayout.delete({ where: { id: busToUpdate.layout.id }});
-            }
+            // Step 2: Delete old seats from the existing layout
+            await tx.seat.deleteMany({ where: { layoutId: busToUpdate.layout.id }});
 
-            // Step 3: Use a bus update operation to create the new layout.
-            // This maintains the bus as the root of the transaction, which Prisma handles more reliably.
-            await tx.bus.update({
-                where: { id: busId },
+            // Step 3: Update the existing layout with new rows, cols, and create new seats
+            await tx.seatLayout.update({
+                where: { id: busToUpdate.layout.id },
                 data: {
-                    layout: {
-                        create: {
-                            rows,
-                            cols,
-                            seats: {
-                                create: seats
-                            }
-                        }
+                    rows,
+                    cols,
+                    seats: {
+                        create: seats
                     }
                 }
             });
