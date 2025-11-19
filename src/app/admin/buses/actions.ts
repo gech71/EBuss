@@ -132,6 +132,11 @@ export async function updateBusAction(formData: FormData) {
     }
     
     const { name, capacity, rows, cols, seats } = validatedData.data;
+    
+    const routeCount = await prisma.route.count({ where: { busId: busId } });
+    if (routeCount > 0) {
+        return { success: false, message: "This bus cannot be edited because it is assigned to active routes."};
+    }
 
     try {
         await prisma.$transaction(async (tx) => {
@@ -142,11 +147,6 @@ export async function updateBusAction(formData: FormData) {
 
             if (!busToUpdate) {
                 throw new Error("Bus not found or you don't have permission to edit it.");
-            }
-            
-            const routeCount = await tx.route.count({ where: { busId: busId } });
-            if (routeCount > 0) {
-                 throw new Error("This bus cannot be edited because it is assigned to active routes.");
             }
 
             // Step 1: Update bus details
@@ -184,8 +184,7 @@ export async function updateBusAction(formData: FormData) {
 
     revalidatePath('/admin/buses');
     revalidatePath(`/admin/buses/${busId}/edit`);
-    // A successful action will now return a success object, and the client will redirect.
-    return { success: true };
+    redirect('/admin/buses');
 }
 
 

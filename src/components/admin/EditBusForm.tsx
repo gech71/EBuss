@@ -122,9 +122,6 @@ export function EditBusForm({ bus }: EditBusFormProps) {
             const result = await updateBusAction(formData);
              if (result?.success === false) {
                  toast({ title: "Update Failed", description: result.message, variant: "destructive" });
-            } else {
-                 toast({ title: "Success!", description: "Bus has been updated."});
-                 router.push('/admin/buses');
             }
         });
     };
