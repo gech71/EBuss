@@ -1,0 +1,189 @@
+
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
+import { useState, useMemo, useTransition } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
+import { updateBusAction } from "@/app/admin/buses/actions";
+import { useCsrf } from "@/hooks/useCsrf";
+import { BackButton } from "@/components/BackButton";
+import type { Bus, Seat, SeatLayout } from "@prisma/client";
+
+// Helper function to generate seat layouts, adapted from the original data file.
+const generateSeats = (rows: number, cols: number, aisleCols: number[], lastRowFull: boolean = false) => {
+  const seats = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const isLastRow = r === rows - 1;
+      const isAisle = aisleCols.includes(c) && !(lastRowFull && isLastRow);
+      
+      seats.push({
+        seatNumber: `${String.fromCharCode(65 + r)}${c + 1}`,
+        status: 'AVAILABLE',
+        type: isAisle ? 'AISLE' : 'SEAT',
+      });
+    }
+  }
+  return seats;
+};
+
+
+type BusWithLayout = Bus & {
+  layout: (SeatLayout & {
+    seats: Seat[];
+  }) | null;
+}
+
+interface EditBusFormProps {
+    bus: BusWithLayout
+}
+
+export function EditBusForm({ bus }: EditBusFormProps) {
+    const { toast } = useToast();
+    const router = useRouter();
+    const [isPending, startTransition] = useTransition();
+    const { csrfToken, loading: csrfLoading } = useCsrf();
+    
+    // Helper function to derive aisle columns from seat data
+    const getAisleColsFromLayout = (layout: BusWithLayout['layout']) => {
+        if (!layout || layout.seats.length === 0) return '';
+        const aisleCols = new Set<number>();
+        const firstRowChar = layout.seats[0].seatNumber.charAt(0);
+        
+        layout.seats.forEach(seat => {
+            if (seat.type === 'AISLE' && seat.seatNumber.charAt(0) === firstRowChar) {
+                 const col = parseInt(seat.seatNumber.substring(1), 10);
+                 aisleCols.add(col);
+            }
+        });
+        return Array.from(aisleCols).join(',');
+    };
+    
+    const getLastRowFull = (layout: BusWithLayout['layout']) => {
+        if (!layout) return false;
+        const lastRowChar = String.fromCharCode(65 + layout.rows - 1);
+        const lastRowSeats = layout.seats.filter(s => s.seatNumber.startsWith(lastRowChar));
+        return lastRowSeats.every(s => s.type === 'SEAT');
+    };
+
+    const [name, setName] = useState(bus.name);
+    const [rows, setRows] = useState(bus.layout?.rows || 12);
+    const [cols, setCols] = useState(bus.layout?.cols || 5);
+    const [aisleCols, setAisleCols] = useState(getAisleColsFromLayout(bus.layout));
+    const [lastRowFull, setLastRowFull] = useState(getLastRowFull(bus.layout));
+    
+    const parsedAisleCols = useMemo(() => {
+        return aisleCols.split(',').map(s => parseInt(s.trim(), 10) - 1).filter(n => !isNaN(n));
+    }, [aisleCols]);
+
+    const capacity = useMemo(() => {
+        if (cols <= 0 || rows <= 0) return 0;
+        
+        const baseCapacity = rows * cols;
+        let aisleSeats = rows * parsedAisleCols.length;
+        
+        if (lastRowFull && rows > 0) {
+            aisleSeats -= parsedAisleCols.length;
+        }
+        
+        return baseCapacity - aisleSeats;
+    }, [rows, cols, parsedAisleCols, lastRowFull]);
+
+    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        
+        if (!name || rows <= 0 || cols <= 0 || aisleCols.trim() === '' || parsedAisleCols.some(ac => ac < 0 || ac >= cols)) {
+            toast({
+                title: "Invalid Input",
+                description: "Please provide valid details for the bus layout.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        const seats = generateSeats(rows, cols, parsedAisleCols, lastRowFull);
+        
+        const formData = new FormData();
+        formData.append('busId', bus.id);
+        formData.append('csrfToken', csrfToken || '');
+        formData.append('name', name);
+        formData.append('capacity', capacity.toString());
+        formData.append('rows', rows.toString());
+        formData.append('cols', cols.toString());
+        formData.append('seats', JSON.stringify(seats));
+        
+        startTransition(async () => {
+            const result = await updateBusAction(formData);
+             if (result?.success === false) {
+                 toast({ title: "Update Failed", description: result.message, variant: "destructive" });
+            } else {
+                 toast({ title: "Success!", description: "Bus has been updated."});
+                 router.push('/admin/buses');
+            }
+        });
+    };
+
+    return (
+        <form onSubmit={handleSubmit}>
+            <Card className="max-w-xl mx-auto">
+                <CardHeader>
+                    <div className="flex items-start justify-between mb-4">
+                        <div>
+                            <CardTitle>Edit Bus</CardTitle>
+                            <CardDescription>Update the properties and seat layout for '{bus.name}'.</CardDescription>
+                        </div>
+                        <BackButton />
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-6">
+                         <div className="space-y-2">
+                            <Label htmlFor="name">Bus Name</Label>
+                            <Input id="name" name="name" placeholder="e.g., Standard Cruiser" required value={name} onChange={e => setName(e.target.value)} />
+                        </div>
+                        
+                        <Separator />
+
+                        <div>
+                            <h3 className="text-lg font-medium mb-2">Seat Layout</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="rows">Rows</Label>
+                                    <Input id="rows" type="number" placeholder="e.g., 12" required value={rows} onChange={e => setRows(Number(e.target.value))} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="cols">Columns</Label>
+                                    <Input id="cols" type="number" placeholder="e.g., 5" required value={cols} onChange={e => setCols(Number(e.target.value))} />
+                                </div>
+                            </div>
+                             <div className="space-y-2 mt-4">
+                                <Label htmlFor="aisleCols">Aisle Columns (1-indexed, comma-separated)</Label>
+                                <Input id="aisleCols" type="text" placeholder="e.g., 3" required value={aisleCols} onChange={e => setAisleCols(e.target.value)} />
+                            </div>
+                            <div className="flex items-center space-x-2 mt-4">
+                                <Checkbox id="last-row-full" checked={lastRowFull} onCheckedChange={(checked) => setLastRowFull(Boolean(checked))} />
+                                <Label htmlFor="last-row-full">Last row is a full bench (no aisle)</Label>
+                            </div>
+                        </div>
+
+                        <Separator />
+
+                         <div className="space-y-2">
+                            <Label>Calculated Capacity</Label>
+                            <Input value={capacity} disabled className="font-bold bg-muted/50" />
+                        </div>
+                    </div>
+                </CardContent>
+                <CardFooter className="flex justify-end gap-2">
+                    <Button type="submit" disabled={isPending || csrfLoading}>{isPending ? "Saving..." : "Save Changes"}</Button>
+                </CardFooter>
+            </Card>
+        </form>
+    );
+}

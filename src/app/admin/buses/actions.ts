@@ -16,7 +16,7 @@ const seatSchema = z.object({
   type: z.nativeEnum(SeatType),
 });
 
-const createBusSchema = z.object({
+const busSchema = z.object({
   name: z.string().min(1, 'Bus name is required.'),
   capacity: z.number().int().positive('Capacity must be a positive integer.'),
   rows: z.number().int().positive(),
@@ -40,7 +40,7 @@ export async function createBusAction(formData: FormData) {
         seats: JSON.parse(formData.get('seats') as string),
     };
 
-    const validatedData = createBusSchema.safeParse(rawData);
+    const validatedData = busSchema.safeParse(rawData);
 
     if (!validatedData.success) {
         return {
@@ -81,6 +81,97 @@ export async function createBusAction(formData: FormData) {
     revalidatePath('/admin/buses');
     redirect('/admin/buses');
 }
+
+export async function updateBusAction(formData: FormData) {
+    await validateCsrf(formData);
+    const { user } = await validateRequest();
+    if (!user || !user.busOwnerId) {
+        await logAction({ actionType: 'UPDATE_BUS_ATTEMPT_FAIL', description: 'Unauthorized attempt to update bus.' });
+        return { success: false, message: 'Unauthorized' };
+    }
+
+    const busId = formData.get('busId') as string;
+    if (!busId) {
+        return { success: false, message: 'Bus ID is missing.' };
+    }
+    
+    const rawData = {
+        name: formData.get('name'),
+        capacity: Number(formData.get('capacity')),
+        rows: Number(formData.get('rows')),
+        cols: Number(formData.get('cols')),
+        seats: JSON.parse(formData.get('seats') as string),
+    };
+
+    const validatedData = busSchema.safeParse(rawData);
+
+    if (!validatedData.success) {
+        return {
+            success: false,
+            message: validatedData.error.errors.map(e => e.message).join(', ')
+        };
+    }
+    
+    const { name, capacity, rows, cols, seats } = validatedData.data;
+
+    try {
+        await prisma.$transaction(async (tx) => {
+            const busToUpdate = await tx.bus.findFirst({
+                where: { id: busId, ownerId: user.busOwnerId },
+                include: { layout: true }
+            });
+
+            if (!busToUpdate) {
+                throw new Error("Bus not found or you don't have permission to edit it.");
+            }
+            
+            const routeCount = await tx.route.count({ where: { busId: busId } });
+            if (routeCount > 0) {
+                 throw new Error("This bus cannot be edited because it is assigned to active routes.");
+            }
+
+            // Update bus details
+            await tx.bus.update({
+                where: { id: busId },
+                data: { name, capacity }
+            });
+
+            // Delete old layout and seats
+            if (busToUpdate.layout) {
+                await tx.seat.deleteMany({ where: { layoutId: busToUpdate.layout.id }});
+                await tx.seatLayout.delete({ where: { id: busToUpdate.layout.id }});
+            }
+
+            // Create new layout
+            await tx.bus.update({
+                where: { id: busId },
+                data: {
+                    layout: {
+                        create: {
+                            rows,
+                            cols,
+                            seats: {
+                                create: seats,
+                            }
+                        }
+                    }
+                }
+            });
+        });
+        
+        await logAction({ userId: user.id, actionType: 'UPDATE_BUS', description: `Updated bus '${name}' (${busId}).` });
+
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
+        await logAction({ userId: user.id, actionType: 'UPDATE_BUS_FAIL', description: `Failed to update bus '${name}'. Error: ${message}` });
+        return { success: false, message };
+    }
+
+    revalidatePath('/admin/buses');
+    revalidatePath(`/admin/buses/${busId}/edit`);
+    return { success: true };
+}
+
 
 export async function deleteBusAction(busId: string, csrfToken: string): Promise<{ success: boolean; message: string }> {
   await validateCsrf(csrfToken);
