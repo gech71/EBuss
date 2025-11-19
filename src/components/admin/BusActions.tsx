@@ -41,7 +41,10 @@ function Seat({ seat }: SeatProps) {
 
 
 interface BusActionsProps {
-  bus: Bus & { layout: (SeatLayout & { seats: PrismaSeat[] }) | null };
+  bus: Bus & { 
+    layout: (SeatLayout & { seats: PrismaSeat[] }) | null;
+    _count: { routes: number };
+  };
 }
 
 export function BusActions({ bus }: BusActionsProps) {

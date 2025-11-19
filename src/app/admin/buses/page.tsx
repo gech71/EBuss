@@ -9,6 +9,7 @@ import prisma from "@/lib/prisma";
 import { validateRequest } from "@/lib/server/auth";
 import { redirect } from "next/navigation";
 import { BusActions } from "@/components/admin/BusActions";
+import { Badge } from "@/components/ui/badge";
 
 export default async function AdminBusesPage() {
   const { user } = await validateRequest();
@@ -25,6 +26,9 @@ export default async function AdminBusesPage() {
         include: {
           seats: true
         }
+      },
+      _count: {
+        select: { routes: true }
       }
     },
     orderBy: {
@@ -51,6 +55,7 @@ export default async function AdminBusesPage() {
             <TableRow>
               <TableHead>Bus Name</TableHead>
               <TableHead>Capacity</TableHead>
+              <TableHead>Routes Assigned</TableHead>
               <TableHead>
                 <span className="sr-only">Actions</span>
               </TableHead>
@@ -61,6 +66,9 @@ export default async function AdminBusesPage() {
               <TableRow key={bus.id}>
                 <TableCell className="font-medium">{bus.name}</TableCell>
                 <TableCell>{bus.capacity}</TableCell>
+                <TableCell>
+                  <Badge variant={bus._count.routes > 0 ? "secondary" : "destructive"}>{bus._count.routes}</Badge>
+                </TableCell>
                 <TableCell className="text-right">
                   <BusActions bus={bus} />
                 </TableCell>
@@ -68,7 +76,7 @@ export default async function AdminBusesPage() {
             ))}
              {buses.length === 0 && (
                 <TableRow>
-                    <TableCell colSpan={3} className="h-24 text-center">
+                    <TableCell colSpan={4} className="h-24 text-center">
                         No buses found. Add one to get started.
                     </TableCell>
                 </TableRow>
