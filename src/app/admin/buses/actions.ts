@@ -133,6 +133,7 @@ export async function updateBusAction(formData: FormData) {
     
     const { name, capacity, rows, cols, seats } = validatedData.data;
     
+    // Perform check before starting transaction
     const routeCount = await prisma.route.count({ where: { busId: busId } });
     if (routeCount > 0) {
         return { success: false, message: "This bus cannot be edited because it is assigned to active routes."};
@@ -161,12 +162,14 @@ export async function updateBusAction(formData: FormData) {
                 await tx.seatLayout.delete({ where: { id: busToUpdate.layout.id }});
             }
 
-            // Step 3: Create new layout and seats, explicitly connecting to the bus by ID
+            // Step 3: Create new layout and seats, connecting to the bus by relation
             await tx.seatLayout.create({
                 data: {
                     rows,
                     cols,
-                    busId: busId, // Explicitly set the foreign key
+                    bus: {
+                        connect: { id: busId }
+                    },
                     seats: {
                         create: seats
                     }
@@ -179,6 +182,7 @@ export async function updateBusAction(formData: FormData) {
     } catch (error) {
         const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
         await logAction({ userId: user.id, actionType: 'UPDATE_BUS_FAIL', description: `Failed to update bus '${name}'. Error: ${message}` });
+        console.error("Error updating bus:", error);
         return { success: false, message };
     }
 
