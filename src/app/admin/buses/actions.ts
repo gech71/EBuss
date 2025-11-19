@@ -162,16 +162,19 @@ export async function updateBusAction(formData: FormData) {
                 await tx.seatLayout.delete({ where: { id: busToUpdate.layout.id }});
             }
 
-            // Step 3: Create new layout and seats, connecting to the bus by relation
-            await tx.seatLayout.create({
+            // Step 3: Use a bus update operation to create the new layout.
+            // This maintains the bus as the root of the transaction, which Prisma handles more reliably.
+            await tx.bus.update({
+                where: { id: busId },
                 data: {
-                    rows,
-                    cols,
-                    bus: {
-                        connect: { id: busId }
-                    },
-                    seats: {
-                        create: seats
+                    layout: {
+                        create: {
+                            rows,
+                            cols,
+                            seats: {
+                                create: seats
+                            }
+                        }
                     }
                 }
             });
