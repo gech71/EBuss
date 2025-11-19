@@ -215,12 +215,28 @@ export async function deleteBusAction(busId: string, csrfToken: string): Promise
       };
     }
 
-    await prisma.bus.delete({
-      where: {
-        id: busId,
-        ownerId: user.busOwnerId,
-      },
+    const busToDelete = await prisma.bus.findFirst({
+      where: { id: busId, ownerId: user.busOwnerId },
+      include: { layout: true },
     });
+
+    if (!busToDelete) {
+      return { success: false, message: "Bus not found or you don't have permission to delete it." };
+    }
+    
+    // Explicitly delete related records in a transaction
+    await prisma.$transaction(async (tx) => {
+        if (busToDelete.layout) {
+            await tx.seat.deleteMany({ where: { layoutId: busToDelete.layout.id } });
+            await tx.seatLayout.delete({ where: { id: busToDelete.layout.id } });
+        }
+        await tx.bus.delete({
+            where: {
+                id: busId,
+            },
+        });
+    });
+
 
     await logAction({ userId: user.id, actionType: 'DELETE_BUS', description: `Deleted bus ${busId}.` });
     revalidatePath('/admin/buses');
