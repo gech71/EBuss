@@ -34,7 +34,6 @@ export function NewOwnerForm({ existingOwnerNames, existingAccountNumbers, exist
     const [isPending, startTransition] = useTransition();
     
     const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
     const [bankAccountNumber, setBankAccountNumber] = useState('');
     const [tiers, setTiers] = useState<CommissionTierState[]>([
         { minSales: 1, maxSales: 100, type: 'PERCENTAGE', value: 0 }
@@ -69,16 +68,12 @@ export function NewOwnerForm({ existingOwnerNames, existingAccountNumbers, exist
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (!name || !email) {
-            toast({ title: "Error", description: "Owner name and email cannot be empty.", variant: "destructive" });
+        if (!name || !bankAccountNumber) {
+            toast({ title: "Error", description: "Owner name and bank account cannot be empty.", variant: "destructive" });
             return;
         }
         if (existingOwnerNames.some(n => n.toLowerCase() === name.toLowerCase())) {
              toast({ title: "Error", description: "An owner with this name already exists.", variant: "destructive" });
-             return;
-        }
-         if (existingEmails.some(e => e.toLowerCase() === email.toLowerCase())) {
-             toast({ title: "Error", description: "This email address is already in use.", variant: "destructive" });
              return;
         }
         if(existingAccountNumbers.includes(bankAccountNumber)) {
@@ -103,7 +98,6 @@ export function NewOwnerForm({ existingOwnerNames, existingAccountNumbers, exist
         
         const formData = new FormData();
         formData.append('name', name);
-        formData.append('email', email);
         formData.append('bankAccountNumber', bankAccountNumber);
         formData.append('commissionTiers', JSON.stringify(tiers));
 
@@ -143,19 +137,7 @@ export function NewOwnerForm({ existingOwnerNames, existingAccountNumbers, exist
                                 onChange={(e) => setName(e.target.value)}
                             />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="email">Admin Email</Label>
-                            <Input 
-                                id="email" 
-                                name="email"
-                                type="email"
-                                placeholder="e.g., admin@metrotransit.com" 
-                                required
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                            />
-                        </div>
-                         <div className="space-y-2 md:col-span-2">
+                         <div className="space-y-2">
                             <Label htmlFor="bankAccountNumber">Bank Account Number</Label>
                             <Input 
                                 id="bankAccountNumber" 
