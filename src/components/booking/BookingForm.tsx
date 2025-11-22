@@ -446,7 +446,19 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
               </div>
             </div>
             
-            <Button type="submit" size="lg" className="w-full" disabled={isPending || csrfLoading || ticketCount === 0 || !areSeatsAvailable || (isRoundTrip && !selectedReturnRoute)}>
+            <Button 
+                type="submit" 
+                size="lg" 
+                className="w-full" 
+                disabled={
+                    isPending || 
+                    csrfLoading || 
+                    ticketCount === 0 || 
+                    !areSeatsAvailable || 
+                    (isRoundTrip && !selectedReturnRoute) ||
+                    (isRoundTrip && availableReturnDates.length === 0)
+                }
+            >
               {isPending ? 'Processing...' : 'Book Now & Pay'}
             </Button>
 
@@ -498,7 +510,3 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
     </>
   );
 }
-
-    
-
-    
