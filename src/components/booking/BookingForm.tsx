@@ -142,7 +142,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
   };
 
 
-  const { subtotal, discountAmount, finalPrice, appliedDiscountName, appliedDiscountValue } = useMemo(() => {
+  const { subtotal, discountAmount, finalPrice, appliedDiscounts } = useMemo(() => {
     const outboundSeats = selectedSeats.length;
     const returnSeats = selectedReturnSeats.length;
 
@@ -152,7 +152,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
     let subtotal = outboundPrice + returnPrice;
 
     let totalDiscountAmount = 0;
-    let appliedDiscountParts: { name: string; value: string }[] = [];
+    let appliedDiscounts: { name: string; value: string; amount: number }[] = [];
     
     const now = new Date();
     const discount = selectedRoute.discount;
@@ -168,7 +168,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
         let generalDiscountAmount = 0;
         if (discount.type === 'DATE_BASED' && discount.percentage) {
             generalDiscountAmount = (subtotal * discount.percentage) / 100;
-            appliedDiscountParts.push({ name: discount.name, value: `${discount.percentage}%` });
+            appliedDiscounts.push({ name: discount.name, value: `${discount.percentage}%`, amount: generalDiscountAmount });
         } else if (discount.type === 'TICKET_COUNT_BASED') {
             const applicableTier = discount.tiers
                 .filter(tier => ticketCountForDiscount >= tier.minTickets && ticketCountForDiscount <= tier.maxTickets)
@@ -176,7 +176,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
             
             if (applicableTier) {
                 generalDiscountAmount = (subtotal * Number(applicableTier.percentage)) / 100;
-                appliedDiscountParts.push({ name: discount.name, value: `${Number(applicableTier.percentage)}%` });
+                appliedDiscounts.push({ name: discount.name, value: `${Number(applicableTier.percentage)}%`, amount: generalDiscountAmount });
             }
         }
         totalDiscountAmount += generalDiscountAmount;
@@ -188,19 +188,17 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
         let roundTripDiscountAmount = 0;
         if (selectedRoute.roundTripDiscountType === 'PERCENTAGE') {
             roundTripDiscountAmount = (subtotal * roundTripDiscountValue) / 100;
-            appliedDiscountParts.push({ name: 'Round Trip Offer', value: `${roundTripDiscountValue}%` });
+            appliedDiscounts.push({ name: 'Round Trip Offer', value: `${roundTripDiscountValue}%`, amount: roundTripDiscountAmount });
         } else if (selectedRoute.roundTripDiscountType === 'FIXED') {
             roundTripDiscountAmount = roundTripDiscountValue;
-            appliedDiscountParts.push({ name: 'Round Trip Offer', value: `${roundTripDiscountValue} ETB` });
+             appliedDiscounts.push({ name: 'Round Trip Offer', value: `${roundTripDiscountValue} ETB`, amount: roundTripDiscountAmount });
         }
         totalDiscountAmount += roundTripDiscountAmount;
     }
     
     const finalPrice = subtotal - totalDiscountAmount;
-    const appliedDiscountName = appliedDiscountParts.map(p => p.name).join(' + ');
-    const appliedDiscountValue = appliedDiscountParts.map(p => p.value).join(' + ');
 
-    return { subtotal, discountAmount: totalDiscountAmount, finalPrice, appliedDiscountName, appliedDiscountValue };
+    return { subtotal, discountAmount: totalDiscountAmount, finalPrice, appliedDiscounts };
   }, [selectedSeats, selectedReturnSeats, selectedRoute, isRoundTrip, selectedReturnRoute]);
 
   const handleRouteChange = async (routeId: string) => {
@@ -509,12 +507,12 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                       <span className="text-muted-foreground">Subtotal</span>
                       <span>{subtotal.toFixed(2)} ETB</span>
                   </div>
-                  {appliedDiscountName && (
-                      <div className="flex justify-between items-center text-sm text-green-600 font-semibold">
-                          <span className="flex items-center gap-2"><Percent />{appliedDiscountName} ({appliedDiscountValue})</span>
-                          <span>-{discountAmount.toFixed(2)} ETB</span>
+                   {appliedDiscounts.map((discount, index) => (
+                      <div key={index} className="flex justify-between items-center text-sm text-green-600 font-semibold">
+                          <span className="flex items-center gap-2"><Percent />{discount.name} ({discount.value})</span>
+                          <span>-{discount.amount.toFixed(2)} ETB</span>
                       </div>
-                  )}
+                  ))}
                   <Separator className="my-2" />
                    <div className="flex justify-between items-center font-bold text-lg">
                       <span>Total Price</span>
