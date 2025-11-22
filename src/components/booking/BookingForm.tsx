@@ -17,8 +17,8 @@ import { createBookingAction, createPaymentRequestAction } from "@/app/book/acti
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { useCsrf } from "@/hooks/useCsrf";
-import { format, isSameDay, startOfDay } from "date-fns";
-import { formatInTimeZone } from 'date-fns-tz';
+import { format, isSameDay } from "date-fns";
+import { formatInTimeZone, toDate, fromZonedTime } from 'date-fns-tz';
 import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { BackButton } from "../BackButton";
@@ -91,12 +91,17 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
 
 
   const availableReturnDates = useMemo(() => {
+    const timeZone = 'UTC';
     const uniqueDates = new Set<string>();
     potentialReturnRoutes.forEach(route => {
-      const date = startOfDay(new Date(route.departureTime)).toISOString();
-      uniqueDates.add(date);
+        const zonedDate = fromZonedTime(route.departureTime, timeZone);
+        const startOfDayStr = format(zonedDate, 'yyyy-MM-dd');
+        uniqueDates.add(startOfDayStr);
     });
-    return Array.from(uniqueDates).map(dateStr => new Date(dateStr));
+
+    return Array.from(uniqueDates).map(dateStr => {
+        return toDate(`${dateStr}T00:00:00Z`); // Create date object from UTC string
+    });
   }, [potentialReturnRoutes]);
 
 
@@ -125,7 +130,9 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
       setNoReturnTripsFound(false);
 
       try {
-          const response = await fetch(`/api/routes/search?originId=${selectedRoute.destinationId}&destinationId=${selectedRoute.originId}&date=${format(date, 'yyyy-MM-dd')}`);
+          // Format the date in UTC to send to the API
+          const dateInUtc = formatInTimeZone(date, 'UTC', 'yyyy-MM-dd');
+          const response = await fetch(`/api/routes/search?originId=${selectedRoute.destinationId}&destinationId=${selectedRoute.originId}&date=${dateInUtc}`);
           const data = await response.json();
 
           if (response.ok) {
@@ -303,9 +310,6 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
     });
   };
 
-  const departureDay = new Date(selectedRoute.departureTime);
-  departureDay.setHours(0, 0, 0, 0);
-
   return (
     <>
       <form onSubmit={handleSubmit}>
@@ -415,13 +419,13 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                                         {returnRoutes.map(route => (
                                             <Label key={route.id} htmlFor={route.id} className="flex items-start gap-4 p-3 border rounded-md cursor-pointer hover:bg-muted has-[input:checked]:bg-primary has-[input:checked]:text-primary-foreground has-[input:checked]:border-primary">
                                                 <RadioGroupItem value={route.id} id={route.id} className="border-muted-foreground mt-1" />
-                                                    <div className="flex-grow grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-1 text-sm">
+                                                <div className="flex-grow grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-1 text-sm">
                                                     <div className="sm:col-span-1">
                                                         <div className="font-semibold">{route.bus.owner.name}</div>
                                                         <div className="text-xs text-muted-foreground">{route.bus.name}</div>
                                                     </div>
                                                     <div className="font-medium sm:col-span-2">
-                                                         {formatInTimeZone(new Date(route.departureTime), 'UTC', 'MMM d, yyyy (p)')}
+                                                        {formatInTimeZone(new Date(route.departureTime), 'UTC', 'MMM d, yyyy (p)')}
                                                         <ArrowRight className="inline h-3 w-3 mx-1" />
                                                         {formatInTimeZone(new Date(route.arrivalTime), 'UTC', 'MMM d, yyyy (p)')}
                                                     </div>

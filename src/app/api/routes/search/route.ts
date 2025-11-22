@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { endOfDay, startOfDay } from 'date-fns';
+import { toDate } from 'date-fns-tz';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +15,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: 'originId, destinationId, and date are required.' }, { status: 400 });
     }
 
-    const searchDate = new Date(date);
+    // Interpret the incoming date string as a UTC date
+    const searchDate = toDate(`${date}T00:00:00Z`);
     const startDate = startOfDay(searchDate);
     const endDate = endOfDay(searchDate);
 
