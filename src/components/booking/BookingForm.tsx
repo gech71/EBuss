@@ -35,6 +35,7 @@ type RouteWithDetails = Route & {
 type AlternativeRoute = Route & { bus: Bus };
 
 type ReturnRoute = Route & { 
+    price: number;
     bus: Bus & { 
         owner: { name: string },
         layout: SeatLayout & { seats: Seat[] } 
@@ -120,7 +121,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
       setSelectedReturnSeats([]);
 
       try {
-          const response = await fetch(`/api/route/${selectedRoute.destinationId}/${selectedRoute.originId}/${format(date, 'yyyy-MM-dd')}`);
+          const response = await fetch(`/api/routes/search?originId=${selectedRoute.destinationId}&destinationId=${selectedRoute.originId}&date=${format(date, 'yyyy-MM-dd')}`);
           const data = await response.json();
 
           if (response.ok) {
@@ -567,3 +568,5 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
     </>
   );
 }
+
+    
