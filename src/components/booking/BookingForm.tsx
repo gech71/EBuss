@@ -368,9 +368,9 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                                                             <div className="text-xs text-muted-foreground">{route.bus.name}</div>
                                                         </div>
                                                         <div className="font-medium">
-                                                            {formatInTimeZone(new Date(route.departureTime), 'UTC', 'PPp')}
+                                                            {formatInTimeZone(new Date(route.departureTime), 'UTC', 'MMM d, yyyy (p)')}
                                                             <ArrowRight className="inline h-3 w-3 mx-1" />
-                                                            {formatInTimeZone(new Date(route.arrivalTime), 'UTC', 'p')}
+                                                            {formatInTimeZone(new Date(route.arrivalTime), 'UTC', 'MMM d, yyyy (p)')}
                                                         </div>
                                                         <div className="font-bold text-base text-right col-span-2 sm:col-span-1">{Number(route.price).toFixed(2)} ETB</div>
                                                     </div>
