@@ -152,7 +152,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
     let subtotal = outboundPrice + returnPrice;
 
     let totalDiscountAmount = 0;
-    let appliedDiscounts: { name: string; value: string; amount: number }[] = [];
+    let appliedDiscountParts: { name: string; value: string; amount: number }[] = [];
     
     const now = new Date();
     const discount = selectedRoute.discount;
@@ -168,7 +168,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
         let generalDiscountAmount = 0;
         if (discount.type === 'DATE_BASED' && discount.percentage) {
             generalDiscountAmount = (subtotal * discount.percentage) / 100;
-            appliedDiscounts.push({ name: discount.name, value: `${discount.percentage}%`, amount: generalDiscountAmount });
+            appliedDiscountParts.push({ name: discount.name, value: `${discount.percentage}%`, amount: generalDiscountAmount });
         } else if (discount.type === 'TICKET_COUNT_BASED') {
             const applicableTier = discount.tiers
                 .filter(tier => ticketCountForDiscount >= tier.minTickets && ticketCountForDiscount <= tier.maxTickets)
@@ -176,7 +176,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
             
             if (applicableTier) {
                 generalDiscountAmount = (subtotal * Number(applicableTier.percentage)) / 100;
-                appliedDiscounts.push({ name: discount.name, value: `${Number(applicableTier.percentage)}%`, amount: generalDiscountAmount });
+                appliedDiscountParts.push({ name: discount.name, value: `${Number(applicableTier.percentage)}%`, amount: generalDiscountAmount });
             }
         }
         totalDiscountAmount += generalDiscountAmount;
@@ -188,17 +188,17 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
         let roundTripDiscountAmount = 0;
         if (selectedRoute.roundTripDiscountType === 'PERCENTAGE') {
             roundTripDiscountAmount = (subtotal * roundTripDiscountValue) / 100;
-            appliedDiscounts.push({ name: 'Round Trip Offer', value: `${roundTripDiscountValue}%`, amount: roundTripDiscountAmount });
+            appliedDiscountParts.push({ name: 'Round Trip Offer', value: `${roundTripDiscountValue}%`, amount: roundTripDiscountAmount });
         } else if (selectedRoute.roundTripDiscountType === 'FIXED') {
             roundTripDiscountAmount = roundTripDiscountValue;
-             appliedDiscounts.push({ name: 'Round Trip Offer', value: `${roundTripDiscountValue} ETB`, amount: roundTripDiscountAmount });
+             appliedDiscountParts.push({ name: 'Round Trip Offer', value: `${roundTripDiscountValue} ETB`, amount: roundTripDiscountAmount });
         }
         totalDiscountAmount += roundTripDiscountAmount;
     }
     
     const finalPrice = subtotal - totalDiscountAmount;
 
-    return { subtotal, discountAmount: totalDiscountAmount, finalPrice, appliedDiscounts };
+    return { subtotal, discountAmount: totalDiscountAmount, finalPrice, appliedDiscounts: appliedDiscountParts };
   }, [selectedSeats, selectedReturnSeats, selectedRoute, isRoundTrip, selectedReturnRoute]);
 
   const handleRouteChange = async (routeId: string) => {
@@ -223,6 +223,10 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
     }
     if (isRoundTrip && selectedReturnSeats.length === 0) {
         toast({ title: "No return seats selected", description: "Please select seats for the return trip.", variant: "destructive" });
+        return;
+    }
+     if (isRoundTrip && selectedSeats.length !== selectedReturnSeats.length) {
+        toast({ title: "Seat Count Mismatch", description: "The number of seats for outbound and return trips must be the same.", variant: "destructive" });
         return;
     }
     if (!passengerName || !passengerPhone) {
@@ -408,17 +412,17 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                                             {returnRoutes.map(route => (
                                                 <Label key={route.id} htmlFor={route.id} className="flex items-start gap-4 p-3 border rounded-md cursor-pointer hover:bg-muted has-[input:checked]:bg-primary has-[input:checked]:text-primary-foreground has-[input:checked]:border-primary">
                                                     <RadioGroupItem value={route.id} id={route.id} className="border-muted-foreground mt-1" />
-                                                     <div className="flex-grow grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 text-sm">
-                                                        <div className="col-span-2 sm:col-span-1">
+                                                     <div className="flex-grow grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-1 text-sm">
+                                                        <div className="sm:col-span-1">
                                                             <div className="font-semibold">{route.bus.owner.name}</div>
                                                             <div className="text-xs text-muted-foreground">{route.bus.name}</div>
                                                         </div>
-                                                        <div className="font-medium">
+                                                        <div className="font-medium sm:col-span-2">
                                                             {formatInTimeZone(new Date(route.departureTime), 'UTC', 'MMM d, yyyy (p)')}
                                                             <ArrowRight className="inline h-3 w-3 mx-1" />
                                                             {formatInTimeZone(new Date(route.arrivalTime), 'UTC', 'MMM d, yyyy (p)')}
                                                         </div>
-                                                        <div className="font-bold text-base text-right col-span-2 sm:col-span-1">{Number(route.price).toFixed(2)} ETB</div>
+                                                        <div className="font-bold text-base text-right col-span-full sm:col-start-3 sm:row-start-1">{Number(route.price).toFixed(2)} ETB</div>
                                                     </div>
                                                 </Label>
                                             ))}
@@ -531,7 +535,8 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                     selectedSeats.length === 0 || 
                     !areSeatsAvailable || 
                     (isRoundTrip && (!selectedReturnRoute || selectedReturnSeats.length === 0 || !areReturnSeatsAvailable)) ||
-                    (isRoundTrip && availableReturnDates.length === 0)
+                    (isRoundTrip && availableReturnDates.length === 0) ||
+                    (isRoundTrip && selectedSeats.length !== selectedReturnSeats.length)
                 }
             >
               {isPending ? 'Processing...' : 'Book Now & Pay'}
