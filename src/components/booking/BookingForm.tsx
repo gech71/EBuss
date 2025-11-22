@@ -525,6 +525,16 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
               </div>
             </div>
             
+            {isRoundTrip && selectedSeats.length > 0 && selectedReturnSeats.length > 0 && selectedSeats.length !== selectedReturnSeats.length && (
+                <Alert variant="destructive">
+                    <Info className="h-4 w-4" />
+                    <AlertTitle>Seat Count Mismatch</AlertTitle>
+                    <AlertDescription>
+                        Please select the same number of seats for the outbound and return trips. You have selected {selectedSeats.length} outbound and {selectedReturnSeats.length} return seats.
+                    </AlertDescription>
+                </Alert>
+            )}
+
             <Button 
                 type="submit" 
                 size="lg" 
