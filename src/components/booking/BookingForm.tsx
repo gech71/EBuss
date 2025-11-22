@@ -359,12 +359,19 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                                             className="space-y-2"
                                         >
                                             {returnRoutes.map(route => (
-                                                <Label key={route.id} htmlFor={route.id} className="flex items-center gap-4 p-3 border rounded-md cursor-pointer hover:bg-muted has-[input:checked]:bg-primary has-[input:checked]:text-primary-foreground has-[input:checked]:border-primary">
-                                                    <RadioGroupItem value={route.id} id={route.id} className="border-muted-foreground" />
-                                                    <div className="flex-grow grid grid-cols-3 gap-2 items-center text-sm">
-                                                        <span className="font-semibold">{route.bus.owner.name}</span>
-                                                        <span>{format(new Date(route.departureTime), 'p')}</span>
-                                                        <span className="font-bold text-right">{Number(route.price).toFixed(2)} ETB</span>
+                                                <Label key={route.id} htmlFor={route.id} className="flex items-start gap-4 p-3 border rounded-md cursor-pointer hover:bg-muted has-[input:checked]:bg-primary has-[input:checked]:text-primary-foreground has-[input:checked]:border-primary">
+                                                    <RadioGroupItem value={route.id} id={route.id} className="border-muted-foreground mt-1" />
+                                                    <div className="flex-grow grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 text-sm">
+                                                        <div className="col-span-2 sm:col-span-1">
+                                                            <div className="font-semibold">{route.bus.owner.name}</div>
+                                                            <div className="text-xs text-muted-foreground">{route.bus.name}</div>
+                                                        </div>
+                                                        <div className="font-medium">
+                                                            {format(new Date(route.departureTime), 'p')}
+                                                            <ArrowRight className="inline h-3 w-3 mx-1" />
+                                                            {format(new Date(route.arrivalTime), 'p')}
+                                                        </div>
+                                                        <div className="font-bold text-base text-right col-span-2 sm:col-span-1">{Number(route.price).toFixed(2)} ETB</div>
                                                     </div>
                                                 </Label>
                                             ))}
