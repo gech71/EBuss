@@ -114,7 +114,8 @@ export default async function BookPage({ params }: BookPageProps) {
     notFound();
   }
   
-  const alternativeRoutesData = await prisma.route.findMany({
+  const [alternativeRoutesData, potentialReturnRoutesData] = await Promise.all([
+    prisma.route.findMany({
       where: {
           originId: routeData.originId,
           destinationId: routeData.destinationId,
@@ -124,7 +125,23 @@ export default async function BookPage({ params }: BookPageProps) {
       include: {
           bus: true
       }
-  })
+    }),
+    prisma.route.findMany({
+      where: {
+        originId: routeData.destinationId,
+        destinationId: routeData.originId,
+        departureTime: {
+          gt: routeData.departureTime // Return trips must be after the outbound trip
+        }
+      },
+      select: {
+        departureTime: true
+      },
+      orderBy: {
+        departureTime: 'asc'
+      }
+    })
+  ]);
 
   // Sanitize Decimal to number for client components
   const route = {
@@ -142,6 +159,10 @@ export default async function BookPage({ params }: BookPageProps) {
       price: Number(altRoute.price)
   }))
 
+  const potentialReturnRoutes = potentialReturnRoutesData.map(r => ({
+      departureTime: r.departureTime.toISOString()
+  }));
+
 
   return (
     <div className="flex flex-col min-h-screen bg-muted/20">
@@ -151,6 +172,7 @@ export default async function BookPage({ params }: BookPageProps) {
           <BookingForm 
             route={route} 
             alternativeRoutes={alternativeRoutes}
+            potentialReturnRoutes={potentialReturnRoutes}
             authToken={authToken}
             phoneNumber={phoneNumber}
           />

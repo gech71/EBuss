@@ -18,7 +18,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { useCsrf } from "@/hooks/useCsrf";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { format, isSameDay } from "date-fns";
+import { format, isSameDay, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { BackButton } from "../BackButton";
@@ -37,10 +37,15 @@ type AlternativeRoute = Route & { bus: Bus };
 
 type ReturnRoute = Route & { bus: Bus & { owner: { name: string } } };
 
+type SimpleReturnRoute = {
+  departureTime: string;
+}
+
 
 interface BookingFormProps {
   route: RouteWithDetails;
   alternativeRoutes: AlternativeRoute[];
+  potentialReturnRoutes: SimpleReturnRoute[];
   authToken?: string;
   phoneNumber?: string;
 }
@@ -53,7 +58,7 @@ declare global {
     }
 }
 
-export function BookingForm({ route: initialRoute, alternativeRoutes, authToken, phoneNumber }: BookingFormProps) {
+export function BookingForm({ route: initialRoute, alternativeRoutes, potentialReturnRoutes, authToken, phoneNumber }: BookingFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -74,6 +79,16 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
   const [hasSearchedReturn, setHasSearchedReturn] = useState(false);
   const [returnRoutes, setReturnRoutes] = useState<ReturnRoute[]>([]);
   const [selectedReturnRoute, setSelectedReturnRoute] = useState<ReturnRoute | null>(null);
+
+
+  const availableReturnDates = useMemo(() => {
+    const uniqueDates = new Set<string>();
+    potentialReturnRoutes.forEach(route => {
+      const date = startOfDay(new Date(route.departureTime)).toISOString();
+      uniqueDates.add(date);
+    });
+    return Array.from(uniqueDates).map(dateStr => new Date(dateStr));
+  }, [potentialReturnRoutes]);
 
 
   useEffect(() => {
@@ -321,6 +336,24 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
                                             <Calendar mode="single" selected={returnDate} onSelect={setReturnDate} initialFocus disabled={{ before: new Date(departureDay.getTime() + 24 * 60 * 60 * 1000) }}/>
                                         </PopoverContent>
                                     </Popover>
+                                    {availableReturnDates.length > 0 && (
+                                      <div className="space-y-2">
+                                        <p className="text-sm text-muted-foreground">Available return dates:</p>
+                                        <div className="flex flex-wrap gap-2">
+                                          {availableReturnDates.map(date => (
+                                            <Button 
+                                              key={date.toISOString()} 
+                                              type="button" 
+                                              variant="outline" 
+                                              size="sm"
+                                              onClick={() => setReturnDate(date)}
+                                            >
+                                              {format(date, 'MMM d')}
+                                            </Button>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
                                 </div>
                                 <Button type="button" onClick={handleSearchReturnTrips} disabled={!returnDate || isSearchingReturn}>
                                     <Search className="mr-2 h-4 w-4" />
