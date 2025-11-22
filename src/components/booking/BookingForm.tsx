@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Armchair, ArrowRight, Bus as BusIcon, Calendar as CalendarIcon, Clock, Percent, User, Users, XCircle, Info, Repeat, Search } from "lucide-react";
+import { Armchair, ArrowRight, Bus as BusIcon, Calendar as CalendarIcon, Clock, Percent, User, Users, XCircle, Info, Repeat, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SeatMap } from "./SeatMap";
 import { createBookingAction, createPaymentRequestAction } from "@/app/book/actions";
@@ -76,7 +76,6 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
   const [lastBookingId, setLastBookingId] = useState<string | null>(null);
 
   const [isSearchingReturn, setIsSearchingReturn] = useState(false);
-  const [hasSearchedReturn, setHasSearchedReturn] = useState(false);
   const [returnRoutes, setReturnRoutes] = useState<ReturnRoute[]>([]);
   const [selectedReturnRoute, setSelectedReturnRoute] = useState<ReturnRoute | null>(null);
 
@@ -104,13 +103,9 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
 
   const ticketCount = selectedSeats.length;
 
-  const handleSearchReturnTrips = async () => {
-      if (!returnDate) {
-          toast({ title: "Return date required", description: "Please select a return date.", variant: "destructive" });
-          return;
-      }
+  const handleReturnDateSelect = async (date: Date) => {
+      setReturnDate(date);
       setIsSearchingReturn(true);
-      setHasSearchedReturn(false);
       setReturnRoutes([]);
       setSelectedReturnRoute(null);
 
@@ -118,13 +113,16 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
           const query = new URLSearchParams({
               originId: selectedRoute.destinationId,
               destinationId: selectedRoute.originId,
-              date: format(returnDate, 'yyyy-MM-dd')
+              date: format(date, 'yyyy-MM-dd')
           });
           const response = await fetch(`/api/routes/search?${query.toString()}`);
           const data = await response.json();
 
           if (response.ok) {
               setReturnRoutes(data);
+               if (data.length === 0) {
+                 toast({ title: "No Return Trips Found", description: "There are no available trips for the selected return date.", variant: "destructive" });
+              }
           } else {
               toast({ title: "Search Failed", description: data.message, variant: "destructive" });
           }
@@ -132,7 +130,6 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
            toast({ title: "Search Error", description: "Could not fetch return trips. Please try again.", variant: "destructive" });
       } finally {
           setIsSearchingReturn(false);
-          setHasSearchedReturn(true);
       }
   };
 
@@ -306,7 +303,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                      <RadioGroup onValueChange={(value) => {
                          setIsRoundTrip(value === 'true');
                          if (value === 'false') {
-                             setHasSearchedReturn(false);
+                             setReturnDate(undefined);
                              setReturnRoutes([]);
                              setSelectedReturnRoute(null);
                          }
@@ -322,49 +319,41 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                     </RadioGroup>
                     {isRoundTrip && (
                         <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-                                <div className="space-y-2">
-                                    <Label htmlFor="returnDate">Return Date</Label>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !returnDate && "text-muted-foreground")}>
-                                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                                {returnDate ? format(returnDate, "PPP") : <span>Pick a return date</span>}
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0">
-                                            <Calendar mode="single" selected={returnDate} onSelect={setReturnDate} initialFocus disabled={{ before: new Date(departureDay.getTime() + 24 * 60 * 60 * 1000) }}/>
-                                        </PopoverContent>
-                                    </Popover>
-                                    {availableReturnDates.length > 0 && (
-                                      <div className="space-y-2">
-                                        <p className="text-sm text-muted-foreground">Available return dates:</p>
-                                        <div className="flex flex-wrap gap-2">
-                                          {availableReturnDates.map(date => (
-                                            <Button 
-                                              key={date.toISOString()} 
-                                              type="button" 
-                                              variant="outline" 
-                                              size="sm"
-                                              onClick={() => setReturnDate(date)}
-                                            >
-                                              {format(date, 'MMM d')}
-                                            </Button>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    )}
-                                </div>
-                                <Button type="button" onClick={handleSearchReturnTrips} disabled={!returnDate || isSearchingReturn}>
-                                    <Search className="mr-2 h-4 w-4" />
-                                    {isSearchingReturn ? 'Searching...' : 'Search for Return Trips'}
-                                </Button>
+                            <div className="space-y-2">
+                                <Label>Select Return Date</Label>
+                                 {availableReturnDates.length > 0 ? (
+                                    <div className="flex flex-wrap gap-2">
+                                        {availableReturnDates.map(date => (
+                                        <Button 
+                                            key={date.toISOString()} 
+                                            type="button" 
+                                            variant={returnDate && isSameDay(date, returnDate) ? "default" : "outline"}
+                                            size="sm"
+                                            onClick={() => handleReturnDateSelect(date)}
+                                        >
+                                            {format(date, 'MMM d, yyyy')}
+                                        </Button>
+                                        ))}
+                                    </div>
+                                ) : (
+                                     <Alert variant="destructive">
+                                        <Info className="h-4 w-4" />
+                                        <AlertTitle>No Return Dates Available</AlertTitle>
+                                        <AlertDescription>
+                                            There are no return trips scheduled for this route yet.
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
                             </div>
                             
-                            {hasSearchedReturn && (
+                            {(isSearchingReturn || returnRoutes.length > 0) && (
                                  <div className="space-y-2">
                                     <Label>Select Return Trip</Label>
-                                    {returnRoutes.length > 0 ? (
+                                    {isSearchingReturn ? (
+                                        <div className="flex items-center justify-center p-4">
+                                            <Loader2 className="h-6 w-6 animate-spin text-primary"/>
+                                        </div>
+                                    ) : returnRoutes.length > 0 ? (
                                         <RadioGroup 
                                             onValueChange={(id) => setSelectedReturnRoute(returnRoutes.find(r => r.id === id) || null)} 
                                             className="space-y-2"
@@ -380,15 +369,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                                                 </Label>
                                             ))}
                                         </RadioGroup>
-                                    ) : (
-                                        <Alert variant="destructive">
-                                            <Info className="h-4 w-4" />
-                                            <AlertTitle>No Return Trips Found</AlertTitle>
-                                            <AlertDescription>
-                                                There are no available trips for the selected return date. Please choose another date.
-                                            </AlertDescription>
-                                        </Alert>
-                                    )}
+                                    ) : null}
                                 </div>
                             )}
 
@@ -517,3 +498,5 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
     </>
   );
 }
+
+    
