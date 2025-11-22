@@ -19,6 +19,7 @@ import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { useCsrf } from "@/hooks/useCsrf";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { format, isSameDay, startOfDay } from "date-fns";
+import { formatInTimeZone } from 'date-fns-tz';
 import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { BackButton } from "../BackButton";
@@ -367,9 +368,9 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                                                             <div className="text-xs text-muted-foreground">{route.bus.name}</div>
                                                         </div>
                                                         <div className="font-medium">
-                                                            {format(new Date(route.departureTime), 'p')}
+                                                            {formatInTimeZone(new Date(route.departureTime), 'UTC', 'p')}
                                                             <ArrowRight className="inline h-3 w-3 mx-1" />
-                                                            {format(new Date(route.arrivalTime), 'p')}
+                                                            {formatInTimeZone(new Date(route.arrivalTime), 'UTC', 'p')}
                                                         </div>
                                                         <div className="font-bold text-base text-right col-span-2 sm:col-span-1">{Number(route.price).toFixed(2)} ETB</div>
                                                     </div>
@@ -517,3 +518,5 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
     </>
   );
 }
+
+    
