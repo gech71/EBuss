@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Armchair, ArrowRight, Bus as BusIcon, Calendar as CalendarIcon, Clock, Percent, User, Users, XCircle, Info, Repeat } from "lucide-react";
+import { Armchair, ArrowRight, Bus as BusIcon, Calendar as CalendarIcon, Clock, Percent, User, Users, XCircle, Info, Repeat, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SeatMap } from "./SeatMap";
 import { createBookingAction, createPaymentRequestAction } from "@/app/book/actions";
@@ -18,7 +18,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { useCsrf } from "@/hooks/useCsrf";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { format } from "date-fns";
+import { format, isSameDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { BackButton } from "../BackButton";
@@ -34,6 +34,9 @@ type RouteWithDetails = Route & {
 };
 
 type AlternativeRoute = Route & { bus: Bus };
+
+type ReturnRoute = Route & { bus: Bus & { owner: { name: string } } };
+
 
 interface BookingFormProps {
   route: RouteWithDetails;
@@ -67,6 +70,12 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
   const [showWebPaymentAlert, setShowWebPaymentAlert] = useState(false);
   const [lastBookingId, setLastBookingId] = useState<string | null>(null);
 
+  const [isSearchingReturn, setIsSearchingReturn] = useState(false);
+  const [hasSearchedReturn, setHasSearchedReturn] = useState(false);
+  const [returnRoutes, setReturnRoutes] = useState<ReturnRoute[]>([]);
+  const [selectedReturnRoute, setSelectedReturnRoute] = useState<ReturnRoute | null>(null);
+
+
   useEffect(() => {
     if(phoneNumber) {
         setPassengerPhone(phoneNumber);
@@ -80,9 +89,44 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
 
   const ticketCount = selectedSeats.length;
 
+  const handleSearchReturnTrips = async () => {
+      if (!returnDate) {
+          toast({ title: "Return date required", description: "Please select a return date.", variant: "destructive" });
+          return;
+      }
+      setIsSearchingReturn(true);
+      setHasSearchedReturn(false);
+      setReturnRoutes([]);
+      setSelectedReturnRoute(null);
+
+      try {
+          const query = new URLSearchParams({
+              originId: selectedRoute.destinationId,
+              destinationId: selectedRoute.originId,
+              date: format(returnDate, 'yyyy-MM-dd')
+          });
+          const response = await fetch(`/api/routes/search?${query.toString()}`);
+          const data = await response.json();
+
+          if (response.ok) {
+              setReturnRoutes(data);
+          } else {
+              toast({ title: "Search Failed", description: data.message, variant: "destructive" });
+          }
+      } catch (error) {
+           toast({ title: "Search Error", description: "Could not fetch return trips. Please try again.", variant: "destructive" });
+      } finally {
+          setIsSearchingReturn(false);
+          setHasSearchedReturn(true);
+      }
+  };
+
+
   const { subtotal, discountAmount, finalPrice, appliedDiscountName, appliedDiscountValue } = useMemo(() => {
-    const multiplier = isRoundTrip ? 2 : 1;
-    const subtotal = selectedRoute.price * ticketCount * multiplier;
+    const outboundPrice = selectedRoute.price * ticketCount;
+    const returnPrice = isRoundTrip && selectedReturnRoute ? (selectedReturnRoute.price as unknown as number) * ticketCount : 0;
+    const subtotal = outboundPrice + returnPrice;
+
     let discountAmount = 0;
     let appliedDiscountName: string | null = null;
     let appliedDiscountValue: string | null = null;
@@ -114,7 +158,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
     
     const finalPrice = subtotal - discountAmount;
     return { subtotal, discountAmount, finalPrice, appliedDiscountName, appliedDiscountValue };
-  }, [ticketCount, selectedRoute, isRoundTrip]);
+  }, [ticketCount, selectedRoute, isRoundTrip, selectedReturnRoute]);
 
   const handleRouteChange = async (routeId: string) => {
     if (routeId === selectedRoute.id) return;
@@ -136,8 +180,8 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
       toast({ title: "Passenger details required", description: "Please enter your name and phone number.", variant: "destructive" });
       return;
     }
-    if (isRoundTrip && !returnDate) {
-        toast({ title: "Return date required", description: "Please select a return date for your round-trip ticket.", variant: "destructive" });
+    if (isRoundTrip && !selectedReturnRoute) {
+        toast({ title: "Return trip required", description: "Please search for and select a return trip.", variant: "destructive" });
         return;
     }
 
@@ -242,9 +286,16 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
             </div>
 
             {selectedRoute.ticketType === 'ROUND_TRIP' && (
-                <div>
-                    <h3 className="font-semibold text-lg flex items-center gap-2 mb-2"><Repeat /> Trip Type</h3>
-                     <RadioGroup onValueChange={(value) => setIsRoundTrip(value === 'true')} defaultValue="false" className="flex gap-4">
+                <div className="space-y-4">
+                    <h3 className="font-semibold text-lg flex items-center gap-2"><Repeat /> Trip Type</h3>
+                     <RadioGroup onValueChange={(value) => {
+                         setIsRoundTrip(value === 'true');
+                         if (value === 'false') {
+                             setHasSearchedReturn(false);
+                             setReturnRoutes([]);
+                             setSelectedReturnRoute(null);
+                         }
+                     }} defaultValue="false" className="flex gap-4">
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="false" id="one_way" />
                             <Label htmlFor="one_way">One-Way</Label>
@@ -255,29 +306,60 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
                         </div>
                     </RadioGroup>
                     {isRoundTrip && (
-                        <>
-                            <Alert className="mt-4">
-                                <Info className="h-4 w-4" />
-                                <AlertTitle>Round-Trip Pricing</AlertTitle>
-                                <AlertDescription>
-                                    The total price will be double the one-way fare. You must select a return date.
-                                </AlertDescription>
-                            </Alert>
-                            <div className="mt-4 space-y-2">
-                                <Label htmlFor="returnDate">Return Date</Label>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !returnDate && "text-muted-foreground")}>
-                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                            {returnDate ? format(returnDate, "PPP") : <span>Pick a return date</span>}
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0">
-                                        <Calendar mode="single" selected={returnDate} onSelect={setReturnDate} initialFocus disabled={{ before: new Date(departureDay.getTime() + 24 * 60 * 60 * 1000) }}/>
-                                    </PopoverContent>
-                                </Popover>
+                        <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                                <div className="space-y-2">
+                                    <Label htmlFor="returnDate">Return Date</Label>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !returnDate && "text-muted-foreground")}>
+                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                {returnDate ? format(returnDate, "PPP") : <span>Pick a return date</span>}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0">
+                                            <Calendar mode="single" selected={returnDate} onSelect={setReturnDate} initialFocus disabled={{ before: new Date(departureDay.getTime() + 24 * 60 * 60 * 1000) }}/>
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+                                <Button type="button" onClick={handleSearchReturnTrips} disabled={!returnDate || isSearchingReturn}>
+                                    <Search className="mr-2 h-4 w-4" />
+                                    {isSearchingReturn ? 'Searching...' : 'Search for Return Trips'}
+                                </Button>
                             </div>
-                        </>
+                            
+                            {hasSearchedReturn && (
+                                 <div className="space-y-2">
+                                    <Label>Select Return Trip</Label>
+                                    {returnRoutes.length > 0 ? (
+                                        <RadioGroup 
+                                            onValueChange={(id) => setSelectedReturnRoute(returnRoutes.find(r => r.id === id) || null)} 
+                                            className="space-y-2"
+                                        >
+                                            {returnRoutes.map(route => (
+                                                <Label key={route.id} htmlFor={route.id} className="flex items-center gap-4 p-3 border rounded-md cursor-pointer hover:bg-muted has-[input:checked]:bg-primary has-[input:checked]:text-primary-foreground has-[input:checked]:border-primary">
+                                                    <RadioGroupItem value={route.id} id={route.id} className="border-muted-foreground" />
+                                                    <div className="flex-grow grid grid-cols-3 gap-2 items-center text-sm">
+                                                        <span className="font-semibold">{route.bus.owner.name}</span>
+                                                        <span>{format(new Date(route.departureTime), 'p')}</span>
+                                                        <span className="font-bold text-right">{Number(route.price).toFixed(2)} ETB</span>
+                                                    </div>
+                                                </Label>
+                                            ))}
+                                        </RadioGroup>
+                                    ) : (
+                                        <Alert variant="destructive">
+                                            <Info className="h-4 w-4" />
+                                            <AlertTitle>No Return Trips Found</AlertTitle>
+                                            <AlertDescription>
+                                                There are no available trips for the selected return date. Please choose another date.
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+                                </div>
+                            )}
+
+                        </div>
                     )}
                 </div>
             )}
@@ -350,7 +432,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, authToken,
               </div>
             </div>
             
-            <Button type="submit" size="lg" className="w-full" disabled={isPending || csrfLoading || ticketCount === 0 || !areSeatsAvailable}>
+            <Button type="submit" size="lg" className="w-full" disabled={isPending || csrfLoading || ticketCount === 0 || !areSeatsAvailable || (isRoundTrip && !selectedReturnRoute)}>
               {isPending ? 'Processing...' : 'Book Now & Pay'}
             </Button>
 
