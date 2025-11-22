@@ -368,7 +368,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                                                             <div className="text-xs text-muted-foreground">{route.bus.name}</div>
                                                         </div>
                                                         <div className="font-medium">
-                                                            {formatInTimeZone(new Date(route.departureTime), 'UTC', 'p')}
+                                                            {formatInTimeZone(new Date(route.departureTime), 'UTC', 'PPp')}
                                                             <ArrowRight className="inline h-3 w-3 mx-1" />
                                                             {formatInTimeZone(new Date(route.arrivalTime), 'UTC', 'p')}
                                                         </div>
@@ -518,5 +518,3 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
     </>
   );
 }
-
-    
