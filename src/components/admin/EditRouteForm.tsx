@@ -19,7 +19,7 @@ import { updateRouteAction } from "@/app/admin/routes/actions";
 import { Separator } from "@/components/ui/separator";
 import { useCsrf } from "@/hooks/useCsrf";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
-import { TicketType } from "@prisma/client";
+import { DiscountValueType, TicketType } from "@prisma/client";
 
 interface EditRouteFormProps {
     route: Route;
@@ -38,6 +38,7 @@ export function EditRouteForm({ route, locations, buses, discounts }: EditRouteF
     const [departureTime, setDepartureTime] = useState(formatInTimeZone(route.departureTime, 'UTC', "HH:mm"));
     const [arrivalDate, setArrivalDate] = useState<Date | undefined>(new Date(route.arrivalTime));
     const [arrivalTime, setArrivalTime] = useState(formatInTimeZone(route.arrivalTime, 'UTC', "HH:mm"));
+    const [ticketType, setTicketType] = useState<TicketType>(route.ticketType);
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -191,9 +192,9 @@ export function EditRouteForm({ route, locations, buses, discounts }: EditRouteF
                             </Select>
                         </div>
                     </div>
-                     <div className="space-y-3">
+                    <div className="space-y-3">
                         <Label>Ticket Type</Label>
-                        <RadioGroup name="ticketType" defaultValue={route.ticketType} className="flex gap-4">
+                        <RadioGroup name="ticketType" value={ticketType} onValueChange={(v) => setTicketType(v as TicketType)} className="flex gap-4">
                             <div className="flex items-center space-x-2">
                                 <RadioGroupItem value={TicketType.ONE_WAY} id="one_way" />
                                 <Label htmlFor="one_way">One-Way</Label>
@@ -204,6 +205,26 @@ export function EditRouteForm({ route, locations, buses, discounts }: EditRouteF
                             </div>
                         </RadioGroup>
                     </div>
+                    {ticketType === TicketType.ROUND_TRIP && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 border rounded-lg bg-muted/50">
+                            <div className="space-y-2">
+                                <Label htmlFor="roundTripDiscountType">Round-Trip Discount Type (Optional)</Label>
+                                <Select name="roundTripDiscountType" defaultValue={route.roundTripDiscountType || undefined}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select discount type..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value={DiscountValueType.PERCENTAGE}>Percentage</SelectItem>
+                                        <SelectItem value={DiscountValueType.FIXED}>Fixed Amount</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="roundTripDiscountValue">Discount Value</Label>
+                                <Input id="roundTripDiscountValue" name="roundTripDiscountValue" type="number" step="0.01" placeholder="e.g., 10 or 50.00" defaultValue={route.roundTripDiscountValue ? Number(route.roundTripDiscountValue) : undefined} />
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
                      <Button type="button" variant="outline" onClick={() => router.push('/admin/routes')}>Cancel</Button>

@@ -147,6 +147,7 @@ export default async function BookPage({ params }: BookPageProps) {
   const route = {
     ...routeData,
     price: Number(routeData.price),
+    roundTripDiscountValue: routeData.roundTripDiscountValue ? Number(routeData.roundTripDiscountValue) : null,
     discount: routeData.discount ? {
         ...routeData.discount,
         percentage: routeData.discount.percentage ? Number(routeData.discount.percentage) : null,

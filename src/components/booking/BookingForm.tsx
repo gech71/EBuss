@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import type { Route, Bus, SeatLayout, Seat, Discount, DiscountTier, Location, DiscountType, TicketType } from "@prisma/client";
+import type { Route, Bus, SeatLayout, Seat, Discount, DiscountTier, Location, DiscountType, TicketType, DiscountValueType } from "@prisma/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -30,6 +30,8 @@ type RouteWithDetails = Route & {
     destination: Location;
     bus: Bus & { layout: SeatLayout & { seats: Seat[] } };
     discount: EnrichedDiscount | null;
+    roundTripDiscountValue: number | null;
+    roundTripDiscountType: DiscountValueType | null;
 };
 
 type AlternativeRoute = Route & { bus: Bus };
@@ -147,7 +149,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
     const outboundPrice = selectedRoute.price * outboundSeats;
     const returnPrice = selectedReturnRoute ? selectedReturnRoute.price * returnSeats : 0;
     
-    const subtotal = outboundPrice + returnPrice;
+    let subtotal = outboundPrice + returnPrice;
 
     let discountAmount = 0;
     let appliedDiscountName: string | null = null;
@@ -162,6 +164,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                              now >= new Date(discount.startDate) && 
                              now <= new Date(discount.endDate);
 
+    // First apply general discount
     if (isDiscountActive && ticketCountForDiscount > 0) {
         if (discount.type === 'DATE_BASED' && discount.percentage) {
             discountAmount = (subtotal * discount.percentage) / 100;
@@ -177,6 +180,20 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                 appliedDiscountName = discount.name;
                 appliedDiscountValue = `${Number(applicableTier.percentage)}%`;
             }
+        }
+    }
+    
+    // Then apply round trip discount if applicable
+    if (isRoundTrip && selectedReturnRoute && selectedRoute.roundTripDiscountValue) {
+        const roundTripDiscountValue = selectedRoute.roundTripDiscountValue;
+        if (selectedRoute.roundTripDiscountType === 'PERCENTAGE') {
+            discountAmount += (subtotal * roundTripDiscountValue) / 100;
+            appliedDiscountName = appliedDiscountName ? `${appliedDiscountName} + Round Trip` : 'Round Trip Offer';
+            appliedDiscountValue = appliedDiscountValue ? `${appliedDiscountValue} + ${roundTripDiscountValue}%` : `${roundTripDiscountValue}%`;
+        } else if (selectedRoute.roundTripDiscountType === 'FIXED') {
+            discountAmount += roundTripDiscountValue;
+            appliedDiscountName = appliedDiscountName ? `${appliedDiscountName} + Round Trip` : 'Round Trip Offer';
+            appliedDiscountValue = appliedDiscountValue ? `${appliedDiscountValue} + ${roundTripDiscountValue} ETB` : `${roundTripDiscountValue} ETB`;
         }
     }
     
@@ -568,5 +585,3 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
     </>
   );
 }
-
-    
