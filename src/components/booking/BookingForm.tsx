@@ -151,9 +151,8 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
     
     let subtotal = outboundPrice + returnPrice;
 
-    let discountAmount = 0;
-    let appliedDiscountName: string | null = null;
-    let appliedDiscountValue: string | null = null;
+    let totalDiscountAmount = 0;
+    let appliedDiscountParts: { name: string; value: string }[] = [];
     
     const now = new Date();
     const discount = selectedRoute.discount;
@@ -164,41 +163,44 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                              now >= new Date(discount.startDate) && 
                              now <= new Date(discount.endDate);
 
-    // First apply general discount
+    // Apply general discount
     if (isDiscountActive && ticketCountForDiscount > 0) {
+        let generalDiscountAmount = 0;
         if (discount.type === 'DATE_BASED' && discount.percentage) {
-            discountAmount = (subtotal * discount.percentage) / 100;
-            appliedDiscountName = discount.name;
-            appliedDiscountValue = `${discount.percentage}%`;
+            generalDiscountAmount = (subtotal * discount.percentage) / 100;
+            appliedDiscountParts.push({ name: discount.name, value: `${discount.percentage}%` });
         } else if (discount.type === 'TICKET_COUNT_BASED') {
             const applicableTier = discount.tiers
                 .filter(tier => ticketCountForDiscount >= tier.minTickets && ticketCountForDiscount <= tier.maxTickets)
                 .sort((a, b) => Number(b.percentage) - Number(a.percentage))[0];
             
             if (applicableTier) {
-                discountAmount = (subtotal * Number(applicableTier.percentage)) / 100;
-                appliedDiscountName = discount.name;
-                appliedDiscountValue = `${Number(applicableTier.percentage)}%`;
+                generalDiscountAmount = (subtotal * Number(applicableTier.percentage)) / 100;
+                appliedDiscountParts.push({ name: discount.name, value: `${Number(applicableTier.percentage)}%` });
             }
         }
+        totalDiscountAmount += generalDiscountAmount;
     }
     
-    // Then apply round trip discount if applicable
+    // Apply round trip discount
     if (isRoundTrip && selectedReturnRoute && selectedRoute.roundTripDiscountValue) {
         const roundTripDiscountValue = selectedRoute.roundTripDiscountValue;
+        let roundTripDiscountAmount = 0;
         if (selectedRoute.roundTripDiscountType === 'PERCENTAGE') {
-            discountAmount += (subtotal * roundTripDiscountValue) / 100;
-            appliedDiscountName = appliedDiscountName ? `${appliedDiscountName} + Round Trip` : 'Round Trip Offer';
-            appliedDiscountValue = appliedDiscountValue ? `${appliedDiscountValue} + ${roundTripDiscountValue}%` : `${roundTripDiscountValue}%`;
+            roundTripDiscountAmount = (subtotal * roundTripDiscountValue) / 100;
+            appliedDiscountParts.push({ name: 'Round Trip Offer', value: `${roundTripDiscountValue}%` });
         } else if (selectedRoute.roundTripDiscountType === 'FIXED') {
-            discountAmount += roundTripDiscountValue;
-            appliedDiscountName = appliedDiscountName ? `${appliedDiscountName} + Round Trip` : 'Round Trip Offer';
-            appliedDiscountValue = appliedDiscountValue ? `${appliedDiscountValue} + ${roundTripDiscountValue} ETB` : `${roundTripDiscountValue} ETB`;
+            roundTripDiscountAmount = roundTripDiscountValue;
+            appliedDiscountParts.push({ name: 'Round Trip Offer', value: `${roundTripDiscountValue} ETB` });
         }
+        totalDiscountAmount += roundTripDiscountAmount;
     }
     
-    const finalPrice = subtotal - discountAmount;
-    return { subtotal, discountAmount, finalPrice, appliedDiscountName, appliedDiscountValue };
+    const finalPrice = subtotal - totalDiscountAmount;
+    const appliedDiscountName = appliedDiscountParts.map(p => p.name).join(' + ');
+    const appliedDiscountValue = appliedDiscountParts.map(p => p.value).join(' + ');
+
+    return { subtotal, discountAmount: totalDiscountAmount, finalPrice, appliedDiscountName, appliedDiscountValue };
   }, [selectedSeats, selectedReturnSeats, selectedRoute, isRoundTrip, selectedReturnRoute]);
 
   const handleRouteChange = async (routeId: string) => {
