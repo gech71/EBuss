@@ -35,6 +35,11 @@ export async function GET(request: NextRequest) {
                 name: true,
               },
             },
+            layout: {
+                include: {
+                    seats: true
+                }
+            }
           },
         },
       },

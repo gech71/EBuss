@@ -17,13 +17,11 @@ import { createBookingAction, createPaymentRequestAction } from "@/app/book/acti
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { useCsrf } from "@/hooks/useCsrf";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { format, isSameDay, startOfDay } from "date-fns";
 import { formatInTimeZone } from 'date-fns-tz';
 import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { BackButton } from "../BackButton";
-import { Calendar } from "@/components/ui/calendar";
 
 type EnrichedDiscount = (Discount & { tiers: DiscountTier[]; percentage: number | null });
 
@@ -36,7 +34,12 @@ type RouteWithDetails = Route & {
 
 type AlternativeRoute = Route & { bus: Bus };
 
-type ReturnRoute = Route & { bus: Bus & { owner: { name: string } } };
+type ReturnRoute = Route & { 
+    bus: Bus & { 
+        owner: { name: string },
+        layout: SeatLayout & { seats: Seat[] } 
+    } 
+};
 
 type SimpleReturnRoute = {
   departureTime: string;
@@ -67,6 +70,8 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
 
   const [selectedRoute, setSelectedRoute] = useState<RouteWithDetails>(initialRoute);
   const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
+  const [selectedReturnSeats, setSelectedReturnSeats] = useState<Seat[]>([]);
+  
   const [passengerName, setPassengerName] = useState("");
   const [passengerPhone, setPassengerPhone] = useState(phoneNumber || "");
   const [isRoundTrip, setIsRoundTrip] = useState(false);
@@ -100,23 +105,22 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
   const areSeatsAvailable = useMemo(() => {
     return selectedRoute.bus.layout.seats.some(seat => seat.status === 'AVAILABLE');
   }, [selectedRoute]);
+  
+  const areReturnSeatsAvailable = useMemo(() => {
+    if (!selectedReturnRoute) return false;
+    return selectedReturnRoute.bus.layout.seats.some(seat => seat.status === 'AVAILABLE');
+  }, [selectedReturnRoute]);
 
-
-  const ticketCount = selectedSeats.length;
 
   const handleReturnDateSelect = async (date: Date) => {
       setReturnDate(date);
       setIsSearchingReturn(true);
       setReturnRoutes([]);
       setSelectedReturnRoute(null);
+      setSelectedReturnSeats([]);
 
       try {
-          const query = new URLSearchParams({
-              originId: selectedRoute.destinationId,
-              destinationId: selectedRoute.originId,
-              date: format(date, 'yyyy-MM-dd')
-          });
-          const response = await fetch(`/api/routes/search?${query.toString()}`);
+          const response = await fetch(`/api/route/${selectedRoute.destinationId}/${selectedRoute.originId}/${format(date, 'yyyy-MM-dd')}`);
           const data = await response.json();
 
           if (response.ok) {
@@ -136,8 +140,12 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
 
 
   const { subtotal, discountAmount, finalPrice, appliedDiscountName, appliedDiscountValue } = useMemo(() => {
-    const outboundPrice = selectedRoute.price * ticketCount;
-    const returnPrice = isRoundTrip && selectedReturnRoute ? (selectedReturnRoute.price as unknown as number) * ticketCount : 0;
+    const outboundSeats = selectedSeats.length;
+    const returnSeats = selectedReturnSeats.length;
+
+    const outboundPrice = selectedRoute.price * outboundSeats;
+    const returnPrice = selectedReturnRoute ? selectedReturnRoute.price * returnSeats : 0;
+    
     const subtotal = outboundPrice + returnPrice;
 
     let discountAmount = 0;
@@ -147,18 +155,20 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
     const now = new Date();
     const discount = selectedRoute.discount;
 
+    const ticketCountForDiscount = isRoundTrip ? outboundSeats + returnSeats : outboundSeats;
+
     const isDiscountActive = discount && 
                              now >= new Date(discount.startDate) && 
                              now <= new Date(discount.endDate);
 
-    if (isDiscountActive && ticketCount > 0) {
+    if (isDiscountActive && ticketCountForDiscount > 0) {
         if (discount.type === 'DATE_BASED' && discount.percentage) {
             discountAmount = (subtotal * discount.percentage) / 100;
             appliedDiscountName = discount.name;
             appliedDiscountValue = `${discount.percentage}%`;
         } else if (discount.type === 'TICKET_COUNT_BASED') {
             const applicableTier = discount.tiers
-                .filter(tier => ticketCount >= tier.minTickets && ticketCount <= tier.maxTickets)
+                .filter(tier => ticketCountForDiscount >= tier.minTickets && ticketCountForDiscount <= tier.maxTickets)
                 .sort((a, b) => Number(b.percentage) - Number(a.percentage))[0];
             
             if (applicableTier) {
@@ -171,7 +181,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
     
     const finalPrice = subtotal - discountAmount;
     return { subtotal, discountAmount, finalPrice, appliedDiscountName, appliedDiscountValue };
-  }, [ticketCount, selectedRoute, isRoundTrip, selectedReturnRoute]);
+  }, [selectedSeats, selectedReturnSeats, selectedRoute, isRoundTrip, selectedReturnRoute]);
 
   const handleRouteChange = async (routeId: string) => {
     if (routeId === selectedRoute.id) return;
@@ -186,18 +196,21 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (selectedSeats.length === 0) {
-      toast({ title: "No seats selected", description: "Please select at least one seat.", variant: "destructive" });
+      toast({ title: "No seats selected", description: "Please select seats for the outbound trip.", variant: "destructive" });
       return;
+    }
+    if (isRoundTrip && !selectedReturnRoute) {
+        toast({ title: "Return trip required", description: "Please select a return trip.", variant: "destructive" });
+        return;
+    }
+    if (isRoundTrip && selectedReturnSeats.length === 0) {
+        toast({ title: "No return seats selected", description: "Please select seats for the return trip.", variant: "destructive" });
+        return;
     }
     if (!passengerName || !passengerPhone) {
       toast({ title: "Passenger details required", description: "Please enter your name and phone number.", variant: "destructive" });
       return;
     }
-    if (isRoundTrip && !selectedReturnRoute) {
-        toast({ title: "Return trip required", description: "Please search for and select a return trip.", variant: "destructive" });
-        return;
-    }
-
 
     if (!authToken) {
         setShowWebPaymentAlert(true);
@@ -205,10 +218,25 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
     }
     
     const formData = new FormData(event.currentTarget);
-    formData.append('routeId', selectedRoute.id);
-    formData.append('selectedSeatNumbers', JSON.stringify(selectedSeats.map(s => s.seatNumber)));
+    formData.append('isRoundTrip', String(isRoundTrip));
     formData.append('totalPrice', finalPrice.toString());
+    formData.append('passengerName', passengerName);
     formData.append('passengerPhone', passengerPhone);
+
+    const outboundData = {
+        routeId: selectedRoute.id,
+        selectedSeatNumbers: selectedSeats.map(s => s.seatNumber)
+    };
+    formData.append('outboundTrip', JSON.stringify(outboundData));
+    
+    if (isRoundTrip && selectedReturnRoute) {
+        const returnData = {
+            routeId: selectedReturnRoute.id,
+            selectedSeatNumbers: selectedReturnSeats.map(s => s.seatNumber)
+        };
+        formData.append('returnTrip', JSON.stringify(returnData));
+    }
+
 
     startTransition(async () => {
       const result = await createBookingAction(formData);
@@ -320,7 +348,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                     </RadioGroup>
                     {isRoundTrip && (
                         <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
-                            <div className="space-y-2">
+                             <div className="space-y-2">
                                 <Label>Select Return Date</Label>
                                  {availableReturnDates.length > 0 ? (
                                     <div className="flex flex-wrap gap-2">
@@ -362,7 +390,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                                             {returnRoutes.map(route => (
                                                 <Label key={route.id} htmlFor={route.id} className="flex items-start gap-4 p-3 border rounded-md cursor-pointer hover:bg-muted has-[input:checked]:bg-primary has-[input:checked]:text-primary-foreground has-[input:checked]:border-primary">
                                                     <RadioGroupItem value={route.id} id={route.id} className="border-muted-foreground mt-1" />
-                                                    <div className="flex-grow grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 text-sm">
+                                                     <div className="flex-grow grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 text-sm">
                                                         <div className="col-span-2 sm:col-span-1">
                                                             <div className="font-semibold">{route.bus.owner.name}</div>
                                                             <div className="text-xs text-muted-foreground">{route.bus.name}</div>
@@ -387,7 +415,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
             )}
             
             <div>
-              <h3 className="font-semibold text-lg flex items-center gap-2 mb-2"><Armchair /> Select Your Seats</h3>
+              <h3 className="font-semibold text-lg flex items-center gap-2 mb-2"><Armchair /> Select Your Seats (Outbound)</h3>
               {areSeatsAvailable ? (
                 <SeatMap 
                   key={selectedRoute.id} 
@@ -404,6 +432,27 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                 </Alert>
               )}
             </div>
+
+            {isRoundTrip && selectedReturnRoute && (
+                 <div>
+                    <h3 className="font-semibold text-lg flex items-center gap-2 mb-2"><Armchair /> Select Your Seats (Return)</h3>
+                    {areReturnSeatsAvailable ? (
+                        <SeatMap 
+                            key={selectedReturnRoute.id} 
+                            bus={selectedReturnRoute.bus} 
+                            onSelectionChange={setSelectedReturnSeats} 
+                        />
+                    ) : (
+                        <Alert variant="destructive">
+                            <XCircle className="h-4 w-4" />
+                            <AlertTitle>No Seats Available</AlertTitle>
+                            <AlertDescription>
+                                This return bus is fully booked. Please select another time or date.
+                            </AlertDescription>
+                        </Alert>
+                    )}
+                </div>
+            )}
 
             <Separator />
             
@@ -427,13 +476,13 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
               <h3 className="font-semibold text-lg flex items-center gap-2 mb-4"><span className="font-bold">ETB</span> Price Summary</h3>
               <div className="space-y-2 p-4 border rounded-lg bg-muted/30">
                   <div className="flex justify-between items-center text-sm">
-                      <span className="text-muted-foreground flex items-center gap-2"><Users />Tickets</span>
-                      <span>{ticketCount} x {selectedRoute.price.toFixed(2)} ETB {isRoundTrip && <span className="font-bold text-primary">x 2</span>}</span>
+                      <span className="text-muted-foreground flex items-center gap-2"><ArrowRight />Outbound Tickets</span>
+                      <span>{selectedSeats.length} x {selectedRoute.price.toFixed(2)} ETB</span>
                   </div>
-                  {ticketCount > 0 && (
-                    <div className="flex justify-between items-start text-sm">
-                        <span className="text-muted-foreground flex items-center gap-2 pt-1"><Armchair />Selected Seats</span>
-                        <span className="font-semibold text-right max-w-[50%]">{selectedSeats.map(s => s.seatNumber).join(', ')}</span>
+                  {isRoundTrip && selectedReturnRoute && (
+                     <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground flex items-center gap-2"><ArrowRight className="transform -scale-x-100" />Return Tickets</span>
+                        <span>{selectedReturnSeats.length} x {selectedReturnRoute.price.toFixed(2)} ETB</span>
                     </div>
                   )}
                    <div className="flex justify-between items-center text-sm">
@@ -461,9 +510,9 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                 disabled={
                     isPending || 
                     csrfLoading || 
-                    ticketCount === 0 || 
+                    selectedSeats.length === 0 || 
                     !areSeatsAvailable || 
-                    (isRoundTrip && !selectedReturnRoute) ||
+                    (isRoundTrip && (!selectedReturnRoute || selectedReturnSeats.length === 0 || !areReturnSeatsAvailable)) ||
                     (isRoundTrip && availableReturnDates.length === 0)
                 }
             >

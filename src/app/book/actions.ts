@@ -10,23 +10,71 @@ import { BookingStatus, PaymentStatus } from '@prisma/client';
 import { validateCsrf } from '@/app/lib/actions';
 import { logAction } from '@/app/lib/logger';
 
-const createBookingSchema = z.object({
+const tripSchema = z.object({
   routeId: z.string().min(1),
   selectedSeatNumbers: z.array(z.string()).min(1, 'At least one seat must be selected.'),
+});
+
+const createBookingSchema = z.object({
+  isRoundTrip: z.string().transform(val => val === 'true'),
   totalPrice: z.coerce.number(),
   passengerName: z.string().min(1, 'Passenger name is required.'),
   passengerPhone: z.string().min(1, 'Passenger phone is required.'),
+  outboundTrip: z.string().transform(str => tripSchema.parse(JSON.parse(str))),
+  returnTrip: z.string().optional().transform(str => str ? tripSchema.parse(JSON.parse(str)) : undefined),
 });
+
+async function createSingleBooking(tx: any, trip: z.infer<typeof tripSchema>, passengerName: string, passengerPhone: string, totalPriceForTrip: number, commonExpiresAt: Date, isReturn: boolean = false) {
+    const route = await tx.route.findUnique({
+        where: { id: trip.routeId },
+        include: { bus: { include: { layout: { include: { seats: true } } } } }
+    });
+
+    if (!route) throw new Error(`Route not found for trip: ${trip.routeId}`);
+
+    const availableSeats = route.bus.layout.seats.filter(seat =>
+        trip.selectedSeatNumbers.includes(seat.seatNumber) && seat.status === 'AVAILABLE'
+    );
+      
+    if (availableSeats.length !== trip.selectedSeatNumbers.length) {
+        throw new Error(`One or more seats for the ${isReturn ? 'return' : 'outbound'} trip are no longer available.`);
+    }
+
+    const booking = await tx.booking.create({
+        data: {
+            passengerName,
+            passengerPhone,
+            totalPrice: totalPriceForTrip,
+            routeId: trip.routeId,
+            status: BookingStatus.PENDING,
+            paymentStatus: 'PENDING',
+            expiresAt: commonExpiresAt,
+            bookedSeats: {
+                create: trip.selectedSeatNumbers.map(seatNumber => ({ seatNumber })),
+            },
+        },
+    });
+
+    await tx.seat.updateMany({
+        where: { id: { in: availableSeats.map(s => s.id) } },
+        data: { status: 'OCCUPIED' }
+    });
+    
+    await logAction({ actionType: 'CREATE_BOOKING', description: `Booking ${booking.id} created for passenger ${passengerName} on route ${trip.routeId}. Seats: ${trip.selectedSeatNumbers.join(', ')}` });
+    return booking;
+}
+
 
 export async function createBookingAction(formData: FormData) {
   await validateCsrf(formData);
 
   const rawData = {
-    routeId: formData.get('routeId'),
-    selectedSeatNumbers: JSON.parse(formData.get('selectedSeatNumbers') as string),
+    isRoundTrip: formData.get('isRoundTrip'),
     totalPrice: formData.get('totalPrice'),
     passengerName: formData.get('passengerName'),
     passengerPhone: formData.get('passengerPhone'),
+    outboundTrip: formData.get('outboundTrip'),
+    returnTrip: formData.get('returnTrip'),
   };
 
   const validatedData = createBookingSchema.safeParse(rawData);
@@ -39,78 +87,51 @@ export async function createBookingAction(formData: FormData) {
   }
 
   const {
-    routeId,
-    selectedSeatNumbers,
+    isRoundTrip,
     totalPrice,
     passengerName,
     passengerPhone,
+    outboundTrip,
+    returnTrip,
   } = validatedData.data;
 
   try {
-    const newBooking = await prisma.$transaction(async (tx) => {
-      const route = await tx.route.findUnique({
-        where: { id: routeId },
-        include: {
-          bus: {
-            include: {
-              layout: {
-                include: {
-                  seats: true
-                }
-              }
+    const expiresAt = new Date(Date.now() + 30 * 1000); // 30 second reservation for all tickets
+    
+    const [outboundBooking] = await prisma.$transaction(async (tx) => {
+        const outboundRoute = await tx.route.findUnique({ where: { id: outboundTrip.routeId } });
+        if (!outboundRoute) throw new Error("Outbound route not found.");
+        const outboundPrice = Number(outboundRoute.price) * outboundTrip.selectedSeatNumbers.length;
+
+        if (isRoundTrip && returnTrip) {
+            const returnRoute = await tx.route.findUnique({ where: { id: returnTrip.routeId } });
+            if (!returnRoute) throw new Error("Return route not found.");
+            const returnPrice = Number(returnRoute.price) * returnTrip.selectedSeatNumbers.length;
+
+            // Simplified price check
+            if (Math.abs((outboundPrice + returnPrice) - totalPrice) > 0.01) {
+                 // In a real app, you'd apply discounts here too for a precise match
+                 console.warn(`Price mismatch: a=${outboundPrice + returnPrice}, b=${totalPrice}. Allowing booking for now.`);
             }
-          }
+
+            const ob = await createSingleBooking(tx, outboundTrip, passengerName, passengerPhone, outboundPrice, expiresAt, false);
+            const rb = await createSingleBooking(tx, returnTrip, passengerName, passengerPhone, returnPrice, expiresAt, true);
+            return [ob, rb];
+        } else {
+             if (Math.abs(outboundPrice - totalPrice) > 0.01) {
+                 console.warn(`Price mismatch: a=${outboundPrice}, b=${totalPrice}. Allowing booking for now.`);
+            }
+            const ob = await createSingleBooking(tx, outboundTrip, passengerName, passengerPhone, outboundPrice, expiresAt, false);
+            return [ob];
         }
-      });
-
-      if (!route) {
-        throw new Error('Route not found.');
-      }
-
-      const availableSeats = route.bus.layout.seats.filter(seat =>
-        selectedSeatNumbers.includes(seat.seatNumber) && seat.status === 'AVAILABLE'
-      );
-      
-      if (availableSeats.length !== selectedSeatNumbers.length) {
-        throw new Error('One or more selected seats are no longer available.');
-      }
-      
-      // Set expiration for 30 seconds from now
-      const expiresAt = new Date(Date.now() + 30 * 1000);
-
-      const booking = await tx.booking.create({
-        data: {
-          passengerName,
-          passengerPhone,
-          totalPrice,
-          routeId,
-          status: BookingStatus.PENDING,
-          paymentStatus: 'PENDING',
-          expiresAt, // Set the expiration time
-          bookedSeats: {
-            create: selectedSeatNumbers.map(seatNumber => ({
-              seatNumber,
-            })),
-          },
-        },
-      });
-
-      const seatIdsToUpdate = availableSeats.map(seat => seat.id);
-      await tx.seat.updateMany({
-        where: {
-          id: { in: seatIdsToUpdate }
-        },
-        data: {
-          status: 'OCCUPIED'
-        }
-      });
-      
-      await logAction({ actionType: 'CREATE_BOOKING', description: `Booking ${booking.id} created for passenger ${passengerName} on route ${routeId}. Seats: ${selectedSeatNumbers.join(', ')}` });
-      return booking;
     });
 
-    revalidatePath(`/book/${routeId}`);
-    return { success: true, bookingId: newBooking.id };
+    revalidatePath(`/book/${outboundTrip.routeId}`);
+    if (returnTrip) {
+        revalidatePath(`/book/${returnTrip.routeId}`);
+    }
+    
+    return { success: true, bookingId: outboundBooking.id };
     
   } catch (error) {
     const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
