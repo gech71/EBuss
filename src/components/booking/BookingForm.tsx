@@ -121,6 +121,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
   const areReturnSeatsAvailable = useMemo(() => {
     if (!selectedReturnRoute || !selectedReturnRoute.bus?.layout?.seats) return false;
     const occupiedSeatNumbers = new Set(selectedReturnRoute.tripSeats.map(ts => ts.seatNumber));
+    // Check if there are any layout seats that are not in the occupied list
     return selectedReturnRoute.bus.layout.seats.some(s => s.type === 'SEAT' && !occupiedSeatNumbers.has(s.seatNumber));
   }, [selectedReturnRoute]);
 
@@ -646,5 +647,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
     </>
   );
 }
+
+    
 
     
