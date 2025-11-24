@@ -10,7 +10,7 @@ export default async function NewRoutePage() {
         return redirect('/login');
     }
 
-    const [locations, buses, discounts] = await Promise.all([
+    const [locations, buses, discounts, busMappings] = await Promise.all([
         prisma.location.findMany({ 
             where: { ownerId: user.busOwnerId },
             orderBy: { name: 'asc' } 
@@ -22,6 +22,9 @@ export default async function NewRoutePage() {
         prisma.discount.findMany({ 
             where: { ownerId: user.busOwnerId },
             orderBy: { name: 'asc' } 
+        }),
+        prisma.busRoute.findMany({
+            where: { bus: { ownerId: user.busOwnerId } }
         })
     ]);
 
@@ -30,6 +33,7 @@ export default async function NewRoutePage() {
             locations={locations}
             buses={buses}
             discounts={discounts}
+            busMappings={busMappings}
         />
     );
 }

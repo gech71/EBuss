@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "@/components/ui/sidebar";
-import { LayoutDashboard, Route as RouteIcon, Bus, QrCode, MapPin, Percent, Settings } from "lucide-react";
+import { LayoutDashboard, Route as RouteIcon, Bus, QrCode, MapPin, Percent, Settings, GitFork } from "lucide-react";
 import { UserNav } from "@/components/UserNav";
 import { validateRequest } from "@/lib/server/auth";
 import { redirect } from "next/navigation";
@@ -88,6 +88,14 @@ export default async function AdminLayout({
                     <Link href="/admin/buses">
                       <Bus />
                       <span>Buses</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                 <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Bus Mappings">
+                    <Link href="/admin/bus-mappings">
+                      <GitFork />
+                      <span>Bus Mappings</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

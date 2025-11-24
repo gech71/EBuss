@@ -13,22 +13,24 @@ import { CalendarIcon, Check, ChevronsUpDown } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { useState, useTransition, useRef } from "react";
+import { useState, useTransition, useRef, useMemo } from "react";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import type { Bus, Discount, Location } from "@prisma/client";
+import type { Bus, Discount, Location, BusRoute } from "@prisma/client";
 import { createRouteAction } from "@/app/admin/routes/actions";
 import { useCsrf } from "@/hooks/useCsrf";
 import { BackButton } from "../BackButton";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { DiscountValueType, TicketType } from "@prisma/client";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 
 interface NewRouteFormProps {
     locations: Location[];
     buses: Bus[];
     discounts: Discount[];
+    busMappings: BusRoute[];
 }
 
-export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps) {
+export function NewRouteForm({ locations, buses, discounts, busMappings }: NewRouteFormProps) {
     const { toast } = useToast();
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
@@ -39,16 +41,50 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
     const [arrivalDate, setArrivalDate] = useState<Date>();
     const [selectedBusIds, setSelectedBusIds] = useState<string[]>([]);
     
+    const [originId, setOriginId] = useState<string>("");
+    const [destinationId, setDestinationId] = useState<string>("");
+    
     const [openBuses, setOpenBuses] = useState(false);
     const [ticketType, setTicketType] = useState<TicketType>(TicketType.ONE_WAY);
+
+    const availableBuses = useMemo(() => {
+        if (!originId || !destinationId) {
+            return busMappings.length > 0 ? [] : buses;
+        }
+
+        const mappedBusIds = busMappings
+            .filter(mapping => mapping.originId === originId && mapping.destinationId === destinationId)
+            .map(mapping => mapping.busId);
+
+        if (mappedBusIds.length > 0) {
+            return buses.filter(bus => mappedBusIds.includes(bus.id));
+        }
+
+        // If there are mappings defined but none for this route, return empty.
+        // If there are no mappings defined at all, return all buses.
+        return busMappings.length > 0 ? [] : buses;
+    }, [originId, destinationId, buses, busMappings]);
+
+    // When available buses change, filter out any selected buses that are no longer valid
+    useMemo(() => {
+        setSelectedBusIds(prevSelected => {
+            const availableBusIds = new Set(availableBuses.map(b => b.id));
+            const newSelected = prevSelected.filter(id => availableBusIds.has(id));
+            if (newSelected.length !== prevSelected.length) {
+                toast({
+                    title: "Bus Selection Updated",
+                    description: "Some selected buses were removed as they are not mapped to the chosen route.",
+                    variant: "default"
+                });
+            }
+            return newSelected;
+        });
+    }, [availableBuses, toast]);
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
 
-        const originId = formData.get('originId') as string;
-        const destinationId = formData.get('destinationId') as string;
-        
         if (originId && originId === destinationId) {
             toast({ title: "Invalid Selection", description: "Origin and destination cannot be the same.", variant: "destructive" });
             return;
@@ -68,7 +104,7 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
             if (result?.success === false) {
                  toast({ title: "Creation Failed", description: result.message, variant: "destructive" });
             } else {
-                 toast({ title: "Success!", description: `${selectedBusIds.length} new route(s) have been added.` });
+                 toast({ title: "Success!", description: `${selectedBusIds.length} new route(s) have been added.`});
                  formRef.current?.reset();
                  setDepartureDate(undefined);
                  setArrivalDate(undefined);
@@ -105,7 +141,7 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <Label htmlFor="origin">Origin</Label>
-                                 <Select name="originId" required>
+                                 <Select name="originId" required onValueChange={setOriginId}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select an origin..." />
                                     </SelectTrigger>
@@ -120,7 +156,7 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="destination">Destination</Label>
-                                <Select name="destinationId" required>
+                                <Select name="destinationId" required onValueChange={setDestinationId}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select a destination..." />
                                     </SelectTrigger>
@@ -172,6 +208,14 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="busId">Bus</Label>
+                            {busMappings.length > 0 && originId && destinationId && availableBuses.length === 0 && (
+                                <Alert variant="destructive">
+                                    <AlertTitle>No Buses Mapped</AlertTitle>
+                                    <AlertDescription>
+                                        There are no buses mapped for the selected route. Please add a mapping in the "Bus Mappings" page.
+                                    </AlertDescription>
+                                </Alert>
+                            )}
                             <Popover open={openBuses} onOpenChange={setOpenBuses}>
                                 <PopoverTrigger asChild>
                                     <Button
@@ -179,6 +223,7 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                                     role="combobox"
                                     aria-expanded={openBuses}
                                     className="w-full justify-between"
+                                    disabled={originId === "" || destinationId === ""}
                                     >
                                     <span className="truncate">
                                         {selectedBuses.length > 0 ? selectedBuses.map(b => b.name).join(', ') : "Select buses..."}
@@ -190,9 +235,9 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                                     <Command>
                                         <CommandInput placeholder="Search bus types..." />
                                         <CommandList>
-                                            <CommandEmpty>No bus types found.</CommandEmpty>
+                                            <CommandEmpty>No bus types found for this route.</CommandEmpty>
                                             <CommandGroup>
-                                                {buses.map((bus) => (
+                                                {availableBuses.map((bus) => (
                                                 <CommandItem
                                                     key={bus.id}
                                                     value={bus.name}
@@ -214,6 +259,9 @@ export function NewRouteForm({ locations, buses, discounts }: NewRouteFormProps)
                                     </Command>
                                 </PopoverContent>
                             </Popover>
+                             {originId === "" || destinationId === "" ? (
+                                <p className="text-xs text-muted-foreground">Please select an origin and destination to see available buses.</p>
+                             ) : null}
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
