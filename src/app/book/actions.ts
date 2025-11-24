@@ -21,7 +21,7 @@ const createBookingSchema = z.object({
   passengerName: z.string().min(1, 'Passenger name is required.'),
   passengerPhone: z.string().min(1, 'Passenger phone is required.'),
   outboundTrip: z.string().transform(str => tripSchema.parse(JSON.parse(str))),
-  returnTrip: z.string().optional().transform(str => str ? tripSchema.parse(JSON.parse(str)) : undefined),
+  returnTrip: z.string().nullable().optional().transform(str => str ? tripSchema.parse(JSON.parse(str)) : undefined),
 });
 
 async function createSingleBooking(tx: any, trip: z.infer<typeof tripSchema>, passengerName: string, passengerPhone: string, totalPriceForTrip: number, commonExpiresAt: Date, isReturn: boolean = false) {
