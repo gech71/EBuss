@@ -2,9 +2,12 @@
 import prisma from "@/lib/prisma";
 import { validateRequest } from "@/lib/server/auth";
 import { redirect } from "next/navigation";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BusMappingsClient } from "@/components/admin/BusMappingsClient";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Trash2 } from "lucide-react";
+import { deleteBusRouteAction } from "./actions";
+import { DeleteMappingButton } from "./DeleteMappingButton";
+
 
 export default async function AdminBusMappingsPage() {
   const { user } = await validateRequest();
@@ -42,8 +45,7 @@ export default async function AdminBusMappingsPage() {
 
   return (
     <div className="space-y-6">
-      <BusMappingsClient buses={buses} locations={locations} initialMappings={mappings} />
-      
+      <BusMappingsClient buses={buses} locations={locations} />
       <Card>
         <CardHeader>
           <CardTitle>Existing Mappings</CardTitle>
@@ -58,7 +60,7 @@ export default async function AdminBusMappingsPage() {
                 <TableHead>Bus</TableHead>
                 <TableHead>Origin</TableHead>
                 <TableHead>Destination</TableHead>
-                <TableHead>
+                <TableHead className="text-right">
                   <span className="sr-only">Actions</span>
                 </TableHead>
               </TableRow>
@@ -77,7 +79,7 @@ export default async function AdminBusMappingsPage() {
                   <TableCell>{mapping.origin.name}</TableCell>
                   <TableCell>{mapping.destination.name}</TableCell>
                   <TableCell className="text-right">
-                    {/* Placeholder for future delete action */}
+                    <DeleteMappingButton id={mapping.id} busName={mapping.bus.name} originName={mapping.origin.name} destinationName={mapping.destination.name} />
                   </TableCell>
                 </TableRow>
               ))}
