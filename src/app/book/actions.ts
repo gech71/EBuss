@@ -1,3 +1,4 @@
+
 'use server';
 
 import prisma from '@/lib/prisma';
@@ -5,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { format } from 'date-fns';
-import { BookingStatus, PaymentStatus, SeatStatus } from '@prisma/client';
+import { BookingStatus, PaymentStatus, TripSeatStatus } from '@prisma/client';
 import { validateCsrf } from '@/app/lib/actions';
 import { logAction } from '@/app/lib/logger';
 
@@ -23,20 +24,20 @@ const createBookingSchema = z.object({
   returnTrip: z.string().nullable().optional().transform(str => str ? tripSchema.parse(JSON.parse(str)) : undefined),
 });
 
+
 async function createSingleBooking(tx: any, trip: z.infer<typeof tripSchema>, passengerName: string, passengerPhone: string, expiresAt: Date, totalPriceForTrip: number, roundTripId?: string) {
-    const route = await tx.route.findUnique({
-        where: { id: trip.routeId },
-        include: { bus: { include: { layout: { include: { seats: true } } } } }
+    const { routeId, selectedSeatNumbers } = trip;
+    
+    const availableSeats = await tx.tripSeat.findMany({
+        where: {
+            routeId: routeId,
+            seatNumber: { in: selectedSeatNumbers },
+            status: 'AVAILABLE'
+        }
     });
 
-    if (!route) throw new Error(`Route not found for trip: ${trip.routeId}`);
-
-    const availableSeats = route.bus.layout.seats.filter(seat =>
-        trip.selectedSeatNumbers.includes(seat.seatNumber) && seat.status === 'AVAILABLE'
-    );
-      
-    if (availableSeats.length !== trip.selectedSeatNumbers.length) {
-        throw new Error(`One or more seats for route ${route.id} are no longer available.`);
+    if (availableSeats.length !== selectedSeatNumbers.length) {
+        throw new Error(`One or more seats for route ${routeId} are no longer available.`);
     }
 
     const booking = await tx.booking.create({
@@ -44,23 +45,26 @@ async function createSingleBooking(tx: any, trip: z.infer<typeof tripSchema>, pa
             passengerName,
             passengerPhone,
             totalPrice: totalPriceForTrip,
-            routeId: trip.routeId,
+            routeId: routeId,
             status: BookingStatus.PENDING,
             paymentStatus: 'PENDING',
             expiresAt,
             roundTripId: roundTripId,
             bookedSeats: {
-                create: trip.selectedSeatNumbers.map(seatNumber => ({ seatNumber })),
+                create: selectedSeatNumbers.map(seatNumber => ({ seatNumber })),
             },
         },
     });
 
-    await tx.seat.updateMany({
+    await tx.tripSeat.updateMany({
         where: { id: { in: availableSeats.map(s => s.id) } },
-        data: { status: 'OCCUPIED' }
+        data: { 
+            status: 'LOCKED',
+            bookingId: booking.id
+        }
     });
     
-    await logAction({ actionType: 'CREATE_BOOKING', description: `Booking ${booking.id} created for passenger ${passengerName} on route ${trip.routeId}. Seats: ${trip.selectedSeatNumbers.join(', ')}` });
+    await logAction({ actionType: 'CREATE_BOOKING', description: `Booking ${booking.id} created for passenger ${passengerName} on route ${routeId}. Seats: ${selectedSeatNumbers.join(', ')}` });
     return booking;
 }
 
@@ -251,23 +255,7 @@ export async function releaseExpiredBookingsForRoutes(routeIds: string[]) {
                     lt: new Date(),
                 },
             },
-            select: {
-                id: true,
-                bookedSeats: {
-                    select: {
-                        seatNumber: true
-                    }
-                },
-                route: {
-                    select: {
-                        bus: {
-                            select: {
-                                layoutId: true
-                            }
-                        }
-                    }
-                }
-            }
+            select: { id: true }
         });
 
 
@@ -277,36 +265,24 @@ export async function releaseExpiredBookingsForRoutes(routeIds: string[]) {
         
         const bookingIdsToExpire = expiredBookings.map(b => b.id);
         
-        // Use a map to group seat numbers by layoutId to update efficiently
-        const seatsToReleaseByLayout = new Map<string, string[]>();
-
-        for (const booking of expiredBookings) {
-            if (booking.route?.bus?.layoutId) {
-                const layoutId = booking.route.bus.layoutId;
-                const seatNumbers = booking.bookedSeats.map(bs => bs.seatNumber);
-                if (!seatsToReleaseByLayout.has(layoutId)) {
-                    seatsToReleaseByLayout.set(layoutId, []);
-                }
-                seatsToReleaseByLayout.get(layoutId)!.push(...seatNumbers);
+        // Release the seats by updating TripSeat status
+        await tx.tripSeat.updateMany({
+            where: {
+                bookingId: { in: bookingIdsToExpire },
+                status: TripSeatStatus.LOCKED
+            },
+            data: { 
+                status: TripSeatStatus.AVAILABLE,
+                bookingId: null 
             }
-        }
+        });
         
-        for (const [layoutId, seatNumbers] of seatsToReleaseByLayout.entries()) {
-             await tx.seat.updateMany({
-                where: {
-                    layoutId: layoutId,
-                    seatNumber: { in: seatNumbers },
-                },
-                data: { status: SeatStatus.AVAILABLE },
-            });
-        }
-
         await tx.booking.updateMany({
             where: { id: { in: bookingIdsToExpire } },
             data: { status: BookingStatus.EXPIRED, paymentStatus: 'FAILED' },
         });
 
-         console.log(`[CLEANUP] Expired ${expiredBookings.length} bookings and released seats.`);
+         console.log(`[CLEANUP] Expired ${expiredBookings.length} bookings and released their trip seats.`);
     });
     return { success: true };
 }

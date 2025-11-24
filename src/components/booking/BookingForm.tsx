@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import type { Route, Bus, SeatLayout, Seat, Discount, DiscountTier, Location, DiscountType, TicketType, DiscountValueType } from "@prisma/client";
+import type { Route, Bus, SeatLayout, Seat as SeatLayoutItem, Discount, DiscountTier, Location, DiscountType, TicketType, DiscountValueType, TripSeat } from "@prisma/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -28,7 +28,8 @@ type EnrichedDiscount = (Discount & { tiers: DiscountTier[]; percentage: number 
 type RouteWithDetails = Route & {
     origin: Location;
     destination: Location;
-    bus: Bus & { layout: SeatLayout & { seats: Seat[] } };
+    bus: Bus & { layout: SeatLayout & { seats: SeatLayoutItem[] } };
+    tripSeats: TripSeat[];
     discount: EnrichedDiscount | null;
     roundTripDiscountValue: number | null;
     roundTripDiscountType: DiscountValueType | null;
@@ -40,8 +41,9 @@ type ReturnRoute = Route & {
     price: number;
     bus: Bus & { 
         owner: { name: string },
-        layout: SeatLayout & { seats: Seat[] } 
-    } 
+        layout: SeatLayout & { seats: SeatLayoutItem[] } 
+    };
+    tripSeats: TripSeat[];
 };
 
 type SimpleReturnRoute = {
@@ -72,8 +74,8 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
   const { csrfToken, loading: csrfLoading } = useCsrf();
 
   const [selectedRoute, setSelectedRoute] = useState<RouteWithDetails>(initialRoute);
-  const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
-  const [selectedReturnSeats, setSelectedReturnSeats] = useState<Seat[]>([]);
+  const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+  const [selectedReturnSeats, setSelectedReturnSeats] = useState<string[]>([]);
   
   const [passengerName, setPassengerName] = useState("");
   const [passengerPhone, setPassengerPhone] = useState(phoneNumber || "");
@@ -112,12 +114,15 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
   }, [phoneNumber])
 
   const areSeatsAvailable = useMemo(() => {
-    return selectedRoute.bus.layout.seats.some(seat => seat.status === 'AVAILABLE');
+    // Check if there are any layout seats that don't have a corresponding booked/locked trip seat
+    const occupiedSeatNumbers = new Set(selectedRoute.tripSeats.map(ts => ts.seatNumber));
+    return selectedRoute.bus.layout.seats.some(s => s.type === 'SEAT' && !occupiedSeatNumbers.has(s.seatNumber));
   }, [selectedRoute]);
   
   const areReturnSeatsAvailable = useMemo(() => {
     if (!selectedReturnRoute) return false;
-    return selectedReturnRoute.bus.layout.seats.some(seat => seat.status === 'AVAILABLE');
+    const occupiedSeatNumbers = new Set(selectedReturnRoute.tripSeats.map(ts => ts.seatNumber));
+    return selectedReturnRoute.bus.layout.seats.some(s => s.type === 'SEAT' && !occupiedSeatNumbers.has(s.seatNumber));
   }, [selectedReturnRoute]);
 
 
@@ -152,7 +157,11 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
           const finalData = await finalResponse.json();
 
           if (finalResponse.ok) {
-              setReturnRoutes(finalData);
+              const enrichedReturnRoutes = finalData.map((r: any) => ({
+                  ...r,
+                  tripSeats: r.tripSeats || [],
+              }));
+              setReturnRoutes(enrichedReturnRoutes);
                if (finalData.length === 0) {
                  setNoReturnTripsFound(true);
               }
@@ -273,14 +282,14 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
 
     const outboundData = {
         routeId: selectedRoute.id,
-        selectedSeatNumbers: selectedSeats.map(s => s.seatNumber)
+        selectedSeatNumbers: selectedSeats
     };
     formData.append('outboundTrip', JSON.stringify(outboundData));
     
     if (isRoundTrip && selectedReturnRoute) {
         const returnData = {
             routeId: selectedReturnRoute.id,
-            selectedSeatNumbers: selectedReturnSeats.map(s => s.seatNumber)
+            selectedSeatNumbers: selectedReturnSeats
         };
         formData.append('returnTrip', JSON.stringify(returnData));
     }
@@ -473,8 +482,9 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
               <h3 className="font-semibold text-lg flex items-center gap-2 mb-2"><Armchair /> Select Your Seats (Outbound)</h3>
               {areSeatsAvailable ? (
                 <SeatMap 
-                  key={selectedRoute.id} 
-                  bus={selectedRoute.bus} 
+                  key={`outbound-${selectedRoute.id}`}
+                  busLayout={selectedRoute.bus.layout}
+                  tripSeats={selectedRoute.tripSeats}
                   onSelectionChange={setSelectedSeats} 
                 />
               ) : (
@@ -493,8 +503,9 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                     <h3 className="font-semibold text-lg flex items-center gap-2 mb-2"><Armchair /> Select Your Seats (Return)</h3>
                     {areReturnSeatsAvailable ? (
                         <SeatMap 
-                            key={selectedReturnRoute.id} 
-                            bus={selectedReturnRoute.bus} 
+                            key={`return-${selectedReturnRoute.id}`}
+                            busLayout={selectedReturnRoute.bus.layout}
+                            tripSeats={selectedReturnRoute.tripSeats}
                             onSelectionChange={setSelectedReturnSeats} 
                         />
                     ) : (

@@ -1,15 +1,20 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
-import type { Bus, Seat as SeatType, SeatStatus } from "@prisma/client";
+import { useState, useEffect, useMemo } from 'react';
+import type { Bus, Seat as SeatLayoutItem, TripSeat } from "@prisma/client";
 import { cn } from '@/lib/utils';
 import { Armchair, CarFront } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '../ui/scroll-area';
 
-// Define a client-side seat type that includes the 'SELECTED' status
-type ClientSeat = SeatType & { status: SeatStatus | 'SELECTED' };
+type ClientSeatStatus = 'AVAILABLE' | 'LOCKED' | 'BOOKED' | 'SELECTED';
+
+interface ClientSeat {
+  seatNumber: string;
+  type: 'SEAT' | 'AISLE' | 'DRIVER';
+  status: ClientSeatStatus;
+}
 
 interface SeatProps {
   seat: ClientSeat;
@@ -17,14 +22,15 @@ interface SeatProps {
 }
 
 function Seat({ seat, onSelect }: SeatProps) {
-  const isSelectable = seat.type === 'SEAT' && (seat.status === 'AVAILABLE' || seat.status === 'SELECTED');
+  const isSelectable = seat.type === 'SEAT' && seat.status === 'AVAILABLE';
+  const isSelected = seat.status === 'SELECTED';
 
   const seatClasses = cn(
     'flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-md font-semibold text-xs transition-all duration-200',
     seat.type === 'SEAT' && 'border-2',
     seat.status === 'AVAILABLE' && 'bg-green-100 border-green-400 text-green-800 hover:bg-green-200 hover:border-green-600 cursor-pointer dark:bg-green-900/50 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900',
-    seat.status === 'OCCUPIED' && 'bg-muted border-muted-foreground/30 text-muted-foreground cursor-not-allowed opacity-70',
-    seat.status === 'SELECTED' && 'bg-accent border-accent-foreground text-accent-foreground cursor-pointer shadow-lg scale-110',
+    (seat.status === 'BOOKED' || seat.status === 'LOCKED') && 'bg-muted border-muted-foreground/30 text-muted-foreground cursor-not-allowed opacity-70',
+    isSelected && 'bg-accent border-accent-foreground text-accent-foreground cursor-pointer shadow-lg scale-110',
     seat.type === 'AISLE' && 'bg-transparent',
     seat.type === 'DRIVER' && 'bg-muted'
   );
@@ -42,8 +48,9 @@ function Seat({ seat, onSelect }: SeatProps) {
 }
 
 interface SeatMapProps {
-  bus: Bus & { layout: { seats: SeatType[], cols: number } };
-  onSelectionChange: (selectedSeats: SeatType[]) => void;
+  busLayout: { seats: SeatLayoutItem[], cols: number };
+  tripSeats: TripSeat[];
+  onSelectionChange: (selectedSeats: string[]) => void;
 }
 
 const sortSeats = (seats: ClientSeat[]): ClientSeat[] => {
@@ -62,39 +69,47 @@ const sortSeats = (seats: ClientSeat[]): ClientSeat[] => {
 };
 
 
-export function SeatMap({ bus, onSelectionChange }: SeatMapProps) {
+export function SeatMap({ busLayout, tripSeats, onSelectionChange }: SeatMapProps) {
   const { toast } = useToast();
-  // Initialize internal state with the bus's seats
-  const [seats, setSeats] = useState<ClientSeat[]>(() => 
-    sortSeats(bus.layout.seats.map(s => ({ ...s })))
-  );
+  
+  const [selectedSeatNumbers, setSelectedSeatNumbers] = useState<string[]>([]);
+  
+  const clientSeats = useMemo(() => {
+    const tripSeatMap = new Map(tripSeats.map(ts => [ts.seatNumber, ts.status]));
+    
+    const seats = busLayout.seats.map(layoutSeat => {
+      const isSelected = selectedSeatNumbers.includes(layoutSeat.seatNumber);
+      if (isSelected) {
+        return { ...layoutSeat, status: 'SELECTED' as ClientSeatStatus };
+      }
+      
+      const tripStatus = tripSeatMap.get(layoutSeat.seatNumber);
+      return { ...layoutSeat, status: tripStatus || 'AVAILABLE' };
+    });
+    
+    return sortSeats(seats);
+  }, [busLayout.seats, tripSeats, selectedSeatNumbers]);
 
   useEffect(() => {
-    const selected = seats.filter(s => s.status === 'SELECTED');
-    onSelectionChange(selected);
-  }, [seats, onSelectionChange]);
+    onSelectionChange(selectedSeatNumbers);
+  }, [selectedSeatNumbers, onSelectionChange]);
 
   const handleSelectSeat = (seatNumber: string) => {
-    setSeats(currentSeats => {
-      const seat = currentSeats.find(s => s.seatNumber === seatNumber);
-      
-      if (seat?.status === 'SELECTED') {
-        // Deselect the seat
-        return currentSeats.map(s => s.seatNumber === seatNumber ? { ...s, status: 'AVAILABLE' } : s);
+    setSelectedSeatNumbers(currentSelected => {
+      if (currentSelected.includes(seatNumber)) {
+        return currentSelected.filter(s => s !== seatNumber);
       }
-
-      const selectedSeatsCount = currentSeats.filter(s => s.status === 'SELECTED').length;
-      if (selectedSeatsCount >= 10) { 
+      
+      if (currentSelected.length >= 10) { 
         toast({
             title: 'Selection Limit',
             description: 'You can select a maximum of 10 seats per booking.',
             variant: 'destructive',
         });
-        return currentSeats;
+        return currentSelected;
       }
 
-      // Select the seat
-      return currentSeats.map(s => s.seatNumber === seatNumber ? { ...s, status: 'SELECTED' } : s);
+      return [...currentSelected, seatNumber];
     });
   };
   
@@ -103,10 +118,10 @@ export function SeatMap({ bus, onSelectionChange }: SeatMapProps) {
         <ScrollArea className="w-full">
             <div 
                 className="mx-auto grid gap-1 md:gap-2 p-2 md:p-4 bg-muted/30 rounded-lg border-2 border-dashed w-max" 
-                style={{ gridTemplateColumns: `repeat(${bus.layout.cols}, minmax(0, 1fr))` }}
+                style={{ gridTemplateColumns: `repeat(${busLayout.cols}, minmax(0, 1fr))` }}
             >
-                {seats.map(seat => (
-                <Seat key={seat.id} seat={seat} onSelect={handleSelectSeat} />
+                {clientSeats.map(seat => (
+                  <Seat key={seat.id} seat={seat} onSelect={handleSelectSeat} />
                 ))}
             </div>
         </ScrollArea>

@@ -5,7 +5,7 @@ import { BookingForm } from '@/components/booking/BookingForm';
 import prisma from '@/lib/prisma';
 import { validateRequest } from '@/lib/server/auth';
 import { cookies } from 'next/headers';
-import { BookingStatus, SeatStatus } from '@prisma/client';
+import { BookingStatus, TripSeatStatus } from '@prisma/client';
 
 interface BookPageProps {
   params: { id: string };
@@ -40,42 +40,33 @@ async function releaseExpiredBookings(routeId: string) {
                     lt: new Date(),
                 },
             },
-            include: {
-                bookedSeats: true,
-                route: {
-                    include: {
-                        bus: {
-                            include: {
-                                layout: true,
-                            },
-                        },
-                    },
-                },
-            },
+            select: { id: true }
         });
 
         if (expiredBookings.length === 0) {
             return;
         }
-
-        for (const booking of expiredBookings) {
-            if (booking.route?.bus?.layoutId) {
-                const seatNumbersToRelease = booking.bookedSeats.map(bs => bs.seatNumber);
-                await tx.seat.updateMany({
-                    where: {
-                        layoutId: booking.route.bus.layoutId,
-                        seatNumber: { in: seatNumbersToRelease },
-                    },
-                    data: { status: SeatStatus.AVAILABLE },
-                });
-            }
-        }
         
         const expiredBookingIds = expiredBookings.map(b => b.id);
+
+        // Release the seats by updating TripSeat status
+        await tx.tripSeat.updateMany({
+            where: {
+                bookingId: { in: expiredBookingIds },
+                status: TripSeatStatus.LOCKED
+            },
+            data: { 
+                status: TripSeatStatus.AVAILABLE,
+                bookingId: null 
+            }
+        });
+
         await tx.booking.updateMany({
             where: { id: { in: expiredBookingIds } },
             data: { status: BookingStatus.EXPIRED, paymentStatus: 'FAILED' },
         });
+
+         console.log(`[CLEANUP] Expired ${expiredBookings.length} bookings and released their trip seats for route ${routeId}.`);
     });
 }
 
@@ -97,11 +88,12 @@ export default async function BookPage({ params }: BookPageProps) {
         include: {
           layout: {
             include: {
-              seats: true,
+              seats: true, // The static seat layout template
             },
           },
         },
       },
+      tripSeats: true, // The dynamic seat status for this specific trip
       discount: {
         include: {
           tiers: true,
