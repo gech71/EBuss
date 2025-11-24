@@ -3,6 +3,25 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { TripSeatStatus } from '@prisma/client';
 
+// Helper function to sanitize route data
+function sanitizeRoute(route: any) {
+    if (!route) return null;
+    return {
+        ...route,
+        price: Number(route.price),
+        roundTripDiscountValue: route.roundTripDiscountValue ? Number(route.roundTripDiscountValue) : null,
+        discount: route.discount ? {
+            ...route.discount,
+            percentage: route.discount.percentage ? Number(route.discount.percentage) : null,
+            tiers: route.discount.tiers.map((tier: any) => ({
+                ...tier,
+                percentage: Number(tier.percentage)
+            }))
+        } : null,
+    };
+}
+
+
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
@@ -64,7 +83,7 @@ export async function GET(
         }
         
         // Refetch the route data to include the newly created tripSeats
-        const updatedRoute = await prisma.route.findUnique({
+        const updatedRouteData = await prisma.route.findUnique({
              where: { id: routeId },
              include: {
                 origin: true,
@@ -74,11 +93,12 @@ export async function GET(
                 discount: { include: { tiers: true } },
              }
         });
-        return NextResponse.json(updatedRoute);
+        
+        return NextResponse.json(sanitizeRoute(updatedRouteData));
     }
 
+    return NextResponse.json(sanitizeRoute(routeData));
 
-    return NextResponse.json(routeData);
   } catch (error) {
     console.error('Failed to fetch route details:', error);
     return new NextResponse(JSON.stringify({ message: 'Internal server error' }), {
