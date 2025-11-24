@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { format } from 'date-fns';
-import { BookingStatus, PaymentStatus } from '@prisma/client';
+import { BookingStatus, PaymentStatus, SeatStatus } from '@prisma/client';
 import { validateCsrf } from '@/app/lib/actions';
 import { logAction } from '@/app/lib/logger';
 
@@ -242,4 +242,74 @@ export async function createPaymentRequestAction(bookingId: string, amount: numb
         await logAction({ actionType: 'PAYMENT_REQUEST_FAIL', description: `Payment request failed for transaction ${transactionId}: ${message}` });
         return { success: false, message };
     }
+}
+
+export async function releaseExpiredBookingsForRoutes(routeIds: string[]) {
+    await prisma.$transaction(async (tx) => {
+        const expiredBookings = await tx.booking.findMany({
+            where: {
+                routeId: { in: routeIds },
+                status: BookingStatus.PENDING,
+                expiresAt: {
+                    lt: new Date(),
+                },
+            },
+            select: {
+                id: true,
+                bookedSeats: {
+                    select: {
+                        seatNumber: true
+                    }
+                },
+                route: {
+                    select: {
+                        bus: {
+                            select: {
+                                layoutId: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+
+        if (expiredBookings.length === 0) {
+            return;
+        }
+        
+        const bookingIdsToExpire = expiredBookings.map(b => b.id);
+        
+        // Use a map to group seat numbers by layoutId to update efficiently
+        const seatsToReleaseByLayout = new Map<string, string[]>();
+
+        for (const booking of expiredBookings) {
+            if (booking.route?.bus?.layoutId) {
+                const layoutId = booking.route.bus.layoutId;
+                const seatNumbers = booking.bookedSeats.map(bs => bs.seatNumber);
+                if (!seatsToReleaseByLayout.has(layoutId)) {
+                    seatsToReleaseByLayout.set(layoutId, []);
+                }
+                seatsToReleaseByLayout.get(layoutId)!.push(...seatNumbers);
+            }
+        }
+        
+        for (const [layoutId, seatNumbers] of seatsToReleaseByLayout.entries()) {
+             await tx.seat.updateMany({
+                where: {
+                    layoutId: layoutId,
+                    seatNumber: { in: seatNumbers },
+                },
+                data: { status: SeatStatus.AVAILABLE },
+            });
+        }
+
+        await tx.booking.updateMany({
+            where: { id: { in: bookingIdsToExpire } },
+            data: { status: BookingStatus.EXPIRED, paymentStatus: 'FAILED' },
+        });
+
+         console.log(`[CLEANUP] Expired ${expiredBookings.length} bookings and released seats.`);
+    });
+    return { success: true };
 }

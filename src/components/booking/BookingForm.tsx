@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { Armchair, ArrowRight, Bus as BusIcon, Calendar as CalendarIcon, Clock, Percent, User, Users, XCircle, Info, Repeat, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SeatMap } from "./SeatMap";
-import { createBookingAction, createPaymentRequestAction } from "@/app/book/actions";
+import { createBookingAction, createPaymentRequestAction, releaseExpiredBookingsForRoutes } from "@/app/book/actions";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { useCsrf } from "@/hooks/useCsrf";
@@ -130,18 +130,34 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
       setNoReturnTripsFound(false);
 
       try {
-          // Format the date in UTC to send to the API
           const dateInUtc = formatInTimeZone(date, 'UTC', 'yyyy-MM-dd');
-          const response = await fetch(`/api/routes/search?originId=${selectedRoute.destinationId}&destinationId=${selectedRoute.originId}&date=${dateInUtc}`);
-          const data = await response.json();
+          const searchUrl = `/api/routes/search?originId=${selectedRoute.destinationId}&destinationId=${selectedRoute.originId}&date=${dateInUtc}`;
+          
+          // Step 1: Fetch potential routes to get their IDs
+          const initialResponse = await fetch(searchUrl);
+          const potentialRoutes = await initialResponse.json();
 
-          if (response.ok) {
-              setReturnRoutes(data);
-               if (data.length === 0) {
+          if (!initialResponse.ok || potentialRoutes.length === 0) {
+              setNoReturnTripsFound(true);
+              setIsSearchingReturn(false);
+              return;
+          }
+          
+          // Step 2: Call action to clean up expired seats for these routes
+          const routeIds = potentialRoutes.map((r: Route) => r.id);
+          await releaseExpiredBookingsForRoutes(routeIds);
+
+          // Step 3: Fetch the routes again to get fresh seat data
+          const finalResponse = await fetch(searchUrl);
+          const finalData = await finalResponse.json();
+
+          if (finalResponse.ok) {
+              setReturnRoutes(finalData);
+               if (finalData.length === 0) {
                  setNoReturnTripsFound(true);
               }
           } else {
-              toast({ title: "Search Failed", description: data.message, variant: "destructive" });
+              toast({ title: "Search Failed", description: finalData.message, variant: "destructive" });
           }
       } catch (error) {
            toast({ title: "Search Error", description: "Could not fetch return trips. Please try again.", variant: "destructive" });
@@ -172,7 +188,6 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                              now >= new Date(discount.startDate) && 
                              now <= new Date(discount.endDate);
 
-    // Apply general discount
     if (isDiscountActive && ticketCountForDiscount > 0) {
         let generalDiscountAmount = 0;
         if (discount.type === 'DATE_BASED' && discount.percentage) {
@@ -191,12 +206,14 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
         totalDiscountAmount += generalDiscountAmount;
     }
     
-    // Apply round trip discount
     if (isRoundTrip && selectedReturnRoute && selectedRoute.roundTripDiscountValue) {
         const roundTripDiscountValue = selectedRoute.roundTripDiscountValue;
         let roundTripDiscountAmount = 0;
+        // Calculate the discount on the subtotal *after* any general discount has been applied
+        const baseForRoundTripDiscount = subtotal - totalDiscountAmount;
+
         if (selectedRoute.roundTripDiscountType === 'PERCENTAGE') {
-            roundTripDiscountAmount = (subtotal * roundTripDiscountValue) / 100;
+            roundTripDiscountAmount = (baseForRoundTripDiscount * roundTripDiscountValue) / 100;
             appliedDiscountParts.push({ name: 'Round Trip Offer', value: `${roundTripDiscountValue}%`, amount: roundTripDiscountAmount });
         } else if (selectedRoute.roundTripDiscountType === 'FIXED') {
             roundTripDiscountAmount = roundTripDiscountValue;
@@ -425,9 +442,9 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                                                         <div className="text-xs text-muted-foreground">{route.bus.name}</div>
                                                     </div>
                                                     <div className="font-medium sm:col-span-2">
-                                                        {formatInTimeZone(new Date(route.departureTime), 'UTC', 'MMM d, yyyy (p)')}
+                                                        {format(new Date(route.departureTime), "MMM d, yyyy (p)")}
                                                         <ArrowRight className="inline h-3 w-3 mx-1" />
-                                                        {formatInTimeZone(new Date(route.arrivalTime), 'UTC', 'MMM d, yyyy (p)')}
+                                                        {format(new Date(route.arrivalTime), "p")}
                                                     </div>
                                                     <div className="font-bold text-base text-right col-span-full sm:col-start-3 sm:row-start-1">{Number(route.price).toFixed(2)} ETB</div>
                                                 </div>
