@@ -45,6 +45,14 @@ export async function createBusRouteAction(formData: FormData) {
     }
 
     try {
+        const existingMapping = await prisma.busRoute.findFirst({
+            where: { busId: busId }
+        });
+
+        if (existingMapping) {
+            return { success: false, message: 'This bus is already mapped to a route. A bus can only be mapped to one route at a time.' };
+        }
+
         const newMapping = await prisma.busRoute.create({
             data: {
                 busId,
