@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Image from 'next/image';
-import { Loader2, Search, Ticket, ArrowRight, Bus as BusIcon, Clock, Building, CalendarIcon, Maximize } from 'lucide-react';
+import { Loader2, Search, Ticket, ArrowRight, Bus as BusIcon, Clock, Building, CalendarIcon, Maximize, Repeat } from 'lucide-react';
 import type { Booking, Route, Bus, Location, BusOwner, BookedSeat } from '@prisma/client';
 import { format, isSameDay } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -106,6 +106,29 @@ function TicketCard({ booking }: { booking: EnrichedBooking }) {
     );
 }
 
+function RoundTripCard({ bookings }: { bookings: EnrichedBooking[] }) {
+    const outbound = bookings[0].route.departureTime < bookings[1].route.departureTime ? bookings[0] : bookings[1];
+    const inbound = bookings.find(b => b.id !== outbound.id)!;
+
+    return (
+        <Card className="bg-background overflow-hidden border-2 border-primary/20">
+            <CardHeader className="p-4 bg-muted/30">
+                <CardTitle className="text-xl flex items-center gap-2">
+                    <Repeat className="h-5 w-5 text-primary" />
+                    Round Trip Booking
+                </CardTitle>
+                 <CardDescription>
+                    {outbound.route.origin.name} &harr; {outbound.route.destination.name}
+                 </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 space-y-4">
+                <TicketCard booking={outbound} />
+                <TicketCard booking={inbound} />
+            </CardContent>
+        </Card>
+    )
+}
+
 
 export function MyTicketsClientPage({ isMiniApp, phoneNumberFromSession }: MyTicketsClientPageProps) {
     const [phoneNumber, setPhoneNumber] = useState(phoneNumberFromSession || '');
@@ -152,25 +175,43 @@ export function MyTicketsClientPage({ isMiniApp, phoneNumberFromSession }: MyTic
         fetchTickets(phoneNumber);
     };
 
-    const filteredBookings = useMemo(() => {
-        if (!filterDate) {
-            return allBookings;
-        }
-        return allBookings.filter(booking => 
-            isSameDay(new Date(booking.route.departureTime), filterDate)
+    const processedBookings = useMemo(() => {
+        const bookingsByRoundTrip = new Map<string, EnrichedBooking[]>();
+        const oneWayBookings: EnrichedBooking[] = [];
+        const filtered = allBookings.filter(booking => 
+            !filterDate || isSameDay(new Date(booking.route.departureTime), filterDate)
         );
-    }, [allBookings, filterDate]);
-    
-    const groupedBookings = filteredBookings.reduce((acc, booking) => {
-        const date = format(new Date(booking.route.departureTime), 'yyyy-MM-dd');
-        if (!acc[date]) {
-            acc[date] = [];
-        }
-        acc[date].push(booking);
-        return acc;
-    }, {} as Record<string, EnrichedBooking[]>);
 
-    const sortedDates = Object.keys(groupedBookings).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+        for (const booking of filtered) {
+            if (booking.roundTripId) {
+                if (!bookingsByRoundTrip.has(booking.roundTripId)) {
+                    bookingsByRoundTrip.set(booking.roundTripId, []);
+                }
+                bookingsByRoundTrip.get(booking.roundTripId)!.push(booking);
+            } else {
+                oneWayBookings.push(booking);
+            }
+        }
+
+        const roundTrips = Array.from(bookingsByRoundTrip.values()).filter(group => group.length === 2);
+        
+        // Flatten round trips for date grouping, but keep them together
+        const allDisplayableItems = [...roundTrips, ...oneWayBookings];
+        
+        const groupedByDate = allDisplayableItems.reduce((acc, item) => {
+             const date = format(new Date(Array.isArray(item) ? item[0].route.departureTime : item.route.departureTime), 'yyyy-MM-dd');
+             if (!acc[date]) {
+                acc[date] = [];
+             }
+             acc[date].push(item);
+             return acc;
+        }, {} as Record<string, (EnrichedBooking | EnrichedBooking[])[]>);
+        
+        return groupedByDate;
+
+    }, [allBookings, filterDate]);
+
+    const sortedDates = Object.keys(processedBookings).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
     
     return (
         <Card className="max-w-4xl mx-auto">
@@ -228,7 +269,7 @@ export function MyTicketsClientPage({ isMiniApp, phoneNumberFromSession }: MyTic
                 {loading && <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}
 
                 {!loading && hasSearched && (
-                     filteredBookings.length > 0 ? (
+                     sortedDates.length > 0 ? (
                         <Accordion type="multiple" defaultValue={sortedDates.map(date => `date-${date}`)} className="w-full">
                           {sortedDates.map(date => (
                             <AccordionItem key={date} value={`date-${date}`}>
@@ -236,8 +277,10 @@ export function MyTicketsClientPage({ isMiniApp, phoneNumberFromSession }: MyTic
                                 Trips on {format(new Date(date), "PPP")}
                               </AccordionTrigger>
                               <AccordionContent className="space-y-4 pt-2">
-                                {groupedBookings[date].map(booking => (
-                                  <TicketCard key={booking.id} booking={booking} />
+                                {processedBookings[date].map((item, index) => (
+                                   Array.isArray(item) 
+                                     ? <RoundTripCard key={`rt-${index}`} bookings={item} />
+                                     : <TicketCard key={(item as EnrichedBooking).id} booking={item as EnrichedBooking} />
                                 ))}
                               </AccordionContent>
                             </AccordionItem>

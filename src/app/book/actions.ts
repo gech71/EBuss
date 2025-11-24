@@ -24,7 +24,7 @@ const createBookingSchema = z.object({
   returnTrip: z.string().nullable().optional().transform(str => str ? tripSchema.parse(JSON.parse(str)) : undefined),
 });
 
-async function createSingleBooking(tx: any, trip: z.infer<typeof tripSchema>, passengerName: string, passengerPhone: string, totalPriceForTrip: number, commonExpiresAt: Date, isReturn: boolean = false) {
+async function createSingleBooking(tx: any, trip: z.infer<typeof tripSchema>, passengerName: string, passengerPhone: string, expiresAt: Date, roundTripId?: string) {
     const route = await tx.route.findUnique({
         where: { id: trip.routeId },
         include: { bus: { include: { layout: { include: { seats: true } } } } }
@@ -37,18 +37,21 @@ async function createSingleBooking(tx: any, trip: z.infer<typeof tripSchema>, pa
     );
       
     if (availableSeats.length !== trip.selectedSeatNumbers.length) {
-        throw new Error(`One or more seats for the ${isReturn ? 'return' : 'outbound'} trip are no longer available.`);
+        throw new Error(`One or more seats for route ${route.id} are no longer available.`);
     }
+
+    const priceForTrip = Number(route.price) * trip.selectedSeatNumbers.length;
 
     const booking = await tx.booking.create({
         data: {
             passengerName,
             passengerPhone,
-            totalPrice: totalPriceForTrip,
+            totalPrice: priceForTrip,
             routeId: trip.routeId,
             status: BookingStatus.PENDING,
             paymentStatus: 'PENDING',
-            expiresAt: commonExpiresAt,
+            expiresAt,
+            roundTripId: roundTripId,
             bookedSeats: {
                 create: trip.selectedSeatNumbers.map(seatNumber => ({ seatNumber })),
             },
@@ -88,7 +91,6 @@ export async function createBookingAction(formData: FormData) {
 
   const {
     isRoundTrip,
-    totalPrice,
     passengerName,
     passengerPhone,
     outboundTrip,
@@ -96,32 +98,16 @@ export async function createBookingAction(formData: FormData) {
   } = validatedData.data;
 
   try {
-    const expiresAt = new Date(Date.now() + 30 * 1000); // 30 second reservation for all tickets
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minute reservation
     
     const [outboundBooking] = await prisma.$transaction(async (tx) => {
-        const outboundRoute = await tx.route.findUnique({ where: { id: outboundTrip.routeId } });
-        if (!outboundRoute) throw new Error("Outbound route not found.");
-        const outboundPrice = Number(outboundRoute.price) * outboundTrip.selectedSeatNumbers.length;
-
         if (isRoundTrip && returnTrip) {
-            const returnRoute = await tx.route.findUnique({ where: { id: returnTrip.routeId } });
-            if (!returnRoute) throw new Error("Return route not found.");
-            const returnPrice = Number(returnRoute.price) * returnTrip.selectedSeatNumbers.length;
-
-            // Simplified price check
-            if (Math.abs((outboundPrice + returnPrice) - totalPrice) > 0.01) {
-                 // In a real app, you'd apply discounts here too for a precise match
-                 console.warn(`Price mismatch: a=${outboundPrice + returnPrice}, b=${totalPrice}. Allowing booking for now.`);
-            }
-
-            const ob = await createSingleBooking(tx, outboundTrip, passengerName, passengerPhone, outboundPrice, expiresAt, false);
-            const rb = await createSingleBooking(tx, returnTrip, passengerName, passengerPhone, returnPrice, expiresAt, true);
+            const roundTripId = crypto.randomUUID();
+            const ob = await createSingleBooking(tx, outboundTrip, passengerName, passengerPhone, expiresAt, roundTripId);
+            const rb = await createSingleBooking(tx, returnTrip, passengerName, passengerPhone, expiresAt, roundTripId);
             return [ob, rb];
         } else {
-             if (Math.abs(outboundPrice - totalPrice) > 0.01) {
-                 console.warn(`Price mismatch: a=${outboundPrice}, b=${totalPrice}. Allowing booking for now.`);
-            }
-            const ob = await createSingleBooking(tx, outboundTrip, passengerName, passengerPhone, outboundPrice, expiresAt, false);
+            const ob = await createSingleBooking(tx, outboundTrip, passengerName, passengerPhone, expiresAt);
             return [ob];
         }
     });
@@ -131,6 +117,8 @@ export async function createBookingAction(formData: FormData) {
         revalidatePath(`/book/${returnTrip.routeId}`);
     }
     
+    // For simplicity, we only return the outbound booking ID to redirect the user.
+    // The related return trip can be found via the roundTripId.
     return { success: true, bookingId: outboundBooking.id };
     
   } catch (error) {
