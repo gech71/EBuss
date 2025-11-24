@@ -1,5 +1,5 @@
 
-import { PrismaClient, Role } from '@prisma/client';
+import { PrismaClient, Role, TicketType } from '@prisma/client';
 import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -134,12 +134,12 @@ async function main() {
       await prisma.route.createMany({
           data: [
               // Future routes
-              { originId: addisAbaba.id, destinationId: hawassa.id, busId: bus1.id, departureTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), arrivalTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000), price: 500 },
-              { originId: addisAbaba.id, destinationId: bahirDar.id, busId: bus2.id, departureTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), arrivalTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 10 * 60 * 60 * 1000), price: 700 },
-              { originId: hawassa.id, destinationId: addisAbaba.id, busId: bus1.id, departureTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000), arrivalTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000), price: 500 },
-              { originId: addisAbaba.id, destinationId: adama.id, busId: bus3.id, departureTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), arrivalTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000), price: 250 },
+              { originId: addisAbaba.id, destinationId: hawassa.id, busId: bus1.id, departureTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), arrivalTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000), price: 500, ticketType: TicketType.ONE_WAY },
+              { originId: addisAbaba.id, destinationId: bahirDar.id, busId: bus2.id, departureTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), arrivalTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 10 * 60 * 60 * 1000), price: 700, ticketType: TicketType.ONE_WAY },
+              { originId: hawassa.id, destinationId: addisAbaba.id, busId: bus1.id, departureTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000), arrivalTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000), price: 500, ticketType: TicketType.ONE_WAY },
+              { originId: addisAbaba.id, destinationId: adama.id, busId: bus3.id, departureTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), arrivalTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000), price: 250, ticketType: TicketType.ONE_WAY },
               // Past routes
-              { originId: addisAbaba.id, destinationId: hawassa.id, busId: bus1.id, departureTime: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), arrivalTime: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000), price: 450 },
+              { originId: addisAbaba.id, destinationId: hawassa.id, busId: bus1.id, departureTime: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), arrivalTime: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000), price: 450, ticketType: TicketType.ONE_WAY },
           ]
       });
       console.log('Created routes.');
