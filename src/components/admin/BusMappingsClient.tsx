@@ -7,26 +7,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { createBusRouteAction, deleteBusRouteAction } from "@/app/admin/bus-mappings/actions";
+import { createBusRouteAction } from "@/app/admin/bus-mappings/actions";
 import { useCsrf } from "@/hooks/useCsrf";
-import type { Bus, Location, BusRoute } from "@prisma/client";
-import { PlusCircle, Trash2 } from "lucide-react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../ui/alert-dialog";
-import { ArrowRight } from 'lucide-react';
+import type { Bus, Location } from "@prisma/client";
+import { PlusCircle, ArrowRight } from "lucide-react";
 
 
 interface BusMappingsClientProps {
   buses: Bus[];
   locations: Location[];
-  initialMappings: (BusRoute & {
-    bus: Bus;
-    origin: Location;
-    destination: Location;
-  })[];
 }
 
-export function BusMappingsClient({ buses, locations, initialMappings }: BusMappingsClientProps) {
+export function BusMappingsClient({ buses, locations }: BusMappingsClientProps) {
   const { toast } = useToast();
   const { csrfToken, loading: csrfLoading } = useCsrf();
   const [isPending, startTransition] = useTransition();
@@ -64,24 +56,8 @@ export function BusMappingsClient({ buses, locations, initialMappings }: BusMapp
     });
   };
 
-  const handleDelete = (id: string) => {
-    startTransition(async () => {
-      if (!csrfToken) {
-          toast({ title: "Error", description: "Invalid session. Please refresh.", variant: "destructive"});
-          return;
-      }
-      const result = await deleteBusRouteAction(id, csrfToken);
-      if (result.success) {
-        toast({ title: "Mapping Deleted", description: result.message });
-      } else {
-        toast({ title: "Deletion Failed", description: result.message, variant: "destructive" });
-      }
-    });
-  };
-
   return (
-    <>
-      <Card>
+    <Card>
         <form onSubmit={handleSubmit}>
           <CardHeader>
             <CardTitle>Create Bus-Route Mapping</CardTitle>
@@ -136,69 +112,5 @@ export function BusMappingsClient({ buses, locations, initialMappings }: BusMapp
           </CardContent>
         </form>
       </Card>
-
-       <Card>
-        <CardHeader>
-          <CardTitle>Existing Mappings</CardTitle>
-          <CardDescription>
-            A list of all buses and the specific routes they are allowed to operate on.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Bus</TableHead>
-                <TableHead>Origin</TableHead>
-                <TableHead>Destination</TableHead>
-                <TableHead className="text-right">
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {initialMappings.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
-                    No bus-to-route mappings have been created yet.
-                  </TableCell>
-                </TableRow>
-              )}
-              {initialMappings.map((mapping) => (
-                <TableRow key={mapping.id}>
-                  <TableCell className="font-medium">{mapping.bus.name}</TableCell>
-                  <TableCell>{mapping.origin.name}</TableCell>
-                  <TableCell>{mapping.destination.name}</TableCell>
-                  <TableCell className="text-right">
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                            <Trash2 className="h-4 w-4 text-destructive"/>
-                            <span className="sr-only">Delete mapping</span>
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                          <AlertDialogHeader>
-                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                  This will permanently delete the mapping for '{mapping.bus.name}' on the '{mapping.origin.name} - {mapping.destination.name}' route.
-                              </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(mapping.id)} className="bg-destructive hover:bg-destructive/90">
-                                  Yes, delete
-                              </AlertDialogAction>
-                          </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </>
   );
 }
