@@ -37,13 +37,11 @@ type RouteWithDetails = Route & {
 
 type AlternativeRoute = Route & { bus: Bus };
 
-type ReturnRoute = Route & { 
+type ReturnRouteSearchResult = Route & { 
     price: number;
     bus: Bus & { 
         owner: { name: string },
-        layout: SeatLayout & { seats: SeatLayoutItem[] } 
     };
-    tripSeats: TripSeat[];
 };
 
 type SimpleReturnRoute = {
@@ -87,9 +85,10 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
   const [lastBookingId, setLastBookingId] = useState<string | null>(null);
 
   const [isSearchingReturn, setIsSearchingReturn] = useState(false);
-  const [returnRoutes, setReturnRoutes] = useState<ReturnRoute[]>([]);
-  const [selectedReturnRoute, setSelectedReturnRoute] = useState<ReturnRoute | null>(null);
+  const [returnRoutes, setReturnRoutes] = useState<ReturnRouteSearchResult[]>([]);
+  const [selectedReturnRoute, setSelectedReturnRoute] = useState<RouteWithDetails | null>(null);
   const [noReturnTripsFound, setNoReturnTripsFound] = useState(false);
+  const [isReturnRouteLoading, setIsReturnRouteLoading] = useState(false);
 
 
   const availableReturnDates = useMemo(() => {
@@ -120,7 +119,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
   }, [selectedRoute]);
   
   const areReturnSeatsAvailable = useMemo(() => {
-    if (!selectedReturnRoute) return false;
+    if (!selectedReturnRoute || !selectedReturnRoute.bus?.layout?.seats) return false;
     const occupiedSeatNumbers = new Set(selectedReturnRoute.tripSeats.map(ts => ts.seatNumber));
     return selectedReturnRoute.bus.layout.seats.some(s => s.type === 'SEAT' && !occupiedSeatNumbers.has(s.seatNumber));
   }, [selectedReturnRoute]);
@@ -138,41 +137,41 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
           const dateInUtc = formatInTimeZone(date, 'UTC', 'yyyy-MM-dd');
           const searchUrl = `/api/routes/search?originId=${selectedRoute.destinationId}&destinationId=${selectedRoute.originId}&date=${dateInUtc}`;
           
-          // Step 1: Fetch potential routes to get their IDs
           const initialResponse = await fetch(searchUrl);
-          const potentialRoutes = await initialResponse.json();
+          const searchResults = await initialResponse.json();
 
-          if (!initialResponse.ok || potentialRoutes.length === 0) {
-              setNoReturnTripsFound(true);
-              setIsSearchingReturn(false);
-              return;
-          }
-          
-          // Step 2: Call action to clean up expired seats for these routes
-          const routeIds = potentialRoutes.map((r: Route) => r.id);
-          await releaseExpiredBookingsForRoutes(routeIds);
-
-          // Step 3: Fetch the routes again to get fresh seat data
-          const finalResponse = await fetch(searchUrl);
-          const finalData = await finalResponse.json();
-
-          if (finalResponse.ok) {
-              const enrichedReturnRoutes = finalData.map((r: any) => ({
-                  ...r,
-                  tripSeats: r.tripSeats || [],
-              }));
-              setReturnRoutes(enrichedReturnRoutes);
-               if (finalData.length === 0) {
-                 setNoReturnTripsFound(true);
-              }
+          if (initialResponse.ok && searchResults.length > 0) {
+              setReturnRoutes(searchResults);
           } else {
-              toast({ title: "Search Failed", description: finalData.message, variant: "destructive" });
+              setNoReturnTripsFound(true);
           }
       } catch (error) {
            toast({ title: "Search Error", description: "Could not fetch return trips. Please try again.", variant: "destructive" });
+           setNoReturnTripsFound(true);
       } finally {
           setIsSearchingReturn(false);
       }
+  };
+
+  const handleReturnRouteChange = async (routeId: string) => {
+    if (!routeId) return;
+
+    setIsReturnRouteLoading(true);
+    setSelectedReturnRoute(null);
+    setSelectedReturnSeats([]);
+
+    try {
+      const response = await fetch(`/api/route/${routeId}`);
+      if (!response.ok) throw new Error("Failed to fetch route details.");
+      
+      const newRouteDetails: RouteWithDetails = await response.json();
+      setSelectedReturnRoute(newRouteDetails);
+
+    } catch (error) {
+        toast({ title: "Error", description: "Could not load details for the selected return trip.", variant: "destructive" });
+    } finally {
+        setIsReturnRouteLoading(false);
+    }
   };
 
 
@@ -218,7 +217,6 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
     if (isRoundTrip && selectedReturnRoute && selectedRoute.roundTripDiscountValue) {
         const roundTripDiscountValue = selectedRoute.roundTripDiscountValue;
         let roundTripDiscountAmount = 0;
-        // Calculate the discount on the subtotal *after* any general discount has been applied
         const baseForRoundTripDiscount = subtotal - totalDiscountAmount;
 
         if (selectedRoute.roundTripDiscountType === 'PERCENTAGE') {
@@ -439,7 +437,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                                  <div className="space-y-2">
                                     <Label>Select Return Trip</Label>
                                     <RadioGroup 
-                                        onValueChange={(id) => setSelectedReturnRoute(returnRoutes.find(r => r.id === id) || null)} 
+                                        onValueChange={handleReturnRouteChange} 
                                         className="space-y-2"
                                     >
                                         {returnRoutes.map(route => (
@@ -501,7 +499,11 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
             {isRoundTrip && selectedReturnRoute && (
                  <div>
                     <h3 className="font-semibold text-lg flex items-center gap-2 mb-2"><Armchair /> Select Your Seats (Return)</h3>
-                    {areReturnSeatsAvailable ? (
+                    {isReturnRouteLoading ? (
+                        <div className="flex items-center justify-center p-8">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary"/>
+                        </div>
+                    ) : areReturnSeatsAvailable ? (
                         <SeatMap 
                             key={`return-${selectedReturnRoute.id}`}
                             busLayout={selectedReturnRoute.bus.layout}
