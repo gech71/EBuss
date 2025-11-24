@@ -3,9 +3,8 @@ import prisma from "@/lib/prisma";
 import { validateRequest } from "@/lib/server/auth";
 import { redirect } from "next/navigation";
 import { BusMappingsClient } from "@/components/admin/BusMappingsClient";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { Trash2 } from "lucide-react";
-import { deleteBusRouteAction } from "./actions";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { DeleteMappingButton } from "./DeleteMappingButton";
 
 
