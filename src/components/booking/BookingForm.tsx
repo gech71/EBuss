@@ -288,7 +288,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
 
     startTransition(async () => {
       const result = await createBookingAction(formData);
-      if (result.success && result.bookingId) {
+      if (result.success && result.bookingId && result.finalPrice) {
         setLastBookingId(result.bookingId);
         if (typeof window !== 'undefined') {
             localStorage.setItem('lastBookingId', result.bookingId);
@@ -301,7 +301,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
             return;
         }
 
-        const paymentResult = await createPaymentRequestAction(result.bookingId, finalPrice, authToken);
+        const paymentResult = await createPaymentRequestAction(result.bookingId, result.finalPrice, authToken);
 
         if (paymentResult.success && paymentResult.paymentToken) {
              if (typeof window !== 'undefined' && window.myJsChannel?.postMessage) {

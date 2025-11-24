@@ -24,7 +24,7 @@ const createBookingSchema = z.object({
   returnTrip: z.string().nullable().optional().transform(str => str ? tripSchema.parse(JSON.parse(str)) : undefined),
 });
 
-async function createSingleBooking(tx: any, trip: z.infer<typeof tripSchema>, passengerName: string, passengerPhone: string, expiresAt: Date, roundTripId?: string) {
+async function createSingleBooking(tx: any, trip: z.infer<typeof tripSchema>, passengerName: string, passengerPhone: string, expiresAt: Date, totalPriceForTrip: number, roundTripId?: string) {
     const route = await tx.route.findUnique({
         where: { id: trip.routeId },
         include: { bus: { include: { layout: { include: { seats: true } } } } }
@@ -40,13 +40,11 @@ async function createSingleBooking(tx: any, trip: z.infer<typeof tripSchema>, pa
         throw new Error(`One or more seats for route ${route.id} are no longer available.`);
     }
 
-    const priceForTrip = Number(route.price) * trip.selectedSeatNumbers.length;
-
     const booking = await tx.booking.create({
         data: {
             passengerName,
             passengerPhone,
-            totalPrice: priceForTrip,
+            totalPrice: totalPriceForTrip,
             routeId: trip.routeId,
             status: BookingStatus.PENDING,
             paymentStatus: 'PENDING',
@@ -95,6 +93,7 @@ export async function createBookingAction(formData: FormData) {
     passengerPhone,
     outboundTrip,
     returnTrip,
+    totalPrice
   } = validatedData.data;
 
   try {
@@ -103,11 +102,24 @@ export async function createBookingAction(formData: FormData) {
     const [outboundBooking] = await prisma.$transaction(async (tx) => {
         if (isRoundTrip && returnTrip) {
             const roundTripId = crypto.randomUUID();
-            const ob = await createSingleBooking(tx, outboundTrip, passengerName, passengerPhone, expiresAt, roundTripId);
-            const rb = await createSingleBooking(tx, returnTrip, passengerName, passengerPhone, expiresAt, roundTripId);
+
+            const outboundRoute = await tx.route.findUnique({ where: { id: outboundTrip.routeId } });
+            if (!outboundRoute) throw new Error("Outbound route not found");
+            const outboundPrice = Number(outboundRoute.price) * outboundTrip.selectedSeatNumbers.length;
+
+            const returnRoute = await tx.route.findUnique({ where: { id: returnTrip.routeId } });
+            if (!returnRoute) throw new Error("Return route not found");
+            const returnPrice = Number(returnRoute.price) * returnTrip.selectedSeatNumbers.length;
+
+            const ob = await createSingleBooking(tx, outboundTrip, passengerName, passengerPhone, expiresAt, outboundPrice, roundTripId);
+            const rb = await createSingleBooking(tx, returnTrip, passengerName, passengerPhone, expiresAt, returnPrice, roundTripId);
             return [ob, rb];
         } else {
-            const ob = await createSingleBooking(tx, outboundTrip, passengerName, passengerPhone, expiresAt);
+            const outboundRoute = await tx.route.findUnique({ where: { id: outboundTrip.routeId } });
+            if (!outboundRoute) throw new Error("Outbound route not found");
+            const outboundPrice = Number(outboundRoute.price) * outboundTrip.selectedSeatNumbers.length;
+
+            const ob = await createSingleBooking(tx, outboundTrip, passengerName, passengerPhone, expiresAt, outboundPrice);
             return [ob];
         }
     });
@@ -117,9 +129,7 @@ export async function createBookingAction(formData: FormData) {
         revalidatePath(`/book/${returnTrip.routeId}`);
     }
     
-    // For simplicity, we only return the outbound booking ID to redirect the user.
-    // The related return trip can be found via the roundTripId.
-    return { success: true, bookingId: outboundBooking.id };
+    return { success: true, bookingId: outboundBooking.id, finalPrice: totalPrice };
     
   } catch (error) {
     const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
