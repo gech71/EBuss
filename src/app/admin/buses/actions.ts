@@ -9,24 +9,7 @@ import { SeatStatus, SeatType } from '@prisma/client';
 import { validateRequest } from '@/lib/server/auth';
 import { logAction } from '@/app/lib/logger';
 import { cookies } from 'next/headers';
-
-async function validateCsrf(tokenFromRequest: string | FormData) {
-    const cookieStore = cookies();
-    const tokenFromCookie = cookieStore.get('csrf_token')?.value;
-
-    let token: string | null;
-
-    if (tokenFromRequest instanceof FormData) {
-        token = tokenFromRequest.get('csrfToken') as string | null;
-    } else {
-        token = tokenFromRequest;
-    }
-
-    if (!token || !tokenFromCookie || token !== tokenFromCookie) {
-        await logAction({ actionType: 'CSRF_VALIDATION_FAIL', description: 'Invalid CSRF token received.' });
-        throw new Error('Invalid CSRF token.');
-    }
-}
+import { validateCsrf } from '@/app/lib/actions';
 
 
 const seatSchema = z.object({
@@ -91,6 +74,13 @@ export async function createBusAction(formData: FormData) {
                         }
                     }
                 }
+            },
+            include: {
+                layout: {
+                    include: {
+                        seats: true
+                    }
+                }
             }
         });
         await logAction({ userId: user.id, actionType: 'CREATE_BUS', description: `Created bus '${name}' (${newBus.id}).`, details: { newBus } });
@@ -150,30 +140,53 @@ export async function updateBusAction(formData: FormData) {
             include: { layout: { include: { seats: true } } }
         });
 
-        if (!oldBus || !oldBus.layout) {
-            throw new Error("Bus not found, layout is missing, or you don't have permission to edit it.");
+        if (!oldBus) {
+            throw new Error("Bus not found or you don't have permission to edit it.");
         }
+        
+        let updatedBus;
 
         await prisma.$transaction(async (tx) => {
-            await tx.bus.update({
+            if (oldBus.layout) {
+                await tx.seat.deleteMany({ where: { layoutId: oldBus.layout.id }});
+                await tx.seatLayout.update({
+                    where: { id: oldBus.layout.id },
+                    data: {
+                        rows,
+                        cols,
+                        seats: {
+                            create: seats
+                        }
+                    }
+                });
+            } else {
+                // This case is unlikely with the current UI but good for robustness
+                 await tx.seatLayout.create({
+                    data: {
+                        busId: busId,
+                        rows,
+                        cols,
+                        seats: {
+                            create: seats
+                        }
+                    }
+                 })
+            }
+            
+            updatedBus = await tx.bus.update({
                 where: { id: busId },
-                data: { name, capacity }
-            });
-            await tx.seat.deleteMany({ where: { layoutId: oldBus.layout!.id }});
-            await tx.seatLayout.update({
-                where: { id: oldBus.layout!.id },
-                data: {
-                    rows,
-                    cols,
-                    seats: {
-                        create: seats
+                data: { name, capacity },
+                 include: {
+                    layout: {
+                        include: {
+                            seats: true
+                        }
                     }
                 }
             });
         });
         
-        const newBusData = { id: busId, name, capacity, layout: { rows, cols, seats } };
-        await logAction({ userId: user.id, actionType: 'UPDATE_BUS', description: `Updated bus '${name}' (${busId}).`, details: { oldValue: oldBus, newValue: newBusData } });
+        await logAction({ userId: user.id, actionType: 'UPDATE_BUS', description: `Updated bus '${name}' (${busId}).`, details: { oldValue: oldBus, newValue: updatedBus } });
 
     } catch (error) {
         const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
@@ -208,7 +221,14 @@ export async function deleteBusAction(busId: string, csrfToken: string): Promise
     }
 
     const busToDelete = await prisma.bus.findFirst({
-      where: { id: busId, ownerId: user.busOwnerId }
+      where: { id: busId, ownerId: user.busOwnerId },
+      include: {
+          layout: {
+              include: {
+                  seats: true
+              }
+          }
+      }
     });
 
     if (!busToDelete) {
@@ -216,12 +236,13 @@ export async function deleteBusAction(busId: string, csrfToken: string): Promise
       return { success: false, message: "Bus not found or you don't have permission to delete it." };
     }
     
+    // Deleting the bus will cascade and delete the layout and seats
     await prisma.bus.delete({
         where: { id: busId }
     });
 
 
-    await logAction({ userId: user.id, actionType: 'DELETE_BUS', description: `Deleted bus ${busId}.`, details: { deletedBus: busToDelete } });
+    await logAction({ userId: user.id, actionType: 'DELETE_BUS', description: `Deleted bus '${busToDelete.name}' (${busId}).`, details: { deletedBus: busToDelete } });
     revalidatePath('/admin/buses');
     return { success: true, message: 'Bus has been deleted.' };
   } catch (error) {
