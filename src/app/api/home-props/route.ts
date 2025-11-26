@@ -30,7 +30,13 @@ export async function GET() {
                 destination: true,
                 bus: {
                     include: {
-                        owner: true,
+                        // This was the source of the vulnerability.
+                        // We only need owner *name*, which is on the bus owner record.
+                        owner: {
+                            select: {
+                                name: true
+                            }
+                        },
                     }
                 },
                 discount: true,
@@ -54,8 +60,12 @@ export async function GET() {
         });
 
         const owners = await prisma.busOwner.findMany({
+            select: {
+                id: true,
+                name: true,
+            },
             orderBy: {
-            name: 'asc'
+                name: 'asc'
             }
         });
 
