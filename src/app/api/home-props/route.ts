@@ -30,8 +30,6 @@ export async function GET() {
                 destination: true,
                 bus: {
                     include: {
-                        // This was the source of the vulnerability.
-                        // We only need owner *name*, which is on the bus owner record.
                         owner: {
                             select: {
                                 name: true

@@ -14,7 +14,11 @@ export async function GET(
           origin: true,
           destination: true,
           bus: {
-            include: {
+            select: {
+              id: true,
+              name: true,
+              capacity: true,
+              ownerId: true,
               layout: {
                 include: {
                   seats: {
