@@ -1,8 +1,8 @@
 
-// next.config.ts
-import type { NextConfig } from 'next';
+// @ts-check
 
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   poweredByHeader: false, // remove X-Powered-By
 
   // Static security headers for pages/assets (CSP handled in middleware)
@@ -35,4 +35,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+module.exports = nextConfig;
