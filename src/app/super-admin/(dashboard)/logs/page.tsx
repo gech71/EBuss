@@ -22,8 +22,10 @@ interface LogsPageProps {
 
 function JsonViewer({ data }: { data: any }) {
     if (!data) return null;
+    // The ScrollArea needs a defined height to work.
+    // The <pre> tag handles the formatting of the JSON.
     return (
-        <ScrollArea className="max-h-60 w-full rounded-md border bg-muted/50 p-4">
+        <ScrollArea className="h-60 w-full rounded-md border bg-muted/50 p-4">
             <pre className="text-xs">{JSON.stringify(data, null, 2)}</pre>
         </ScrollArea>
     );
@@ -75,7 +77,7 @@ export default async function AuditLogsPage({ searchParams }: LogsPageProps) {
                                      <TableRow>
                                         <TableCell colSpan={5} className="p-0">
                                             <AccordionItem value={`item-${log.id}`} className="border-b-0">
-                                                <AccordionTrigger className="p-4 hover:no-underline">
+                                                <AccordionTrigger className="p-4 hover:no-underline [&[data-state=open]>svg]:rotate-180">
                                                     <div className="w-[180px] text-left text-xs text-muted-foreground whitespace-nowrap">
                                                         {format(new Date(log.createdAt), 'PPP p')}
                                                     </div>
@@ -93,13 +95,15 @@ export default async function AuditLogsPage({ searchParams }: LogsPageProps) {
                                                     <div className="flex-1 text-left text-sm">{log.description}</div>
                                                     <div className="w-[120px] text-left font-mono text-xs">{log.ipAddress || 'N/A'}</div>
                                                 </AccordionTrigger>
-                                                <AccordionContent className="p-4 bg-muted/30">
-                                                    <h4 className="font-semibold mb-2">Action Details</h4>
-                                                    {log.details ? (
-                                                        <JsonViewer data={log.details} />
-                                                    ): (
-                                                        <p className="text-sm text-muted-foreground">No additional details were recorded for this event.</p>
-                                                    )}
+                                                <AccordionContent className="bg-muted/30">
+                                                    <div className="p-4">
+                                                        <h4 className="font-semibold mb-2">Action Details</h4>
+                                                        {log.details ? (
+                                                            <JsonViewer data={log.details} />
+                                                        ): (
+                                                            <p className="text-sm text-muted-foreground">No additional details were recorded for this event.</p>
+                                                        )}
+                                                    </div>
                                                 </AccordionContent>
                                             </AccordionItem>
                                         </TableCell>
@@ -147,3 +151,4 @@ export default async function AuditLogsPage({ searchParams }: LogsPageProps) {
         </Card>
     );
 }
+
