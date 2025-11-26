@@ -1,4 +1,5 @@
 
+
 import { redirect } from 'next/navigation';
 import { validateRequest } from '@/lib/server/auth';
 import prisma from '@/lib/prisma';
@@ -23,7 +24,7 @@ function JsonViewer({ data }: { data: any }) {
     if (!data) return null;
     return (
         <ScrollArea className="max-h-60 w-full rounded-md border bg-muted/50 p-4">
-            <pre className="text-xs">{JSON.stringify(data, null, 2)}</pre>
+            <pre className="text-xs whitespace-pre-wrap break-all">{JSON.stringify(data, null, 2)}</pre>
         </ScrollArea>
     );
 }
