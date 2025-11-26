@@ -17,9 +17,9 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   const ip = await getIP(request);
+  const ticketId = params.id;
   
   if (ip) {
-      console.log(`[SCAN TICKET] Detected IP: ${ip}`);
       const now = new Date();
       const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
 
@@ -29,7 +29,6 @@ export async function POST(
               timestamp: { gte: oneMinuteAgo }
           }
       });
-      console.log(`[SCAN TICKET] Found ${attempts} attempts in the last minute for IP ${ip}.`);
       
       if (attempts >= MAX_SCAN_ATTEMPTS_PER_MINUTE) {
           await logAction({ ipAddress: ip, actionType: 'RATE_LIMIT_EXCEEDED', description: 'Rate limit exceeded for ticket scan API.' });
@@ -38,7 +37,6 @@ export async function POST(
 
       try {
         await prisma.apiRequestAttempt.create({ data: { ipAddress: ip }});
-        console.log(`[SCAN TICKET] Successfully logged new API request attempt for IP ${ip}.`);
       } catch (dbError) {
         console.error(`[SCAN TICKET] CRITICAL: Failed to write ApiRequestAttempt to database for IP ${ip}.`, dbError);
       }
@@ -51,12 +49,12 @@ export async function POST(
     const { user } = await validateRequest();
 
     if (!user || !user.busOwnerId) {
-        await logAction({ actionType: 'TICKET_SCAN_UNAUTHORIZED', description: 'Unauthorized attempt to scan ticket.' });
+        await logAction({ actionType: 'TICKET_SCAN_UNAUTHORIZED', description: `Unauthorized attempt to scan ticket ${ticketId}.`, ipAddress: ip });
         return NextResponse.json({ message: 'Unauthorized: You must be logged in as an admin to scan tickets.' }, { status: 401 });
     }
 
-    const ticketId = params.id;
     if (!ticketId) {
+        await logAction({ userId: user.id, actionType: 'TICKET_SCAN_FAIL', description: 'Ticket ID was missing from request.' });
         return NextResponse.json({ message: 'Ticket ID is required.' }, { status: 400 });
     }
     
@@ -69,25 +67,25 @@ export async function POST(
         });
 
         if (!bookingToScan) {
-            throw { status: 404, message: 'Ticket not found.' };
+            throw { status: 404, message: 'Ticket not found.', details: { ticketId } };
         }
 
         if (bookingToScan.route.bus.ownerId !== user.busOwnerId) {
-            throw { status: 403, message: 'Ticket is not valid for this bus operator.' };
+            throw { status: 403, message: 'Ticket is not valid for this bus operator.', details: { ticketId, scannedBy: user.id, actualOwner: bookingToScan.route.bus.ownerId } };
         }
 
         const now = new Date();
         const departureTime = new Date(bookingToScan.route.departureTime);
         if (now > departureTime) {
-            throw { status: 410, message: 'This ticket has expired.' };
+            throw { status: 410, message: 'This ticket has expired.', details: { ticket: bookingToScan } };
         }
 
         if (bookingToScan.status === BookingStatus.USED) {
-            throw { status: 409, message: 'This ticket has already been used.' };
+            throw { status: 409, message: 'This ticket has already been used.', details: { ticket: bookingToScan } };
         }
         
         if (bookingToScan.status !== BookingStatus.VALID) {
-            throw { status: 400, message: `Ticket is not valid. Current status: ${bookingToScan.status}` };
+            throw { status: 400, message: `Ticket is not valid. Current status: ${bookingToScan.status}`, details: { ticket: bookingToScan } };
         }
 
         const updatedBooking = await tx.booking.update({
@@ -104,7 +102,7 @@ export async function POST(
             },
         });
         
-        await logAction({ userId: user.id, actionType: 'TICKET_SCAN_SUCCESS', description: `Ticket ${ticketId} validated and marked as USED.` });
+        await logAction({ userId: user.id, actionType: 'TICKET_SCAN_SUCCESS', description: `Ticket ${ticketId} validated and marked as USED.`, details: { ticket: updatedBooking } });
         return updatedBooking;
     });
 
@@ -112,7 +110,7 @@ export async function POST(
 
   } catch (error: any) {
     const { user } = await validateRequest(); // We need user for logging
-    await logAction({ userId: user?.id, actionType: 'TICKET_SCAN_FAIL', description: `Failed to scan ticket. Error: ${error?.message || 'Internal server error'}` });
+    await logAction({ userId: user?.id, actionType: 'TICKET_SCAN_FAIL', description: `Failed to scan ticket. Error: ${error?.message || 'Internal server error'}`, details: error.details || { error: error.message } });
     if (error.status && error.message) {
         return new NextResponse(JSON.stringify({ message: error.message }), {
             status: error.status,

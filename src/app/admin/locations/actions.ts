@@ -26,9 +26,11 @@ export async function createLocationAction(formData: FormData) {
     });
 
     if (!validatedData.success) {
+        const errorMessage = validatedData.error.errors.map(e => e.message).join(', ');
+        await logAction({ userId: user.id, actionType: 'CREATE_LOCATION_FAIL', description: `Validation failed: ${errorMessage}`, details: { attemptedData: { name: formData.get('name') } } });
         return {
             success: false,
-            message: validatedData.error.errors.map(e => e.message).join(', ')
+            message: errorMessage
         };
     }
     
@@ -41,9 +43,10 @@ export async function createLocationAction(formData: FormData) {
                 ownerId: user.busOwnerId,
             }
         });
-        await logAction({ userId: user.id, actionType: 'CREATE_LOCATION', description: `Created location '${name}' (${newLocation.id}).` });
+        await logAction({ userId: user.id, actionType: 'CREATE_LOCATION', description: `Created location '${name}' (${newLocation.id}).`, details: { newLocation } });
     } catch (error) {
-        await logAction({ userId: user.id, actionType: 'CREATE_LOCATION_FAIL', description: `Failed to create location '${name}'. Error: ${error instanceof Error ? error.message : 'Already exists'}` });
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        await logAction({ userId: user.id, actionType: 'CREATE_LOCATION_FAIL', description: `Failed to create location '${name}'. Error: ${message}`, details: { error: message, attemptedData: validatedData.data } });
         return { success: false, message: 'A location with this name already exists for your account.' };
     }
     
@@ -63,26 +66,32 @@ export async function updateLocationAction(prevState: any, formData: FormData) {
     const name = formData.get('name') as string;
 
     if (!id || !name) {
+        await logAction({ userId: user.id, actionType: 'UPDATE_LOCATION_FAIL', description: 'Invalid data provided.' });
         return { success: false, message: 'Invalid data provided.'};
     }
 
     try {
-        await prisma.location.update({
-            where: { 
-                id,
-                ownerId: user.busOwnerId,
-            },
+        const oldLocation = await prisma.location.findFirst({
+            where: { id, ownerId: user.busOwnerId }
+        });
+
+        if (!oldLocation) {
+            throw new Error("Location not found or you don't have permission to edit it.");
+        }
+
+        const updatedLocation = await prisma.location.update({
+            where: { id },
             data: { name },
         });
-        await logAction({ userId: user.id, actionType: 'UPDATE_LOCATION', description: `Updated location ${id} to name '${name}'.` });
+        await logAction({ userId: user.id, actionType: 'UPDATE_LOCATION', description: `Updated location ${id} to name '${name}'.`, details: { oldValue: oldLocation, newValue: updatedLocation } });
     } catch (error) {
-        await logAction({ userId: user.id, actionType: 'UPDATE_LOCATION_FAIL', description: `Failed to update location ${id} to '${name}'. Error: ${error instanceof Error ? error.message : 'Unknown'}` });
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        await logAction({ userId: user.id, actionType: 'UPDATE_LOCATION_FAIL', description: `Failed to update location ${id} to '${name}'. Error: ${message}`, details: { error: message, attemptedData: { id, name } } });
         return { success: false, message: 'A location with this name already exists or another error occurred.' };
     }
 
     revalidatePath('/admin/locations');
     revalidatePath('/admin/routes');
-    // Don't redirect here, let the client-side handle it on success
     return { success: true, message: 'Location updated successfully.' };
 }
 
@@ -97,17 +106,17 @@ export async function deleteLocationAction(locationId: string, csrfToken: string
   }
   
   try {
-    const location = await prisma.location.findFirst({
+    const locationToDelete = await prisma.location.findFirst({
         where: { id: locationId, ownerId: user.busOwnerId }
     });
 
-    if (!location) {
+    if (!locationToDelete) {
+        await logAction({ userId: user.id, actionType: 'DELETE_LOCATION_FAIL', description: `Location not found or permission denied for ID: ${locationId}` });
         return { success: false, message: 'Location not found or you do not have permission to delete it.' };
     }
 
     const originInUse = await prisma.route.count({ where: { originId: locationId } });
     const destinationInUse = await prisma.route.count({ where: { destinationId: locationId } });
-
     const totalUsage = originInUse + destinationInUse;
 
     if (totalUsage > 0) {
@@ -119,17 +128,15 @@ export async function deleteLocationAction(locationId: string, csrfToken: string
     }
 
     await prisma.location.delete({ 
-        where: { 
-            id: locationId,
-            ownerId: user.busOwnerId
-        } 
+        where: { id: locationId } 
     });
     
-    await logAction({ userId: user.id, actionType: 'DELETE_LOCATION', description: `Deleted location ${locationId}.` });
+    await logAction({ userId: user.id, actionType: 'DELETE_LOCATION', description: `Deleted location ${locationId}.`, details: { deletedLocation: locationToDelete } });
     revalidatePath('/admin/locations');
     return { success: true, message: 'Location has been deleted.' };
   } catch (error) {
-    await logAction({ userId: user.id, actionType: 'DELETE_LOCATION_FAIL', description: `Error deleting location ${locationId}. Error: ${error instanceof Error ? error.message : 'Unknown'}` });
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    await logAction({ userId: user.id, actionType: 'DELETE_LOCATION_FAIL', description: `Error deleting location ${locationId}. Error: ${message}`, details: { error: message } });
     return { success: false, message: 'An unexpected error occurred.' };
   }
 }

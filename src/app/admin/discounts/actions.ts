@@ -46,9 +46,11 @@ export async function createDiscountAction(formData: FormData) {
 
     const validatedData = discountSchema.safeParse(rawData);
     if (!validatedData.success) {
+        const errorMessage = validatedData.error.errors.map(e => e.message).join(', ');
+        await logAction({ userId: user.id, actionType: 'CREATE_DISCOUNT_FAIL', description: `Validation failed: ${errorMessage}`, details: { attemptedData: rawData } });
         return {
             success: false,
-            message: validatedData.error.errors.map(e => e.message).join(', ')
+            message: errorMessage
         };
     }
     
@@ -72,9 +74,10 @@ export async function createDiscountAction(formData: FormData) {
                 }
             }
         });
-        await logAction({ userId: user.id, actionType: 'CREATE_DISCOUNT', description: `Created discount '${name}' (${newDiscount.id}).` });
+        await logAction({ userId: user.id, actionType: 'CREATE_DISCOUNT', description: `Created discount '${name}' (${newDiscount.id}).`, details: { newDiscount: { ...newDiscount, tiers } } });
     } catch (error) {
-        await logAction({ userId: user.id, actionType: 'CREATE_DISCOUNT_FAIL', description: `Failed to create discount '${name}'. Error: ${error instanceof Error ? error.message : 'Unknown'}` });
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        await logAction({ userId: user.id, actionType: 'CREATE_DISCOUNT_FAIL', description: `Failed to create discount '${name}'. Error: ${message}`, details: { error: message, attemptedData: validatedData.data } });
         return { success: false, message: 'An unexpected error occurred.' };
     }
     
@@ -104,29 +107,29 @@ export async function updateDiscountAction(formData: FormData) {
 
     const validatedData = discountSchema.safeParse(rawData);
     if (!validatedData.success) {
+        const errorMessage = validatedData.error.errors.map(e => e.message).join(', ');
+        await logAction({ userId: user.id, actionType: 'UPDATE_DISCOUNT_FAIL', description: `Validation failed for discount ${discountId}: ${errorMessage}`, details: { attemptedData: rawData } });
         return {
             success: false,
-            message: validatedData.error.errors.map(e => e.message).join(', ')
+            message: errorMessage
         };
     }
     
     const { name, startDate, endDate, tiers, percentage } = validatedData.data;
 
     try {
-        await prisma.$transaction(async (tx) => {
-            const discount = await tx.discount.findFirst({
-                where: { id: discountId, ownerId: user.busOwnerId }
-            });
+        const oldDiscount = await prisma.discount.findFirst({
+            where: { id: discountId, ownerId: user.busOwnerId },
+            include: { tiers: true }
+        });
 
-            if (!discount) {
-                throw new Error("Discount not found or you don't have permission to edit it.");
-            }
-            
+        if (!oldDiscount) {
+            throw new Error("Discount not found or you don't have permission to edit it.");
+        }
+
+        await prisma.$transaction(async (tx) => {
             await tx.discount.update({
-                where: { 
-                    id: discountId,
-                    ownerId: user.busOwnerId
-                },
+                where: { id: discountId },
                 data: { 
                     name, 
                     startDate, 
@@ -135,11 +138,7 @@ export async function updateDiscountAction(formData: FormData) {
                     percentage: type === 'DATE_BASED' ? percentage : null,
                 }
             });
-            
-            // Always delete old tiers, new ones will be created if applicable
-            await tx.discountTier.deleteMany({
-                where: { discountId: discountId }
-            });
+            await tx.discountTier.deleteMany({ where: { discountId: discountId } });
             
             if (type === 'TICKET_COUNT_BASED' && tiers) {
                 await tx.discountTier.createMany({
@@ -152,10 +151,11 @@ export async function updateDiscountAction(formData: FormData) {
                 });
             }
         });
-        await logAction({ userId: user.id, actionType: 'UPDATE_DISCOUNT', description: `Updated discount '${name}' (${discountId}).` });
+        const newDiscountData = { name, startDate, endDate, type, percentage, tiers };
+        await logAction({ userId: user.id, actionType: 'UPDATE_DISCOUNT', description: `Updated discount '${name}' (${discountId}).`, details: { oldValue: oldDiscount, newValue: newDiscountData } });
     } catch (error) {
          const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
-         await logAction({ userId: user.id, actionType: 'UPDATE_DISCOUNT_FAIL', description: `Failed to update discount ${discountId}. Error: ${message}` });
+         await logAction({ userId: user.id, actionType: 'UPDATE_DISCOUNT_FAIL', description: `Failed to update discount ${discountId}. Error: ${message}`, details: { error: message, attemptedData: validatedData.data } });
         return { success: false, message };
     }
 
@@ -173,11 +173,13 @@ export async function deleteDiscountAction(discountId: string, csrfToken: string
     }
 
     try {
-        const discount = await prisma.discount.findFirst({
-            where: { id: discountId, ownerId: user.busOwnerId }
+        const discountToDelete = await prisma.discount.findFirst({
+            where: { id: discountId, ownerId: user.busOwnerId },
+            include: { tiers: true }
         });
 
-        if (!discount) {
+        if (!discountToDelete) {
+            await logAction({ userId: user.id, actionType: 'DELETE_DISCOUNT_FAIL', description: `Discount not found or permission denied for ID: ${discountId}` });
             return { success: false, message: 'Discount not found or you do not have permission to delete it.' };
         }
 
@@ -187,17 +189,15 @@ export async function deleteDiscountAction(discountId: string, csrfToken: string
         });
 
         await prisma.discount.delete({
-            where: { 
-                id: discountId,
-                ownerId: user.busOwnerId
-            }
+            where: { id: discountId }
         });
 
-        await logAction({ userId: user.id, actionType: 'DELETE_DISCOUNT', description: `Deleted discount ${discountId}.` });
+        await logAction({ userId: user.id, actionType: 'DELETE_DISCOUNT', description: `Deleted discount ${discountId}.`, details: { deletedDiscount: discountToDelete } });
         revalidatePath('/admin/discounts');
         return { success: true, message: 'Discount has been deleted.' };
     } catch (error) {
-        await logAction({ userId: user.id, actionType: 'DELETE_DISCOUNT_FAIL', description: `Error deleting discount ${discountId}. Error: ${error instanceof Error ? error.message : 'Unknown'}` });
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        await logAction({ userId: user.id, actionType: 'DELETE_DISCOUNT_FAIL', description: `Error deleting discount ${discountId}. Error: ${message}`, details: { error: message } });
         return { success: false, message: 'An unexpected error occurred.' };
     }
 }

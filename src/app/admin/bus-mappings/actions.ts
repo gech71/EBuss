@@ -32,15 +32,18 @@ export async function createBusRouteAction(formData: FormData) {
     const validatedData = busRouteSchema.safeParse(rawData);
 
     if (!validatedData.success) {
+        const errorMessage = validatedData.error.errors.map(e => e.message).join(', ');
+        await logAction({ userId: user.id, actionType: 'CREATE_BUS_MAPPING_FAIL', description: `Validation failed: ${errorMessage}`, details: { attemptedData: rawData } });
         return {
             success: false,
-            message: validatedData.error.errors.map(e => e.message).join(', ')
+            message: errorMessage
         };
     }
     
     const { busId, originId, destinationId } = validatedData.data;
 
     if (originId === destinationId) {
+        await logAction({ userId: user.id, actionType: 'CREATE_BUS_MAPPING_FAIL', description: 'Origin and destination were the same.', details: { attemptedData: validatedData.data } });
         return { success: false, message: 'Origin and destination cannot be the same.' };
     }
 
@@ -50,6 +53,7 @@ export async function createBusRouteAction(formData: FormData) {
         });
 
         if (existingMapping) {
+            await logAction({ userId: user.id, actionType: 'CREATE_BUS_MAPPING_FAIL', description: 'Bus already mapped.', details: { attemptedData: validatedData.data, existingMapping } });
             return { success: false, message: 'This bus is already mapped to a route. A bus can only be mapped to one route at a time.' };
         }
 
@@ -60,13 +64,15 @@ export async function createBusRouteAction(formData: FormData) {
                 destinationId,
             }
         });
-        await logAction({ userId: user.id, actionType: 'CREATE_BUS_MAPPING', description: `Created bus mapping ${newMapping.id} for bus ${busId}.` });
+        await logAction({ userId: user.id, actionType: 'CREATE_BUS_MAPPING', description: `Created bus mapping ${newMapping.id} for bus ${busId}.`, details: { newMapping } });
 
     } catch (error) {
-        if (error instanceof Error && error.message.includes('Unique constraint failed')) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        if (message.includes('Unique constraint failed')) {
+            await logAction({ userId: user.id, actionType: 'CREATE_BUS_MAPPING_FAIL', description: `Unique constraint failed.`, details: { attemptedData: validatedData.data } });
             return { success: false, message: 'This bus mapping already exists.' };
         }
-        await logAction({ userId: user.id, actionType: 'CREATE_BUS_MAPPING_FAIL', description: `Failed to create bus mapping. Error: ${error instanceof Error ? error.message : 'Unknown'}` });
+        await logAction({ userId: user.id, actionType: 'CREATE_BUS_MAPPING_FAIL', description: `Failed to create bus mapping. Error: ${message}`, details: { error: message, attemptedData: validatedData.data } });
         return { success: false, message: 'An unexpected error occurred.' };
     }
     
@@ -94,6 +100,7 @@ export async function deleteBusRouteAction(id: string, csrfToken: string): Promi
     });
 
     if (!mappingToDelete) {
+        await logAction({ userId: user.id, actionType: 'DELETE_BUS_MAPPING_FAIL', description: `Mapping not found or permission denied for ID: ${id}` });
         return { success: false, message: 'Mapping not found or you do not have permission to delete it.' };
     }
 
@@ -101,11 +108,12 @@ export async function deleteBusRouteAction(id: string, csrfToken: string): Promi
         where: { id: id } 
     });
     
-    await logAction({ userId: user.id, actionType: 'DELETE_BUS_MAPPING', description: `Deleted bus mapping ${id}.` });
+    await logAction({ userId: user.id, actionType: 'DELETE_BUS_MAPPING', description: `Deleted bus mapping ${id}.`, details: { deletedMapping: mappingToDelete } });
     revalidatePath('/admin/bus-mappings');
     return { success: true, message: 'Bus mapping has been deleted.' };
   } catch (error) {
-    await logAction({ userId: user.id, actionType: 'DELETE_BUS_MAPPING_FAIL', description: `Error deleting bus mapping ${id}. Error: ${error instanceof Error ? error.message : 'Unknown'}` });
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    await logAction({ userId: user.id, actionType: 'DELETE_BUS_MAPPING_FAIL', description: `Error deleting bus mapping ${id}. Error: ${message}`, details: { error: message } });
     return { success: false, message: 'An unexpected error occurred.' };
   }
 }

@@ -26,11 +26,8 @@ const routeSchema = z.object({
 });
 
 const combineDateTime = (dateStr: string, timeStr: string): Date => {
-    // This logic prevents timezone-related date shifts.
-    // '2025-11-05' becomes '2025-11-05T00:00:00.000Z'
     const dateInUtc = new Date(dateStr + 'T00:00:00.000Z');
     const [hours, minutes] = timeStr.split(':').map(Number);
-    // Use setUTCHours to ensure the time is set in UTC, avoiding timezone shifts.
     dateInUtc.setUTCHours(hours, minutes, 0, 0);
     return dateInUtc;
 };
@@ -62,15 +59,18 @@ export async function createRouteAction(formData: FormData) {
     const validatedData = routeSchema.safeParse(rawData);
 
     if (!validatedData.success) {
+        const errorMessage = validatedData.error.errors.map(e => e.message).join(', ');
+        await logAction({ userId: user.id, actionType: 'CREATE_ROUTE_FAIL', description: `Validation failed: ${errorMessage}`, details: { attemptedData: rawData } });
         return {
             success: false,
-            message: validatedData.error.errors.map(e => e.message).join(', ')
+            message: errorMessage
         };
     }
 
     const { originId, destinationId, departureDate, departureTime, arrivalDate, arrivalTime, price, busIds, discountId, ticketType, roundTripDiscountType, roundTripDiscountValue } = validatedData.data;
 
     if (originId === destinationId) {
+        await logAction({ userId: user.id, actionType: 'CREATE_ROUTE_FAIL', description: 'Origin and destination were the same.', details: { attemptedData: validatedData.data } });
         return { success: false, message: 'Origin and destination cannot be the same.' };
     }
 
@@ -78,11 +78,13 @@ export async function createRouteAction(formData: FormData) {
     const fullArrivalTime = combineDateTime(arrivalDate, arrivalTime);
 
     if (fullArrivalTime <= fullDepartureTime) {
+        await logAction({ userId: user.id, actionType: 'CREATE_ROUTE_FAIL', description: 'Arrival time was before departure time.', details: { attemptedData: validatedData.data } });
         return { success: false, message: 'Arrival time must be after departure time.' };
     }
     
     const oneHourFromNow = new Date(Date.now() + 60 * 60 * 1000);
     if (fullDepartureTime < oneHourFromNow) {
+        await logAction({ userId: user.id, actionType: 'CREATE_ROUTE_FAIL', description: 'Departure time was in the past.', details: { attemptedData: validatedData.data } });
         return { success: false, message: 'Departure time must be at least one hour from now.' };
     }
 
@@ -96,6 +98,7 @@ export async function createRouteAction(formData: FormData) {
         });
 
         if (busCount !== busIds.length) {
+            await logAction({ userId: user.id, actionType: 'CREATE_ROUTE_FAIL', description: 'Attempted to create route for bus not owned by user.', details: { attemptedData: validatedData.data } });
             return { success: false, message: "You can only create routes for buses you own." };
         }
 
@@ -116,9 +119,10 @@ export async function createRouteAction(formData: FormData) {
             data: routesToCreate,
         });
 
-        await logAction({ userId: user.id, actionType: 'CREATE_ROUTE', description: `Created ${routesToCreate.length} routes for buses: ${busIds.join(', ')}.` });
+        await logAction({ userId: user.id, actionType: 'CREATE_ROUTE', description: `Created ${routesToCreate.length} routes for buses: ${busIds.join(', ')}.`, details: { createdRoutes: routesToCreate } });
     } catch (error) {
-        await logAction({ userId: user.id, actionType: 'CREATE_ROUTE_FAIL', description: `Failed to create routes. Error: ${error instanceof Error ? error.message : 'Unknown'}` });
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        await logAction({ userId: user.id, actionType: 'CREATE_ROUTE_FAIL', description: `Failed to create routes. Error: ${message}`, details: { error: message, attemptedData: validatedData.data } });
         return { success: false, message: 'An unexpected error occurred.' };
     }
 
@@ -156,9 +160,11 @@ export async function updateRouteAction(formData: FormData) {
     }).safeParse(rawData);
 
     if (!validatedData.success) {
+        const errorMessage = validatedData.error.errors.map(e => e.message).join(', ');
+        await logAction({ userId: user.id, actionType: 'UPDATE_ROUTE_FAIL', description: `Validation failed for route ${routeId}: ${errorMessage}`, details: { attemptedData: rawData } });
         return {
             success: false,
-            message: validatedData.error.errors.map(e => e.message).join(', ')
+            message: errorMessage
         };
     }
 
@@ -166,6 +172,7 @@ export async function updateRouteAction(formData: FormData) {
     const busId = busIds[0];
 
     if (originId === destinationId) {
+        await logAction({ userId: user.id, actionType: 'UPDATE_ROUTE_FAIL', description: 'Origin and destination were the same.', details: { attemptedData: validatedData.data } });
         return { success: false, message: 'Origin and destination cannot be the same.' };
     }
 
@@ -173,56 +180,54 @@ export async function updateRouteAction(formData: FormData) {
     const fullArrivalTime = combineDateTime(arrivalDate, arrivalTime);
 
      if (fullArrivalTime <= fullDepartureTime) {
+        await logAction({ userId: user.id, actionType: 'UPDATE_ROUTE_FAIL', description: 'Arrival time was before departure time.', details: { attemptedData: validatedData.data } });
         return { success: false, message: 'Arrival time must be after departure time.' };
     }
 
     try {
-       await prisma.$transaction(async (tx) => {
-           const routeToUpdate = await tx.route.findFirst({
-               where: {
-                   id: routeId,
-                   bus: {
-                       ownerId: user.busOwnerId
-                   }
-               }
-           });
-
-           if (!routeToUpdate) {
-               throw new Error("Route not found or you do not have permission to edit it.");
+       const oldRoute = await prisma.route.findFirst({
+           where: {
+               id: routeId,
+               bus: { ownerId: user.busOwnerId }
            }
-
-           const newBus = await tx.bus.findFirst({
-               where: {
-                   id: busId,
-                   ownerId: user.busOwnerId
-               }
-           });
-
-           if (!newBus) {
-               throw new Error("The selected bus does not belong to you.");
-           }
-
-           await tx.route.update({
-               where: { id: routeId },
-               data: {
-                    originId,
-                    destinationId,
-                    departureTime: fullDepartureTime,
-                    arrivalTime: fullArrivalTime,
-                    price,
-                    busId,
-                    discountId: discountId === 'none' ? null : discountId,
-                    ticketType,
-                    roundTripDiscountType: ticketType === TicketType.ROUND_TRIP ? roundTripDiscountType : null,
-                    roundTripDiscountValue: ticketType === TicketType.ROUND_TRIP ? roundTripDiscountValue : null,
-               }
-           });
        });
-       await logAction({ userId: user.id, actionType: 'UPDATE_ROUTE', description: `Updated route ${routeId}.` });
+
+       if (!oldRoute) {
+           throw new Error("Route not found or you do not have permission to edit it.");
+       }
+
+       const newBus = await prisma.bus.findFirst({
+           where: {
+               id: busId,
+               ownerId: user.busOwnerId
+           }
+       });
+
+       if (!newBus) {
+           throw new Error("The selected bus does not belong to you.");
+       }
+
+       const updatedRoute = await prisma.route.update({
+           where: { id: routeId },
+           data: {
+                originId,
+                destinationId,
+                departureTime: fullDepartureTime,
+                arrivalTime: fullArrivalTime,
+                price,
+                busId,
+                discountId: discountId === 'none' ? null : discountId,
+                ticketType,
+                roundTripDiscountType: ticketType === TicketType.ROUND_TRIP ? roundTripDiscountType : null,
+                roundTripDiscountValue: ticketType === TicketType.ROUND_TRIP ? roundTripDiscountValue : null,
+           }
+       });
+
+       await logAction({ userId: user.id, actionType: 'UPDATE_ROUTE', description: `Updated route ${routeId}.`, details: { oldValue: oldRoute, newValue: updatedRoute } });
 
     } catch (error) {
         const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
-        await logAction({ userId: user.id, actionType: 'UPDATE_ROUTE_FAIL', description: `Failed to update route ${routeId}. Error: ${message}` });
+        await logAction({ userId: user.id, actionType: 'UPDATE_ROUTE_FAIL', description: `Failed to update route ${routeId}. Error: ${message}`, details: { error: message, attemptedData: validatedData.data } });
         return { success: false, message };
     }
 
@@ -244,20 +249,17 @@ export async function deleteRouteAction(routeId: string, csrfToken: string): Pro
     const routeToDelete = await prisma.route.findFirst({
         where: {
             id: routeId,
-            bus: {
-                ownerId: user.busOwnerId
-            }
+            bus: { ownerId: user.busOwnerId }
         }
     });
 
     if (!routeToDelete) {
+        await logAction({ userId: user.id, actionType: 'DELETE_ROUTE_FAIL', description: `Route not found or permission denied for ID: ${routeId}` });
         return { success: false, message: 'Route not found or you do not have permission to delete it.' };
     }
     
     const bookingCount = await prisma.booking.count({
-      where: {
-        routeId: routeId,
-      },
+      where: { routeId: routeId }
     });
 
     if (bookingCount > 0) {
@@ -269,16 +271,15 @@ export async function deleteRouteAction(routeId: string, csrfToken: string): Pro
     }
 
     await prisma.route.delete({
-      where: {
-        id: routeId,
-      },
+      where: { id: routeId }
     });
 
-    await logAction({ userId: user.id, actionType: 'DELETE_ROUTE', description: `Deleted route ${routeId}.` });
+    await logAction({ userId: user.id, actionType: 'DELETE_ROUTE', description: `Deleted route ${routeId}.`, details: { deletedRoute: routeToDelete } });
     revalidatePath('/admin/routes');
     return { success: true, message: 'Route has been deleted.' };
   } catch (error) {
-    await logAction({ userId: user.id, actionType: 'DELETE_ROUTE_FAIL', description: `Error deleting route ${routeId}. Error: ${error instanceof Error ? error.message : 'Unknown'}` });
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    await logAction({ userId: user.id, actionType: 'DELETE_ROUTE_FAIL', description: `Error deleting route ${routeId}. Error: ${message}`, details: { error: message } });
     return { success: false, message: 'An unexpected error occurred.' };
   }
 }

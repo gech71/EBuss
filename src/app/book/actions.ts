@@ -60,7 +60,7 @@ async function createSingleBooking(tx: any, trip: z.infer<typeof tripSchema>, pa
         data: { status: 'OCCUPIED' }
     });
     
-    await logAction({ actionType: 'CREATE_BOOKING', description: `Booking ${booking.id} created for passenger ${passengerName} on route ${trip.routeId}. Seats: ${trip.selectedSeatNumbers.join(', ')}` });
+    await logAction({ actionType: 'CREATE_BOOKING', description: `Booking ${booking.id} created for passenger ${passengerName} on route ${trip.routeId}. Seats: ${trip.selectedSeatNumbers.join(', ')}`, details: { booking } });
     return booking;
 }
 
@@ -80,9 +80,11 @@ export async function createBookingAction(formData: FormData) {
   const validatedData = createBookingSchema.safeParse(rawData);
 
   if (!validatedData.success) {
+    const errorMessage = validatedData.error.errors.map(e => e.message).join(', ');
+    await logAction({ actionType: 'CREATE_BOOKING_FAIL', description: `Validation failed: ${errorMessage}`, details: { attemptedData: rawData } });
     return {
       success: false,
-      message: validatedData.error.errors.map(e => e.message).join(', '),
+      message: errorMessage,
     };
   }
 
@@ -107,11 +109,10 @@ export async function createBookingAction(formData: FormData) {
             const returnRoute = await tx.route.findUnique({ where: { id: returnTrip.routeId } });
             if (!returnRoute) throw new Error("Return route not found.");
             const returnPrice = Number(returnRoute.price) * returnTrip.selectedSeatNumbers.length;
-
-            // Simplified price check
+            
+            // This is a simplified check. A real app should recalculate discounts.
             if (Math.abs((outboundPrice + returnPrice) - totalPrice) > 0.01) {
-                 // In a real app, you'd apply discounts here too for a precise match
-                 console.warn(`Price mismatch: a=${outboundPrice + returnPrice}, b=${totalPrice}. Allowing booking for now.`);
+                 console.warn(`Price mismatch: server calculated=${outboundPrice + returnPrice}, client sent=${totalPrice}. Allowing for now.`);
             }
 
             const ob = await createSingleBooking(tx, outboundTrip, passengerName, passengerPhone, outboundPrice, expiresAt, false);
@@ -119,7 +120,7 @@ export async function createBookingAction(formData: FormData) {
             return [ob, rb];
         } else {
              if (Math.abs(outboundPrice - totalPrice) > 0.01) {
-                 console.warn(`Price mismatch: a=${outboundPrice}, b=${totalPrice}. Allowing booking for now.`);
+                 console.warn(`Price mismatch: server calculated=${outboundPrice}, client sent=${totalPrice}. Allowing for now.`);
             }
             const ob = await createSingleBooking(tx, outboundTrip, passengerName, passengerPhone, outboundPrice, expiresAt, false);
             return [ob];
@@ -135,7 +136,7 @@ export async function createBookingAction(formData: FormData) {
     
   } catch (error) {
     const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
-    await logAction({ actionType: 'CREATE_BOOKING_FAIL', description: `Booking failed for passenger ${passengerName}. Error: ${message}` });
+    await logAction({ actionType: 'CREATE_BOOKING_FAIL', description: `Booking failed for passenger ${passengerName}. Error: ${message}`, details: { error: message, attemptedData: validatedData.data } });
     return { success: false, message };
   }
 }
@@ -189,7 +190,7 @@ export async function createPaymentRequestAction(bookingId: string, amount: numb
                 status: 'PENDING',
             }
         });
-        await logAction({ actionType: 'PAYMENT_REQUEST_INIT', description: `Payment request created for booking ${bookingId} with transactionId ${transactionId}.` });
+        await logAction({ actionType: 'PAYMENT_REQUEST_INIT', description: `Payment request created for booking ${bookingId} with transactionId ${transactionId}.`, details: { bookingId, amount, transactionId } });
 
         const signatureString = [
             `accountNo=${ACCOUNT_NO}`,
@@ -231,15 +232,15 @@ export async function createPaymentRequestAction(bookingId: string, amount: numb
                 where: { transactionId },
                 data: { paymentToken: responseData.token }
             });
-            await logAction({ actionType: 'PAYMENT_TOKEN_SUCCESS', description: `Received payment token for transaction ${transactionId}.` });
+            await logAction({ actionType: 'PAYMENT_TOKEN_SUCCESS', description: `Received payment token for transaction ${transactionId}.`, details: { transactionId, responseData } });
             return { success: true, paymentToken: responseData.token };
         } else {
-             await logAction({ actionType: 'PAYMENT_TOKEN_FAIL', description: `Failed to get payment token for transaction ${transactionId}. Response: ${JSON.stringify(responseData)}` });
+             await logAction({ actionType: 'PAYMENT_TOKEN_FAIL', description: `Failed to get payment token for transaction ${transactionId}. Response: ${JSON.stringify(responseData)}`, details: { transactionId, responseData } });
             return { success: false, message: responseData.message || 'Failed to get payment token.' };
         }
     } catch (error) {
         const message = error instanceof Error ? error.message : 'An unexpected error occurred during payment initiation.';
-        await logAction({ actionType: 'PAYMENT_REQUEST_FAIL', description: `Payment request failed for transaction ${transactionId}: ${message}` });
+        await logAction({ actionType: 'PAYMENT_REQUEST_FAIL', description: `Payment request failed for transaction ${transactionId}: ${message}`, details: { error: message, transactionId } });
         return { success: false, message };
     }
 }

@@ -1,3 +1,4 @@
+
 'use server';
 
 import prisma from '@/lib/prisma';
@@ -61,9 +62,11 @@ export async function createBusAction(formData: FormData) {
     const validatedData = busSchema.safeParse(rawData);
 
     if (!validatedData.success) {
+        const errorMessage = validatedData.error.errors.map(e => e.message).join(', ');
+        await logAction({ userId: user.id, actionType: 'CREATE_BUS_FAIL', description: `Validation failed: ${errorMessage}`, details: { attemptedData: rawData } });
         return {
             success: false,
-            message: validatedData.error.errors.map(e => e.message).join(', ')
+            message: errorMessage
         };
     }
 
@@ -90,9 +93,10 @@ export async function createBusAction(formData: FormData) {
                 }
             }
         });
-        await logAction({ userId: user.id, actionType: 'CREATE_BUS', description: `Created bus '${name}' (${newBus.id}).` });
+        await logAction({ userId: user.id, actionType: 'CREATE_BUS', description: `Created bus '${name}' (${newBus.id}).`, details: { newBus } });
     } catch (error) {
-        await logAction({ userId: user.id, actionType: 'CREATE_BUS_FAIL', description: `Failed to create bus '${name}'. Error: ${error instanceof Error ? error.message : 'Unknown'}` });
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        await logAction({ userId: user.id, actionType: 'CREATE_BUS_FAIL', description: `Failed to create bus '${name}'. Error: ${message}`, details: { error: message, attemptedData: validatedData.data } });
         return { success: false, message: 'An unexpected error occurred.' };
     }
 
@@ -124,43 +128,40 @@ export async function updateBusAction(formData: FormData) {
     const validatedData = busSchema.safeParse(rawData);
 
     if (!validatedData.success) {
+        const errorMessage = validatedData.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+        await logAction({ userId: user.id, actionType: 'UPDATE_BUS_FAIL', description: `Validation failed for bus ${busId}: ${errorMessage}`, details: { attemptedData: rawData } });
         return {
             success: false,
-            message: validatedData.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
+            message: errorMessage
         };
     }
     
     const { name, capacity, rows, cols, seats } = validatedData.data;
     
-    // Perform check before starting transaction
     const routeCount = await prisma.route.count({ where: { busId: busId } });
     if (routeCount > 0) {
+        await logAction({ userId: user.id, actionType: 'UPDATE_BUS_FAIL', description: `Attempted to edit bus ${busId} which is in use.`, details: { attemptedData: validatedData.data } });
         return { success: false, message: "This bus cannot be edited because it is assigned to active routes."};
     }
 
     try {
+        const oldBus = await prisma.bus.findFirst({
+            where: { id: busId, ownerId: user.busOwnerId },
+            include: { layout: { include: { seats: true } } }
+        });
+
+        if (!oldBus || !oldBus.layout) {
+            throw new Error("Bus not found, layout is missing, or you don't have permission to edit it.");
+        }
+
         await prisma.$transaction(async (tx) => {
-            const busToUpdate = await tx.bus.findFirst({
-                where: { id: busId, ownerId: user.busOwnerId },
-                include: { layout: true }
-            });
-
-            if (!busToUpdate || !busToUpdate.layout) {
-                throw new Error("Bus not found, layout is missing, or you don't have permission to edit it.");
-            }
-
-            // Step 1: Update bus details
             await tx.bus.update({
                 where: { id: busId },
                 data: { name, capacity }
             });
-
-            // Step 2: Delete old seats from the existing layout
-            await tx.seat.deleteMany({ where: { layoutId: busToUpdate.layout.id }});
-
-            // Step 3: Update the existing layout with new rows, cols, and create new seats
+            await tx.seat.deleteMany({ where: { layoutId: oldBus.layout!.id }});
             await tx.seatLayout.update({
-                where: { id: busToUpdate.layout.id },
+                where: { id: oldBus.layout!.id },
                 data: {
                     rows,
                     cols,
@@ -171,11 +172,12 @@ export async function updateBusAction(formData: FormData) {
             });
         });
         
-        await logAction({ userId: user.id, actionType: 'UPDATE_BUS', description: `Updated bus '${name}' (${busId}).` });
+        const newBusData = { id: busId, name, capacity, layout: { rows, cols, seats } };
+        await logAction({ userId: user.id, actionType: 'UPDATE_BUS', description: `Updated bus '${name}' (${busId}).`, details: { oldValue: oldBus, newValue: newBusData } });
 
     } catch (error) {
         const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
-        await logAction({ userId: user.id, actionType: 'UPDATE_BUS_FAIL', description: `Failed to update bus '${name}'. Error: ${message}` });
+        await logAction({ userId: user.id, actionType: 'UPDATE_BUS_FAIL', description: `Failed to update bus '${name}'. Error: ${message}`, details: { error: message, attemptedData: validatedData.data } });
         console.error("Error updating bus:", error);
         return { success: false, message };
     }
@@ -197,7 +199,6 @@ export async function deleteBusAction(busId: string, csrfToken: string): Promise
   
   try {
     const routeCount = await prisma.route.count({ where: { busId: busId } });
-
     if (routeCount > 0) {
        await logAction({ userId: user.id, actionType: 'DELETE_BUS_FAIL', description: `Failed to delete bus ${busId} (in use by ${routeCount} routes).` });
       return {
@@ -211,23 +212,21 @@ export async function deleteBusAction(busId: string, csrfToken: string): Promise
     });
 
     if (!busToDelete) {
+      await logAction({ userId: user.id, actionType: 'DELETE_BUS_FAIL', description: `Bus not found or permission denied for ID: ${busId}` });
       return { success: false, message: "Bus not found or you don't have permission to delete it." };
     }
     
-    // The Prisma schema handles cascading deletes for the SeatLayout and Seats
-    // when a Bus is deleted, so we only need to delete the bus.
     await prisma.bus.delete({
-        where: {
-            id: busId,
-        },
+        where: { id: busId }
     });
 
 
-    await logAction({ userId: user.id, actionType: 'DELETE_BUS', description: `Deleted bus ${busId}.` });
+    await logAction({ userId: user.id, actionType: 'DELETE_BUS', description: `Deleted bus ${busId}.`, details: { deletedBus: busToDelete } });
     revalidatePath('/admin/buses');
     return { success: true, message: 'Bus has been deleted.' };
   } catch (error) {
-    await logAction({ userId: user.id, actionType: 'DELETE_BUS_FAIL', description: `Error deleting bus ${busId}. Error: ${error instanceof Error ? error.message : 'Unknown'}` });
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    await logAction({ userId: user.id, actionType: 'DELETE_BUS_FAIL', description: `Error deleting bus ${busId}. Error: ${message}`, details: { error: message } });
     return { success: false, message: 'An unexpected error occurred or you do not have permission.' };
   }
 }
