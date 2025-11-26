@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { SeatStatus, SeatType } from '@prisma/client';
+import { SeatType } from '@prisma/client';
 import { validateRequest } from '@/lib/server/auth';
 import { logAction } from '@/app/lib/logger';
 import { cookies } from 'next/headers';
@@ -14,7 +14,6 @@ import { validateCsrf } from '@/app/lib/actions';
 
 const seatSchema = z.object({
   seatNumber: z.string(),
-  status: z.nativeEnum(SeatStatus),
   type: z.nativeEnum(SeatType),
 });
 
@@ -41,8 +40,15 @@ export async function createBusAction(formData: FormData) {
         cols: Number(formData.get('cols')),
         seats: JSON.parse(formData.get('seats') as string),
     };
+    
+    // We need to add the status back to the seats for validation, but it won't be saved.
+    const seatsForValidation = rawData.seats.map((seat: any) => ({
+        seatNumber: seat.seatNumber,
+        type: seat.type,
+    }));
 
-    const validatedData = busSchema.safeParse(rawData);
+
+    const validatedData = busSchema.safeParse({ ...rawData, seats: seatsForValidation });
 
     if (!validatedData.success) {
         const errorMessage = validatedData.error.errors.map(e => e.message).join(', ');
@@ -114,8 +120,13 @@ export async function updateBusAction(formData: FormData) {
         cols: Number(formData.get('cols')),
         seats: JSON.parse(formData.get('seats') as string),
     };
+    
+    const seatsForValidation = rawData.seats.map((seat: any) => ({
+        seatNumber: seat.seatNumber,
+        type: seat.type,
+    }));
 
-    const validatedData = busSchema.safeParse(rawData);
+    const validatedData = busSchema.safeParse({ ...rawData, seats: seatsForValidation });
 
     if (!validatedData.success) {
         const errorMessage = validatedData.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
