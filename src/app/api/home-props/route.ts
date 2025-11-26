@@ -4,6 +4,8 @@ import prisma from "@/lib/prisma";
 import { validateRequest } from "@/lib/server/auth";
 import { cookies } from "next/headers";
 
+export const dynamic = 'force-dynamic';
+
 async function getIsMiniApp() {
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get('miniapp_session');
@@ -29,7 +31,9 @@ export async function GET() {
                 origin: true,
                 destination: true,
                 bus: {
-                    include: {
+                    select: {
+                        name: true, // Only select needed fields
+                        ownerId: true,
                         owner: {
                             select: {
                                 name: true

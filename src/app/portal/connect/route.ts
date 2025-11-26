@@ -2,9 +2,11 @@
 import { headers, cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   try {
-    const headerList = await headers();
+    const headerList = headers();
     const authHeader = headerList.get('Authorization');
 
     if (!authHeader) {

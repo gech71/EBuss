@@ -4,6 +4,8 @@ import prisma from '@/lib/prisma';
 import { PaymentStatus } from '@prisma/client';
 import { cookies } from 'next/headers';
 
+export const dynamic = 'force-dynamic';
+
 async function getPhoneNumberFromSession(): Promise<string | null> {
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('miniapp_session');

@@ -4,6 +4,8 @@ import prisma from '@/lib/prisma';
 import { endOfDay, startOfDay } from 'date-fns';
 import { toDate } from 'date-fns-tz';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
