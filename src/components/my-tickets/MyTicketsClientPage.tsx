@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Image from 'next/image';
-import { Loader2, Search, Ticket, ArrowRight, Bus as BusIcon, Clock, Building, CalendarIcon, Maximize } from 'lucide-react';
+import { Loader2, Search, Ticket, ArrowRight, Bus as BusIcon, Clock, Building, CalendarIcon, Maximize, Smartphone } from 'lucide-react';
 import type { Booking, Route, Bus, Location, BusOwner, BookedSeat } from '@prisma/client';
 import { format, isSameDay } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 
 type EnrichedBooking = Booking & {
   route: Route & {
@@ -124,7 +125,7 @@ export function MyTicketsClientPage({ isMiniApp, phoneNumberFromSession }: MyTic
         setHasSearched(true);
         setSearchedPhone(phone);
         try {
-            const response = await fetch(`/api/my-tickets?phone=${encodeURIComponent(phone)}`);
+            const response = await fetch(`/api/my-tickets`); // No longer sending phone in query
             if (response.ok) {
                 const data = await response.json();
                 setAllBookings(data);
@@ -146,11 +147,6 @@ export function MyTicketsClientPage({ isMiniApp, phoneNumberFromSession }: MyTic
             setLoading(false);
         }
     }, [isMiniApp, phoneNumberFromSession, fetchTickets]);
-    
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        fetchTickets(phoneNumber);
-    };
 
     const filteredBookings = useMemo(() => {
         if (!filterDate) {
@@ -179,25 +175,17 @@ export function MyTicketsClientPage({ isMiniApp, phoneNumberFromSession }: MyTic
                 <CardDescription>View all your purchased and paid tickets here.</CardDescription>
             </CardHeader>
             <CardContent>
-                <form onSubmit={handleSearch} className="flex flex-col sm:flex-row items-end gap-4 mb-8 p-4 border rounded-lg bg-background">
-                     <div className="space-y-2 flex-grow w-full">
-                        <Label htmlFor="phone">Phone Number</Label>
-                        <Input 
-                            id="phone" 
-                            type="tel" 
-                            placeholder="Enter your phone number..." 
-                            value={phoneNumber} 
-                            onChange={(e) => setPhoneNumber(e.target.value)}
-                            disabled={isMiniApp}
-                        />
-                    </div>
-                    <Button type="submit" className="w-full sm:w-auto" disabled={loading || !phoneNumber || isMiniApp}>
-                        <Search className="mr-2 h-4 w-4" />
-                        {loading ? "Searching..." : "Find My Tickets"}
-                    </Button>
-                </form>
+                {!isMiniApp && !hasSearched && (
+                    <Alert>
+                        <Smartphone className="h-4 w-4" />
+                        <AlertTitle>Secure Ticket Access</AlertTitle>
+                        <AlertDescription>
+                            For your security, ticket lookups are only available within the NibTera Super App. Please open the mini-app to view your tickets.
+                        </AlertDescription>
+                    </Alert>
+                )}
 
-                 {hasSearched && (
+                 {isMiniApp && hasSearched && (
                     <div className="flex items-center gap-4 mb-6">
                         <Popover>
                             <PopoverTrigger asChild>
@@ -249,21 +237,12 @@ export function MyTicketsClientPage({ isMiniApp, phoneNumberFromSession }: MyTic
                             <h3 className="mt-4 text-lg font-semibold">No Tickets Found</h3>
                             <p className="mt-1 text-sm text-muted-foreground">
                                 {filterDate 
-                                    ? `No paid tickets were found for ${searchedPhone} on ${format(filterDate, "PPP")}.`
-                                    : `No paid tickets were found for the phone number ${searchedPhone}.`
+                                    ? `No paid tickets were found for your account on ${format(filterDate, "PPP")}.`
+                                    : `No paid tickets were found for your account.`
                                 }
                             </p>
                         </div>
                     )
-                )}
-                {!loading && !hasSearched && (
-                     <div className="text-center py-10">
-                        <Search className="mx-auto h-12 w-12 text-muted-foreground" />
-                        <h3 className="mt-4 text-lg font-semibold">Search for your tickets</h3>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                            Enter your phone number above to retrieve your booking history.
-                        </p>
-                    </div>
                 )}
             </CardContent>
         </Card>

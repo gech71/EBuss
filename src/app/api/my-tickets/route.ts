@@ -2,19 +2,43 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { PaymentStatus } from '@prisma/client';
+import { cookies } from 'next/headers';
+
+async function getPhoneNumberFromSession(): Promise<string | null> {
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('miniapp_session');
+    if (sessionCookie) {
+        try {
+            const decodedSession = Buffer.from(sessionCookie.value, 'base64').toString('ascii');
+            const sessionData = JSON.parse(decodedSession);
+            if (sessionData.isAuthenticated && sessionData.phoneNumber) {
+                return sessionData.phoneNumber;
+            }
+        } catch (error) {
+            console.error("Failed to parse mini-app session cookie:", error);
+            return null;
+        }
+    }
+    return null;
+}
+
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const phone = searchParams.get('phone');
+    const sessionPhoneNumber = await getPhoneNumberFromSession();
 
-    if (!phone) {
-      return NextResponse.json({ message: 'Phone number is required.' }, { status: 400 });
+    let phoneToQuery: string | null = sessionPhoneNumber;
+
+    // If there's no authenticated session, we can't safely look up tickets.
+    // We will not allow unauthenticated lookups from query params.
+    if (!phoneToQuery) {
+        // Return an empty array to prevent enumeration attacks and data leakage.
+        return NextResponse.json([], { status: 200 });
     }
 
     const bookings = await prisma.booking.findMany({
       where: {
-        passengerPhone: phone,
+        passengerPhone: phoneToQuery,
         paymentStatus: PaymentStatus.PAID,
       },
       include: {
