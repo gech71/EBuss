@@ -5,11 +5,13 @@ import prisma from '@/lib/prisma';
 import { validateRequest } from '@/lib/server/auth';
 import { getIP } from './get-ip';
 import type { Role } from '@prisma/client';
+import { JsonValue } from '@prisma/client/runtime/library';
 
 interface LogActionParams {
     userId?: string;
     actionType: string;
     description: string;
+    details?: JsonValue;
     ipAddress?: string | null;
 }
 
@@ -50,6 +52,7 @@ export async function logAction(params: LogActionParams) {
                 ipAddress: finalIpAddress,
                 actionType: params.actionType,
                 description: params.description,
+                details: params.details,
             },
         });
     } catch (error) {

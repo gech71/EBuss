@@ -86,12 +86,22 @@ export async function createOwnerAction(formData: FormData) {
                 }
             }
         });
-        await logAction({ userId: user.id, actionType: 'CREATE_OWNER', description: `Created bus owner '${name}' (${newOwner.id}).` });
+        await logAction({ 
+            userId: user.id, 
+            actionType: 'CREATE_OWNER', 
+            description: `Created bus owner '${name}'`,
+            details: { newOwner } 
+        });
         revalidatePath('/super-admin/owners');
     
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        await logAction({ userId: user.id, actionType: 'CREATE_OWNER_FAIL', description: `Failed to create owner '${name}'. Error: ${message}` });
+        await logAction({ 
+            userId: user.id, 
+            actionType: 'CREATE_OWNER_FAIL', 
+            description: `Failed to create owner '${name}'.`,
+            details: { error: message, attemptedData: validatedData.data }
+        });
         if (error instanceof Error && error.message.includes('Unique constraint failed')) {
             if(error.message.includes('BusOwner_name_key')) {
                 return { success: false, message: 'A bus owner with this name already exists.' };
@@ -133,19 +143,23 @@ export async function updateOwnerAction(formData: FormData) {
     const { id, name, bankAccountNumber, commissionTiers } = validatedData.data;
 
     try {
+        const oldOwner = await prisma.busOwner.findUnique({
+            where: { id },
+            include: { commissionTiers: true }
+        });
+
+        if (!oldOwner) {
+            throw new Error("Owner not found");
+        }
+
         await prisma.$transaction(async (tx) => {
-            // Update owner name
             await tx.busOwner.update({
                 where: { id },
                 data: { name, bankAccountNumber }
             });
-
-            // Delete existing tiers for this owner
             await tx.commissionTier.deleteMany({
                 where: { busOwnerId: id }
             });
-
-            // Create new tiers
             await tx.commissionTier.createMany({
                 data: commissionTiers.map(tier => ({
                     minSales: tier.minSales,
@@ -157,12 +171,24 @@ export async function updateOwnerAction(formData: FormData) {
             });
         });
 
-        await logAction({ userId: user.id, actionType: 'UPDATE_OWNER', description: `Updated bus owner '${name}' (${id}).` });
+        const newOwner = { id, name, bankAccountNumber, commissionTiers };
+
+        await logAction({ 
+            userId: user.id, 
+            actionType: 'UPDATE_OWNER', 
+            description: `Updated bus owner '${name}' (${id}).`,
+            details: { oldValue: oldOwner, newValue: newOwner }
+        });
         revalidatePath('/super-admin/owners');
     
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        await logAction({ userId: user.id, actionType: 'UPDATE_OWNER_FAIL', description: `Failed to update owner '${name}' (${id}). Error: ${message}` });
+        await logAction({ 
+            userId: user.id, 
+            actionType: 'UPDATE_OWNER_FAIL', 
+            description: `Failed to update owner '${name}' (${id}).`,
+            details: { error: message, attemptedData: validatedData.data }
+        });
         console.error("Error updating owner:", error);
         return { success: false, message: 'An unexpected error occurred while updating the owner.' };
     }
@@ -179,28 +205,28 @@ export async function deleteOwnerAction(ownerId: string): Promise<{ success: boo
   }
 
   try {
-    const busCount = await prisma.bus.count({
-      where: {
-        ownerId: ownerId,
-      },
+    const ownerToDelete = await prisma.busOwner.findUnique({
+        where: { id: ownerId },
+        include: { _count: { select: { buses: true, admins: true }}}
     });
 
+    if (!ownerToDelete) {
+        await logAction({ userId: user.id, actionType: 'DELETE_OWNER_FAIL', description: `Attempted to delete non-existent owner ${ownerId}.`});
+        return { success: false, message: "Owner not found."};
+    }
+    
+    const busCount = ownerToDelete._count.buses;
     if (busCount > 0) {
-      await logAction({ userId: user.id, actionType: 'DELETE_OWNER_FAIL', description: `Attempted to delete owner ${ownerId}, but they have ${busCount} buses.` });
+      await logAction({ userId: user.id, actionType: 'DELETE_OWNER_FAIL', description: `Attempted to delete owner ${ownerId}, but they have ${busCount} buses.`, details: { owner: ownerToDelete } });
       return {
         success: false,
         message: `This owner cannot be deleted because they have ${busCount} bus(es) assigned to them.`,
       };
     }
     
-    const userCount = await prisma.user.count({
-        where: {
-            busOwnerId: ownerId
-        }
-    });
-
+    const userCount = ownerToDelete._count.admins;
     if (userCount > 0) {
-       await logAction({ userId: user.id, actionType: 'DELETE_OWNER_FAIL', description: `Attempted to delete owner ${ownerId}, but they have ${userCount} users.` });
+       await logAction({ userId: user.id, actionType: 'DELETE_OWNER_FAIL', description: `Attempted to delete owner ${ownerId}, but they have ${userCount} users.`, details: { owner: ownerToDelete } });
        return {
         success: false,
         message: `This owner cannot be deleted because they have ${userCount} user(s) assigned to them.`,
@@ -213,12 +239,12 @@ export async function deleteOwnerAction(ownerId: string): Promise<{ success: boo
       },
     });
     
-    await logAction({ userId: user.id, actionType: 'DELETE_OWNER', description: `Successfully deleted owner ${ownerId}.` });
+    await logAction({ userId: user.id, actionType: 'DELETE_OWNER', description: `Successfully deleted owner ${ownerToDelete.name} (${ownerId}).`, details: { deletedOwner: ownerToDelete } });
     revalidatePath('/super-admin/owners');
     return { success: true, message: 'Owner has been deleted.' };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    await logAction({ userId: user.id, actionType: 'DELETE_OWNER_FAIL', description: `Error deleting owner ${ownerId}. Error: ${message}` });
+    await logAction({ userId: user.id, actionType: 'DELETE_OWNER_FAIL', description: `Error deleting owner ${ownerId}.`, details: { error: message } });
     console.error('Error deleting owner:', error);
     return { success: false, message: 'An unexpected error occurred.' };
   }
