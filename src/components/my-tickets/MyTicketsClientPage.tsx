@@ -109,23 +109,14 @@ function TicketCard({ booking }: { booking: EnrichedBooking }) {
 
 
 export function MyTicketsClientPage({ isMiniApp, phoneNumberFromSession }: MyTicketsClientPageProps) {
-    const [phoneNumber, setPhoneNumber] = useState(phoneNumberFromSession || '');
-    const [searchedPhone, setSearchedPhone] = useState('');
     const [allBookings, setAllBookings] = useState<EnrichedBooking[]>([]);
     const [loading, setLoading] = useState(true);
-    const [hasSearched, setHasSearched] = useState(false);
     const [filterDate, setFilterDate] = useState<Date | undefined>();
 
-    const fetchTickets = useCallback(async (phone: string) => {
-        if (!phone) {
-            setLoading(false);
-            return;
-        }
+    const fetchTickets = useCallback(async () => {
         setLoading(true);
-        setHasSearched(true);
-        setSearchedPhone(phone);
         try {
-            const response = await fetch(`/api/my-tickets`); // No longer sending phone in query
+            const response = await fetch(`/api/my-tickets`);
             if (response.ok) {
                 const data = await response.json();
                 setAllBookings(data);
@@ -142,7 +133,7 @@ export function MyTicketsClientPage({ isMiniApp, phoneNumberFromSession }: MyTic
 
     useEffect(() => {
         if (isMiniApp && phoneNumberFromSession) {
-            fetchTickets(phoneNumberFromSession);
+            fetchTickets();
         } else {
             setLoading(false);
         }
@@ -175,7 +166,7 @@ export function MyTicketsClientPage({ isMiniApp, phoneNumberFromSession }: MyTic
                 <CardDescription>View all your purchased and paid tickets here.</CardDescription>
             </CardHeader>
             <CardContent>
-                {!isMiniApp && !hasSearched && (
+                {!isMiniApp && !loading && (
                     <Alert>
                         <Smartphone className="h-4 w-4" />
                         <AlertTitle>Secure Ticket Access</AlertTitle>
@@ -185,7 +176,7 @@ export function MyTicketsClientPage({ isMiniApp, phoneNumberFromSession }: MyTic
                     </Alert>
                 )}
 
-                 {isMiniApp && hasSearched && (
+                 {isMiniApp && (
                     <div className="flex items-center gap-4 mb-6">
                         <Popover>
                             <PopoverTrigger asChild>
@@ -215,7 +206,7 @@ export function MyTicketsClientPage({ isMiniApp, phoneNumberFromSession }: MyTic
                 
                 {loading && <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}
 
-                {!loading && hasSearched && (
+                {!loading && isMiniApp && (
                      filteredBookings.length > 0 ? (
                         <Accordion type="multiple" defaultValue={sortedDates.map(date => `date-${date}`)} className="w-full">
                           {sortedDates.map(date => (
