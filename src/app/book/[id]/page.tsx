@@ -57,20 +57,11 @@ async function releaseExpiredBookings(routeId: string) {
         if (expiredBookings.length === 0) {
             return;
         }
-
-        for (const booking of expiredBookings) {
-            if (booking.route?.bus?.layoutId) {
-                const seatNumbersToRelease = booking.bookedSeats.map(bs => bs.seatNumber);
-                await tx.seat.updateMany({
-                    where: {
-                        layoutId: booking.route.bus.layoutId,
-                        seatNumber: { in: seatNumbersToRelease },
-                    },
-                    data: { status: SeatStatus.AVAILABLE },
-                });
-            }
-        }
         
+        // This transaction part is no longer needed as seat status is not a reliable source of truth
+        // for seat availability, because PENDING bookings also make seats unavailable.
+        // Instead, the client will determine availability based on OCCUPIED seats and seats in PENDING bookings.
+
         const expiredBookingIds = expiredBookings.map(b => b.id);
         await tx.booking.updateMany({
             where: { id: { in: expiredBookingIds } },
@@ -107,6 +98,16 @@ export default async function BookPage({ params }: BookPageProps) {
           tiers: true,
         },
       },
+       bookings: { // Fetch bookings to determine seat availability
+        where: {
+          status: { in: ['PENDING', 'VALID'] }
+        },
+        include: {
+          bookedSeats: {
+            select: { seatNumber: true }
+          }
+        }
+      }
     },
   });
 
@@ -182,3 +183,5 @@ export default async function BookPage({ params }: BookPageProps) {
     </div>
   );
 }
+
+    

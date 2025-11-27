@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
-import type { Bus, Seat as SeatType, SeatStatus } from "@prisma/client";
+import { useState, useEffect, useMemo } from 'react';
+import type { Bus, Seat as SeatType, SeatStatus, Booking, BookingStatus } from "@prisma/client";
 import { cn } from '@/lib/utils';
 import { Armchair, CarFront } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -14,10 +14,11 @@ type ClientSeat = SeatType & { status: SeatStatus | 'SELECTED' };
 interface SeatProps {
   seat: ClientSeat;
   onSelect: (seatNumber: string) => void;
+  isSelectable: boolean;
 }
 
-function Seat({ seat, onSelect }: SeatProps) {
-  const isSelectable = seat.type === 'SEAT' && (seat.status === 'AVAILABLE' || seat.status === 'SELECTED');
+function Seat({ seat, onSelect, isSelectable }: SeatProps) {
+  const finalIsSelectable = isSelectable && seat.type === 'SEAT' && seat.status !== 'OCCUPIED';
 
   const seatClasses = cn(
     'flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-md font-semibold text-xs transition-all duration-200',
@@ -26,13 +27,14 @@ function Seat({ seat, onSelect }: SeatProps) {
     seat.status === 'OCCUPIED' && 'bg-muted border-muted-foreground/30 text-muted-foreground cursor-not-allowed opacity-70',
     seat.status === 'SELECTED' && 'bg-accent border-accent-foreground text-accent-foreground cursor-pointer shadow-lg scale-110',
     seat.type === 'AISLE' && 'bg-transparent',
-    seat.type === 'DRIVER' && 'bg-muted'
+    seat.type === 'DRIVER' && 'bg-muted',
+    !finalIsSelectable && seat.status !== 'SELECTED' && 'cursor-not-allowed opacity-70'
   );
 
   return (
     <div
       className={seatClasses}
-      onClick={() => isSelectable && onSelect(seat.seatNumber)}
+      onClick={() => finalIsSelectable && onSelect(seat.seatNumber)}
       title={seat.type === 'SEAT' ? `Seat ${seat.seatNumber} - ${seat.status}` : ''}
     >
       {seat.type === 'SEAT' && <Armchair className="w-4 h-4 md:w-5 md:h-5" />}
@@ -44,6 +46,7 @@ function Seat({ seat, onSelect }: SeatProps) {
 interface SeatMapProps {
   bus: Bus & { layout: { seats: SeatType[], cols: number } };
   onSelectionChange: (selectedSeats: SeatType[]) => void;
+  bookings?: (Booking & { status: BookingStatus; bookedSeats: { seatNumber: string }[] })[];
 }
 
 const sortSeats = (seats: ClientSeat[]): ClientSeat[] => {
@@ -62,12 +65,26 @@ const sortSeats = (seats: ClientSeat[]): ClientSeat[] => {
 };
 
 
-export function SeatMap({ bus, onSelectionChange }: SeatMapProps) {
+export function SeatMap({ bus, onSelectionChange, bookings = [] }: SeatMapProps) {
   const { toast } = useToast();
+
+  const getInitialSeats = () => {
+    const pendingSeatNumbers = new Set(
+        bookings
+            .filter(b => b.status === 'PENDING')
+            .flatMap(b => b.bookedSeats.map(bs => bs.seatNumber))
+    );
+
+    return sortSeats(bus.layout.seats.map(s => ({
+        ...s,
+        status: s.status === 'OCCUPIED' || pendingSeatNumbers.has(s.seatNumber)
+                ? 'OCCUPIED'
+                : 'AVAILABLE'
+    })));
+  }
+
   // Initialize internal state with the bus's seats
-  const [seats, setSeats] = useState<ClientSeat[]>(() => 
-    sortSeats(bus.layout.seats.map(s => ({ ...s })))
-  );
+  const [seats, setSeats] = useState<ClientSeat[]>(getInitialSeats);
 
   useEffect(() => {
     const selected = seats.filter(s => s.status === 'SELECTED');
@@ -106,7 +123,12 @@ export function SeatMap({ bus, onSelectionChange }: SeatMapProps) {
                 style={{ gridTemplateColumns: `repeat(${bus.layout.cols}, minmax(0, 1fr))` }}
             >
                 {seats.map(seat => (
-                <Seat key={seat.id} seat={seat} onSelect={handleSelectSeat} />
+                <Seat 
+                    key={seat.id} 
+                    seat={seat} 
+                    onSelect={handleSelectSeat}
+                    isSelectable={seat.status !== 'OCCUPIED'}
+                />
                 ))}
             </div>
         </ScrollArea>
@@ -119,3 +141,5 @@ export function SeatMap({ bus, onSelectionChange }: SeatMapProps) {
     </div>
   );
 }
+
+    

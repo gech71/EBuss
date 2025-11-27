@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import type { Route, Bus, SeatLayout, Seat, Discount, DiscountTier, Location, DiscountType, TicketType, DiscountValueType } from "@prisma/client";
+import type { Route, Bus, SeatLayout, Seat, Discount, DiscountTier, Location, DiscountType, TicketType, DiscountValueType, Booking, BookingStatus } from "@prisma/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -32,6 +32,7 @@ type RouteWithDetails = Route & {
     discount: EnrichedDiscount | null;
     roundTripDiscountValue: number | null;
     roundTripDiscountType: DiscountValueType | null;
+    bookings: (Booking & { status: BookingStatus })[];
 };
 
 type AlternativeRoute = Route & { bus: Bus };
@@ -112,7 +113,15 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
   }, [phoneNumber])
 
   const areSeatsAvailable = useMemo(() => {
-    return selectedRoute.bus.layout.seats.some(seat => seat.status === 'AVAILABLE');
+    const pendingSeatNumbers = new Set(
+        selectedRoute.bookings
+            .filter(b => b.status === 'PENDING')
+            .flatMap(b => (b as any).bookedSeats.map((bs: { seatNumber: string }) => bs.seatNumber))
+    );
+
+    return selectedRoute.bus.layout.seats.some(
+        seat => seat.status === 'AVAILABLE' && !pendingSeatNumbers.has(seat.seatNumber)
+    );
   }, [selectedRoute]);
   
   const areReturnSeatsAvailable = useMemo(() => {
@@ -457,6 +466,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                   key={selectedRoute.id} 
                   bus={selectedRoute.bus} 
                   onSelectionChange={setSelectedSeats} 
+                  bookings={selectedRoute.bookings}
                 />
               ) : (
                 <Alert variant="destructive">
@@ -614,3 +624,5 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
     </>
   );
 }
+
+    
