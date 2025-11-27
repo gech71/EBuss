@@ -26,18 +26,28 @@ const createBookingSchema = z.object({
 
 async function createSingleBooking(tx: any, trip: z.infer<typeof tripSchema>, passengerName: string, passengerPhone: string, totalPriceForTrip: number, commonExpiresAt: Date, isReturn: boolean = false) {
     const route = await tx.route.findUnique({
-        where: { id: trip.routeId },
-        include: { bus: { include: { layout: { include: { seats: true } } } } }
+        where: { id: trip.routeId }
     });
 
     if (!route) throw new Error(`Route not found for trip: ${trip.routeId}`);
 
-    const availableSeats = route.bus.layout.seats.filter(seat =>
-        trip.selectedSeatNumbers.includes(seat.seatNumber) && seat.status === 'AVAILABLE'
+    // Server-side check for seat availability within the transaction
+    const existingBookingsForRoute = await tx.booking.findMany({
+        where: {
+            routeId: trip.routeId,
+            status: { in: ['VALID', 'PENDING'] }
+        },
+        include: { bookedSeats: { select: { seatNumber: true } } }
+    });
+    
+    const occupiedSeatNumbers = new Set(existingBookingsForRoute.flatMap(b => b.bookedSeats.map(s => s.seatNumber)));
+    
+    const unavailableSelectedSeats = trip.selectedSeatNumbers.filter(
+        seatNum => occupiedSeatNumbers.has(seatNum)
     );
-      
-    if (availableSeats.length !== trip.selectedSeatNumbers.length) {
-        throw new Error(`One or more seats for the ${isReturn ? 'return' : 'outbound'} trip are no longer available.`);
+
+    if (unavailableSelectedSeats.length > 0) {
+        throw new Error(`One or more seats for the ${isReturn ? 'return' : 'outbound'} trip are no longer available: ${unavailableSelectedSeats.join(', ')}.`);
     }
 
     const booking = await tx.booking.create({
@@ -55,11 +65,6 @@ async function createSingleBooking(tx: any, trip: z.infer<typeof tripSchema>, pa
         },
     });
 
-    await tx.seat.updateMany({
-        where: { id: { in: availableSeats.map(s => s.id) } },
-        data: { status: 'OCCUPIED' }
-    });
-    
     await logAction({ actionType: 'CREATE_BOOKING', description: `Booking ${booking.id} created for passenger ${passengerName} on route ${trip.routeId}. Seats: ${trip.selectedSeatNumbers.join(', ')}`, details: { booking } });
     return booking;
 }
