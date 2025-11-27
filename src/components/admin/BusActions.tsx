@@ -13,7 +13,6 @@ import type { Bus, SeatLayout, Seat as PrismaSeat } from '@prisma/client';
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "../ui/scroll-area";
 import { useCsrf } from "@/hooks/useCsrf";
-import { Armchair } from "lucide-react";
 import Link from "next/link";
 
 
@@ -23,17 +22,15 @@ interface SeatProps {
 
 function Seat({ seat }: SeatProps) {
   const seatClasses = cn(
-    'flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-md font-semibold text-xs transition-all',
-    seat.type === 'SEAT' && 'border-2',
-    seat.status === 'AVAILABLE' && 'bg-green-100 border-green-400 text-green-800 dark:bg-green-900/50 dark:border-green-800 dark:text-green-300',
-    seat.status === 'OCCUPIED' && 'bg-muted border-muted-foreground/30 text-muted-foreground',
+    'flex items-center justify-center w-10 h-10 rounded-md font-semibold text-xs transition-all',
+    seat.type === 'SEAT' && 'border-2 bg-card',
     seat.type === 'AISLE' && 'bg-transparent',
   );
 
   return (
     <div
       className={seatClasses}
-      title={seat.type === 'SEAT' ? `Seat ${seat.seatNumber} - ${seat.status}` : ''}
+      title={seat.type === 'SEAT' ? `Seat ${seat.seatNumber}` : 'Aisle'}
     >
       {seat.type === 'SEAT' ? seat.seatNumber : ''}
     </div>
@@ -160,10 +157,6 @@ export function BusActions({ bus }: BusActionsProps) {
                   ))}
                 </div>
               </ScrollArea>
-              <div className="flex justify-center space-x-4 mt-4 text-sm">
-                  <div className="flex items-center"><Armchair className="w-4 h-4 mr-2 text-green-600 dark:text-green-400"/>Available</div>
-                  <div className="flex items-center"><Armchair className="w-4 h-4 mr-2 text-muted-foreground"/>Occupied</div>
-              </div>
             </div>
           ) : (
             <p className="text-center text-muted-foreground py-8">No layout information available for this bus.</p>
