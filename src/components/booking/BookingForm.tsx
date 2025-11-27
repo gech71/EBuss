@@ -316,13 +316,11 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
         <input type="hidden" name="csrfToken" value={csrfToken || ''} />
         <Card>
           <CardHeader>
-            <div className="flex items-start justify-between">
-                <div>
-                    <CardTitle className="font-headline text-3xl">Confirm Your Booking</CardTitle>
-                    <CardDescription>Review your trip details and select your seats.</CardDescription>
-                </div>
+            <div className="flex items-center justify-between">
+                <CardTitle className="font-headline text-3xl">Confirm Your Booking</CardTitle>
                 <BackButton />
             </div>
+            <CardDescription>Review your trip details and select your seats.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-8">
             <div className="p-4 border rounded-lg bg-muted/30">
