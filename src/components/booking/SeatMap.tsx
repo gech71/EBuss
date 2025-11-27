@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '../ui/scroll-area';
 
 // Define a client-side seat type that includes the 'SELECTED' status
-type ClientSeat = SeatType & { status: SeatStatus | 'SELECTED' };
+type ClientSeat = SeatType & { status: SeatStatus | 'SELECTED' | 'OCCUPIED' };
 
 interface SeatProps {
   seat: ClientSeat;
@@ -69,15 +69,15 @@ export function SeatMap({ bus, onSelectionChange, bookings = [] }: SeatMapProps)
   const { toast } = useToast();
 
   const getInitialSeats = () => {
-    const pendingSeatNumbers = new Set(
+    const occupiedSeatNumbers = new Set(
         bookings
-            .filter(b => b.status === 'PENDING')
+            .filter(b => b.status === 'PENDING' || b.status === 'VALID')
             .flatMap(b => b.bookedSeats.map(bs => bs.seatNumber))
     );
 
     return sortSeats(bus.layout.seats.map(s => ({
         ...s,
-        status: s.status === 'OCCUPIED' || pendingSeatNumbers.has(s.seatNumber)
+        status: occupiedSeatNumbers.has(s.seatNumber)
                 ? 'OCCUPIED'
                 : 'AVAILABLE'
     })));
@@ -141,5 +141,7 @@ export function SeatMap({ bus, onSelectionChange, bookings = [] }: SeatMapProps)
     </div>
   );
 }
+
+    
 
     

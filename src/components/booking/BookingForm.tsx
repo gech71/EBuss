@@ -32,7 +32,7 @@ type RouteWithDetails = Route & {
     discount: EnrichedDiscount | null;
     roundTripDiscountValue: number | null;
     roundTripDiscountType: DiscountValueType | null;
-    bookings: (Booking & { status: BookingStatus })[];
+    bookings: (Booking & { status: BookingStatus; bookedSeats: { seatNumber: string }[] })[];
 };
 
 type AlternativeRoute = Route & { bus: Bus };
@@ -113,14 +113,14 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
   }, [phoneNumber])
 
   const areSeatsAvailable = useMemo(() => {
-    const pendingSeatNumbers = new Set(
+    const occupiedSeatNumbers = new Set(
         selectedRoute.bookings
-            .filter(b => b.status === 'PENDING')
-            .flatMap(b => (b as any).bookedSeats.map((bs: { seatNumber: string }) => bs.seatNumber))
+            .filter(b => b.status === 'PENDING' || b.status === 'VALID')
+            .flatMap(b => b.bookedSeats.map((bs: { seatNumber: string }) => bs.seatNumber))
     );
 
     return selectedRoute.bus.layout.seats.some(
-        seat => seat.status === 'AVAILABLE' && !pendingSeatNumbers.has(seat.seatNumber)
+        seat => seat.type === 'SEAT' && !occupiedSeatNumbers.has(seat.seatNumber)
     );
   }, [selectedRoute]);
   
@@ -624,5 +624,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
     </>
   );
 }
+
+    
 
     
