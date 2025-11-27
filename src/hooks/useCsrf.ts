@@ -12,6 +12,8 @@ export function useCsrf() {
   useEffect(() => {
     async function fetchCsrfToken() {
       try {
+        // The CSRF token is now passed via a header from the middleware,
+        // so we can fetch it from a dedicated API route that reads the header.
         const response = await fetch('/api/csrf', { cache: 'no-store' });
         if (!response.ok) {
             throw new Error('Failed to fetch CSRF token');

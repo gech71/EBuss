@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 
 export async function GET(request: Request) {
-  const headerList = await headers();
+  const headerList = headers();
   const token = headerList.get('X-CSRF-Token');
 
   if (!token) {
