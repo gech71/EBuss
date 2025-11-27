@@ -32,7 +32,7 @@ function Seat({ seat }: SeatProps) {
       className={seatClasses}
       title={seat.type === 'SEAT' ? `Seat ${seat.seatNumber}` : 'Aisle'}
     >
-      {seat.type === 'SEAT' ? seat.seatNumber : ''}
+      {seat.type === 'SEAT' ? <Armchair className="w-5 h-5" /> : ''}
     </div>
   );
 }
@@ -157,6 +157,10 @@ export function BusActions({ bus }: BusActionsProps) {
                   ))}
                 </div>
               </ScrollArea>
+               <div className="flex justify-center flex-wrap gap-x-4 gap-y-2 mt-4 text-sm">
+                  <div className="flex items-center gap-2"><div className="w-8 h-8 rounded-md border-2 bg-card flex items-center justify-center"><Armchair className="w-5 h-5" /></div> Seat</div>
+                  <div className="flex items-center gap-2"><div className="w-8 h-8 rounded-md" /> Aisle</div>
+              </div>
             </div>
           ) : (
             <p className="text-center text-muted-foreground py-8">No layout information available for this bus.</p>
