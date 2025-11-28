@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
-import type { Bus, Seat as SeatType, SeatStatus, Booking, BookingStatus } from "@prisma/client";
+import type { Bus, Seat as SeatType, SeatStatus, Ticket, TicketStatus } from "@prisma/client";
 import { cn } from '@/lib/utils';
 import { Armchair, CarFront } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -46,7 +46,7 @@ function Seat({ seat, onSelect, isSelectable }: SeatProps) {
 interface SeatMapProps {
   bus: Bus & { layout: { seats: SeatType[], cols: number } };
   onSelectionChange: (selectedSeats: SeatType[]) => void;
-  bookings?: (Booking & { status: BookingStatus; bookedSeats: { seatNumber: string }[] })[];
+  tickets?: { seatNumber: string }[];
 }
 
 const sortSeats = (seats: ClientSeat[]): ClientSeat[] => {
@@ -65,14 +65,12 @@ const sortSeats = (seats: ClientSeat[]): ClientSeat[] => {
 };
 
 
-export function SeatMap({ bus, onSelectionChange, bookings = [] }: SeatMapProps) {
+export function SeatMap({ bus, onSelectionChange, tickets = [] }: SeatMapProps) {
   const { toast } = useToast();
 
   const getInitialSeats = () => {
     const occupiedSeatNumbers = new Set(
-        bookings
-            .filter(b => b.status === 'PENDING' || b.status === 'VALID')
-            .flatMap(b => b.bookedSeats.map(bs => bs.seatNumber))
+        tickets.map(t => t.seatNumber)
     );
 
     return sortSeats(bus.layout.seats.map(s => ({
@@ -141,7 +139,3 @@ export function SeatMap({ bus, onSelectionChange, bookings = [] }: SeatMapProps)
     </div>
   );
 }
-
-    
-
-    

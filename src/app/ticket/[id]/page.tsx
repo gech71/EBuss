@@ -29,18 +29,21 @@ async function getIsMiniApp() {
 export default async function TicketPage({ params }: TicketPageProps) {
   const { user } = await validateRequest();
   const isMiniApp = await getIsMiniApp();
-  const ticketId = params.id;
+  const bookingId = params.id; // This is now a booking ID from the URL
 
   const booking = await prisma.booking.findUnique({
-    where: { id: ticketId },
+    where: { id: bookingId },
     include: {
-      bookedSeats: true,
-      route: {
-        include: {
-          origin: true,
-          destination: true,
-          bus: true,
-        },
+      tickets: {
+         include: {
+            route: {
+                include: {
+                    origin: true,
+                    destination: true,
+                    bus: true
+                }
+            }
+         }
       },
       payments: {
         orderBy: {
@@ -66,11 +69,15 @@ export default async function TicketPage({ params }: TicketPageProps) {
      )
   }
 
+  // Since we have multiple tickets, we'll display the first one for now.
+  // A better UI would let the user switch between their tickets for this booking.
+  const ticketToShow = booking.tickets[0];
+
   return (
     <div className="flex flex-col min-h-screen bg-muted/30">
       <Header user={user} isMiniApp={isMiniApp} />
       <main className="flex-1 container mx-auto py-8 px-4 flex items-center justify-center">
-        <TicketDisplay booking={booking} />
+        <TicketDisplay booking={booking} ticket={ticketToShow} />
       </main>
     </div>
   );

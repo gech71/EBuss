@@ -3,50 +3,53 @@
 "use client";
 
 import { useRef } from "react";
-import type { Booking, Route, Bus, Location, BookedSeat, Payment } from "@prisma/client";
+import type { Booking, Route, Bus, Location, Ticket } from "@prisma/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { ArrowRight, Bus as BusIcon, Clock, MapPin, User, Ticket as TicketIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
 
-type BookingWithDetails = Booking & {
-  bookedSeats: BookedSeat[];
-  route: (Route & {
+type EnrichedTicket = Ticket & {
+  route: Route & {
     origin: Location;
     destination: Location;
     bus: Bus;
-  }) | null; 
-  payments: Payment[];
+  };
 };
 
-interface TicketDisplayProps {
-  booking: BookingWithDetails | null;
+type BookingWithTickets = Booking & {
+    tickets: EnrichedTicket[];
 }
 
-export function TicketDisplay({ booking }: TicketDisplayProps) {
+
+interface TicketDisplayProps {
+  booking: BookingWithTickets;
+  ticket: EnrichedTicket;
+}
+
+export function TicketDisplay({ booking, ticket }: TicketDisplayProps) {
   const ticketRef = useRef<HTMLDivElement>(null);
 
-  if (!booking || !booking.route) {
+  if (!booking || !ticket || !ticket.route) {
     return (
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Ticket Not Found</CardTitle>
         </CardHeader>
         <CardContent>
-          <p>The requested ticket could not be found. The associated route may no longer exist, or the booking was not completed.</p>
+          <p>The requested ticket could not be found.</p>
         </CardContent>
       </Card>
     );
   }
   
-  const { route } = booking;
+  const { route } = ticket;
   const { bus } = route;
 
-  const qrCodePayload = JSON.stringify({ ticketId: booking.id });
+  const qrCodePayload = JSON.stringify({ ticketId: ticket.id });
   const base64Payload = btoa(qrCodePayload);
   const qrCodeData = encodeURIComponent(base64Payload);
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${qrCodeData}&bgcolor=F0F8FF`;
-  const seatNumbers = booking.bookedSeats.map(s => s.seatNumber).join(', ');
   
   return (
     <div className="w-full max-w-md">
@@ -85,8 +88,8 @@ export function TicketDisplay({ booking }: TicketDisplayProps) {
                         <p className="font-semibold flex items-center gap-2"><User className="h-4 w-4"/>{booking.passengerName}</p>
                     </div>
                     <div className="space-y-1">
-                        <p className="text-muted-foreground">Seat(s)</p>
-                        <p className="font-semibold flex items-center gap-2"><TicketIcon className="h-4 w-4"/>{seatNumbers}</p>
+                        <p className="text-muted-foreground">Seat</p>
+                        <p className="font-semibold flex items-center gap-2"><TicketIcon className="h-4 w-4"/>{ticket.seatNumber}</p>
                     </div>
                     <div className="space-y-1">
                         <p className="text-muted-foreground">Departure</p>
@@ -105,5 +108,3 @@ export function TicketDisplay({ booking }: TicketDisplayProps) {
     </div>
   );
 }
-
-    

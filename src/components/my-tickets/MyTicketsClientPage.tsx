@@ -9,8 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Image from 'next/image';
-import { Loader2, Search, Ticket, ArrowRight, Bus as BusIcon, Clock, Building, CalendarIcon, Maximize, Smartphone } from 'lucide-react';
-import type { Booking, Route, Bus, Location, BusOwner, BookedSeat } from '@prisma/client';
+import { Loader2, Search, Ticket, ArrowRight, Bus as BusIcon, Clock, Building, CalendarIcon, Maximize, Smartphone, Users } from 'lucide-react';
+import type { Booking, Route, Bus, Location, BusOwner, Ticket as PrismaTicket } from '@prisma/client';
 import { format, isSameDay } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -26,7 +26,7 @@ type EnrichedBooking = Booking & {
     destination: Location;
     bus: Bus & { owner: BusOwner };
   };
-  bookedSeats: BookedSeat[];
+  tickets: PrismaTicket[];
 };
 
 interface MyTicketsClientPageProps {
@@ -34,51 +34,39 @@ interface MyTicketsClientPageProps {
     phoneNumberFromSession?: string;
 }
 
-function TicketCard({ booking }: { booking: EnrichedBooking }) {
+function TicketCard({ ticket, booking }: { ticket: PrismaTicket, booking: EnrichedBooking }) {
     const { route } = booking;
-    const qrCodePayload = JSON.stringify({ ticketId: booking.id });
+    const qrCodePayload = JSON.stringify({ ticketId: ticket.id });
     const base64Payload = btoa(qrCodePayload);
     const qrCodeData = encodeURIComponent(base64Payload);
 
     return (
       <Dialog>
-        <Card className="bg-background overflow-hidden">
-            <div className="flex flex-col md:flex-row">
+        <Card className="bg-background overflow-hidden border-l-4 border-l-primary/50">
+            <div className="flex flex-col sm:flex-row">
                 <div className="flex-grow p-4">
                     <div className="flex justify-between items-start">
-                        <div>
-                             <CardTitle className="text-xl flex flex-col sm:flex-row sm:items-center gap-x-2 gap-y-1">
-                                <span>{route.origin.name}</span>
-                                <ArrowRight className="h-5 w-5 text-muted-foreground hidden sm:inline" />
-                                <span>{route.destination.name}</span>
-                            </CardTitle>
-                            <CardDescription className="flex items-center gap-2 mt-1">
-                                <Building className="h-4 w-4" /> {route.bus.owner.name}
-                            </CardDescription>
-                        </div>
-                        <Badge variant="secondary">{booking.status}</Badge>
+                        <div className="font-semibold">Seat: {ticket.seatNumber}</div>
+                        <Badge variant={ticket.status === 'VALID' ? 'default' : 'secondary'} className={cn(ticket.status === 'USED' && 'bg-gray-500')}>{ticket.status}</Badge>
                     </div>
-                     <Separator className="my-3" />
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 text-sm">
-                        <div className="flex items-center gap-2 font-medium"><span>{booking.passengerName}</span></div>
-                        <div className="flex items-center gap-2"><Ticket className="h-4 w-4 text-primary" /> <span>Seats: {booking.bookedSeats.map(s => s.seatNumber).join(', ')}</span></div>
-                        <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-primary" /> <span>Depart: {format(new Date(route.departureTime), 'Pp')}</span></div>
-                        <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-primary" /> <span>Arrive: {format(new Date(route.arrivalTime), 'Pp')}</span></div>
-                        <div className="flex items-center gap-2 sm:col-span-2"><BusIcon className="h-4 w-4 text-primary" /> <span>{route.bus.name}</span></div>
+                     <Separator className="my-2" />
+                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2"><Clock className="h-4 w-4" /> <span>Depart: {format(new Date(route.departureTime), 'p')}</span></div>
+                        <div className="flex items-center gap-2"><Clock className="h-4 w-4" /> <span>Arrive: {format(new Date(route.arrivalTime), 'p')}</span></div>
+                        <div className="flex items-center gap-2 col-span-2"><BusIcon className="h-4 w-4" /> <span>{route.bus.name}</span></div>
                     </div>
                 </div>
                  <DialogTrigger asChild>
-                    <button className="bg-muted/40 p-4 flex flex-col items-center justify-center border-t md:border-t-0 md:border-l relative group">
+                    <button className="bg-muted/40 p-4 flex flex-col items-center justify-center border-t sm:border-t-0 sm:border-l relative group">
                         <Image 
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${qrCodeData}&bgcolor=F0F8FF`} 
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=96x96&data=${qrCodeData}&bgcolor=F9FAFB`} 
                             alt="Ticket QR Code" 
-                            width={128} 
-                            height={128}
+                            width={96} 
+                            height={96}
                             className="rounded-md"
                             data-ai-hint="qr code"
                         />
-                        <p className="text-xs text-muted-foreground mt-2">Scan at boarding</p>
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                             <Maximize className="h-8 w-8 text-white" />
                         </div>
                     </button>
@@ -87,9 +75,9 @@ function TicketCard({ booking }: { booking: EnrichedBooking }) {
         </Card>
         <DialogContent className="max-w-xs sm:max-w-sm">
             <DialogHeader>
-                <DialogTitle>Scan QR Code</DialogTitle>
+                <DialogTitle>Scan QR Code for Seat {ticket.seatNumber}</DialogTitle>
                 <DialogDescription>
-                    Present this QR code during boarding.
+                    Present this QR code during boarding. This is valid for one person.
                 </DialogDescription>
             </DialogHeader>
             <div className="flex items-center justify-center p-4">
@@ -163,7 +151,7 @@ export function MyTicketsClientPage({ isMiniApp, phoneNumberFromSession }: MyTic
         <Card className="max-w-4xl mx-auto">
             <CardHeader>
                 <CardTitle className="font-headline text-3xl">My Tickets</CardTitle>
-                <CardDescription>View all your purchased and paid tickets here.</CardDescription>
+                <CardDescription>View all your purchased and paid tickets here. Each seat has its own scannable ticket.</CardDescription>
             </CardHeader>
             <CardContent>
                 {!isMiniApp && !loading && (
@@ -211,12 +199,31 @@ export function MyTicketsClientPage({ isMiniApp, phoneNumberFromSession }: MyTic
                         <Accordion type="multiple" defaultValue={sortedDates.map(date => `date-${date}`)} className="w-full">
                           {sortedDates.map(date => (
                             <AccordionItem key={date} value={`date-${date}`}>
-                              <AccordionTrigger className="font-semibold text-lg">
-                                Trips on {format(new Date(date), "PPP")}
+                              <AccordionTrigger className="font-semibold text-lg hover:no-underline">
+                                  <div>
+                                      Trips on {format(new Date(date), "PPP")}
+                                      <p className="text-sm text-muted-foreground font-normal">
+                                          {groupedBookings[date].length} booking(s)
+                                      </p>
+                                  </div>
                               </AccordionTrigger>
                               <AccordionContent className="space-y-4 pt-2">
                                 {groupedBookings[date].map(booking => (
-                                  <TicketCard key={booking.id} booking={booking} />
+                                    <div key={booking.id} className="p-4 border rounded-lg">
+                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3">
+                                            <div className="flex items-center gap-2 font-semibold">
+                                                <Users className="h-4 w-4 text-primary" />
+                                                Passenger: {booking.passengerName}
+                                            </div>
+                                            <div className="text-sm text-muted-foreground">Booking ID: {booking.id.substring(0, 8)}...</div>
+                                        </div>
+                                        <div className="font-bold text-lg mb-2">{booking.route.origin.name} <ArrowRight className="inline h-5 w-5 text-muted-foreground" /> {booking.route.destination.name}</div>
+                                        <div className="space-y-3">
+                                            {booking.tickets.map(ticket => (
+                                                <TicketCard key={ticket.id} ticket={ticket} booking={booking} />
+                                            ))}
+                                        </div>
+                                    </div>
                                 ))}
                               </AccordionContent>
                             </AccordionItem>

@@ -9,11 +9,11 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card } from '../ui/card';
 import { useToast } from '@/hooks/use-toast';
 import jsQR from "jsqr";
-import type { Booking, Route, Bus, Location, BookedSeat } from "@prisma/client";
+import type { Ticket, Route, Bus, Location, Booking } from "@prisma/client";
 import { cn } from "@/lib/utils";
 
 type ScanStatus = "idle" | "scanning" | "success" | "error";
-type ScannedData = Booking & { route: Route & { origin: Location, destination: Location }, bookedSeats: BookedSeat[] };
+type ScannedData = Ticket & { route: Route & { origin: Location, destination: Location }, booking: Booking };
 
 export function QRScanner() {
   const { toast } = useToast();
@@ -62,9 +62,9 @@ export function QRScanner() {
         const result = await response.json();
         console.log("API Response:", { status: response.status, body: result });
 
-        if (response.ok && result.booking) {
+        if (response.ok && result.ticket) {
             setScanStatus("success");
-            setScannedData(result.booking);
+            setScannedData(result.ticket);
         } else {
             console.error("Scan error from API:", result.message);
             setScanStatus("error");
@@ -191,9 +191,9 @@ export function QRScanner() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="text-sm space-y-2">
-            <p><strong>Passenger:</strong> {scannedData.passengerName}</p>
+            <p><strong>Passenger:</strong> {scannedData.booking.passengerName}</p>
             <p><strong>Route:</strong> {scannedData.route.origin.name} to {scannedData.route.destination.name}</p>
-            <p><strong>Seat(s):</strong> {scannedData.bookedSeats.map(s => s.seatNumber).join(', ')}</p>
+            <p><strong>Seat:</strong> {scannedData.seatNumber}</p>
           </div>
         </>
       );

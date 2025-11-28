@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import type { Route, Bus, SeatLayout, Seat, Discount, DiscountTier, Location, DiscountType, TicketType, DiscountValueType, Booking, BookingStatus } from "@prisma/client";
+import type { Route, Bus, SeatLayout, Seat, Discount, DiscountTier, Location, DiscountType, TicketType, DiscountValueType, Ticket, TicketStatus } from "@prisma/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -32,7 +32,7 @@ type RouteWithDetails = Route & {
     discount: EnrichedDiscount | null;
     roundTripDiscountValue: number | null;
     roundTripDiscountType: DiscountValueType | null;
-    bookings: (Booking & { status: BookingStatus; bookedSeats: { seatNumber: string }[] })[];
+    tickets: { seatNumber: string }[];
 };
 
 type AlternativeRoute = Route & { bus: Bus };
@@ -114,9 +114,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
 
   const areSeatsAvailable = useMemo(() => {
     const occupiedSeatNumbers = new Set(
-        selectedRoute.bookings
-            .filter(b => b.status === 'PENDING' || b.status === 'VALID')
-            .flatMap(b => b.bookedSeats.map((bs: { seatNumber: string }) => bs.seatNumber))
+        selectedRoute.tickets.map((t: { seatNumber: string }) => t.seatNumber)
     );
 
     return selectedRoute.bus.layout.seats.some(
@@ -126,6 +124,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
   
   const areReturnSeatsAvailable = useMemo(() => {
     if (!selectedReturnRoute) return false;
+    // This needs to be improved if return routes also pass their occupied tickets
     return selectedReturnRoute.bus.layout.seats.some(seat => seat.status === 'AVAILABLE');
   }, [selectedReturnRoute]);
 
@@ -139,7 +138,6 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
       setNoReturnTripsFound(false);
 
       try {
-          // Format the date in UTC to send to the API
           const dateInUtc = formatInTimeZone(date, 'UTC', 'yyyy-MM-dd');
           const response = await fetch(`/api/routes/search?originId=${selectedRoute.destinationId}&destinationId=${selectedRoute.originId}&date=${dateInUtc}`);
           const data = await response.json();
@@ -181,7 +179,6 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                              now >= new Date(discount.startDate) && 
                              now <= new Date(discount.endDate);
 
-    // Apply general discount
     if (isDiscountActive && ticketCountForDiscount > 0) {
         let generalDiscountAmount = 0;
         if (discount.type === 'DATE_BASED' && discount.percentage) {
@@ -200,7 +197,6 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
         totalDiscountAmount += generalDiscountAmount;
     }
     
-    // Apply round trip discount
     if (isRoundTrip && selectedReturnRoute && selectedRoute.roundTripDiscountValue) {
         const roundTripDiscountValue = selectedRoute.roundTripDiscountValue;
         let roundTripDiscountAmount = 0;
@@ -466,7 +462,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                   key={selectedRoute.id} 
                   bus={selectedRoute.bus} 
                   onSelectionChange={setSelectedSeats} 
-                  bookings={selectedRoute.bookings}
+                  tickets={selectedRoute.tickets}
                 />
               ) : (
                 <Alert variant="destructive">
@@ -487,6 +483,7 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                             key={selectedReturnRoute.id} 
                             bus={selectedReturnRoute.bus} 
                             onSelectionChange={setSelectedReturnSeats} 
+                            tickets={[]}
                         />
                     ) : (
                         <Alert variant="destructive">
@@ -624,7 +621,3 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
     </>
   );
 }
-
-    
-
-    

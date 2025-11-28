@@ -7,7 +7,7 @@ import prisma from "@/lib/prisma";
 export default async function SuperAdminDashboard() {
   const bookingsData = await prisma.booking.findMany({
     include: {
-      bookedSeats: true,
+      tickets: true,
     },
     orderBy: {
       bookingTime: "desc",

@@ -13,13 +13,13 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
-import type { Booking, Route, Bus, Location } from "@prisma/client";
+import type { Booking, Route, Bus, Location, Ticket as PrismaTicket } from "@prisma/client";
 import { ScrollArea } from "../ui/scroll-area";
 
 type SanitizedRoute = Route & { price: number; origin: Location, destination: Location };
 
 interface AnalyticsProps {
-    bookings: (Booking & { bookedSeats: { seatNumber: string }[] })[];
+    bookings: (Booking & { tickets: PrismaTicket[] })[];
     routes: SanitizedRoute[];
     buses: Bus[];
 }
@@ -98,7 +98,7 @@ export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
                 };
             }
 
-            stats[route.id].ticketsSold += booking.bookedSeats.length;
+            stats[route.id].ticketsSold += booking.tickets.length;
             stats[route.id].revenue += Number(booking.totalPrice);
         });
 

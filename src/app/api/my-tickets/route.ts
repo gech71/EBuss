@@ -31,10 +31,7 @@ export async function GET(request: NextRequest) {
 
     let phoneToQuery: string | null = sessionPhoneNumber;
 
-    // If there's no authenticated session, we can't safely look up tickets.
-    // We will not allow unauthenticated lookups from query params.
     if (!phoneToQuery) {
-        // Return an empty array to prevent enumeration attacks and data leakage.
         return NextResponse.json([], { status: 200 });
     }
 
@@ -44,7 +41,7 @@ export async function GET(request: NextRequest) {
         paymentStatus: PaymentStatus.PAID,
       },
       include: {
-        bookedSeats: true,
+        tickets: true,
         route: {
           include: {
             origin: true,
@@ -58,9 +55,7 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: {
-        route: {
-          departureTime: 'desc',
-        },
+        bookingTime: 'desc',
       },
     });
 

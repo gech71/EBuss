@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, Ticket } from "lucide-react";
 import { Badge } from "../ui/badge";
-import type { Booking, Route, Location } from "@prisma/client";
+import type { Booking, Route, Location, Ticket as PrismaTicket } from "@prisma/client";
 import { ScrollArea } from "../ui/scroll-area";
 
 interface SanitizedRoute {
@@ -17,7 +17,7 @@ interface SanitizedRoute {
 }
 
 interface RecentBookingsProps {
-    bookings: (Booking & { bookedSeats: { seatNumber: string }[], totalPrice: number })[];
+    bookings: (Booking & { tickets: PrismaTicket[], totalPrice: number })[];
     routes: SanitizedRoute[];
 }
 
@@ -87,7 +87,7 @@ export function RecentBookings({ bookings, routes }: RecentBookingsProps) {
                     </div>
                     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-sm items-center justify-between">
                       <div>
-                        <span className="font-semibold">Seats:</span> {booking.bookedSeats.map(s => s.seatNumber).join(', ')}
+                        <span className="font-semibold">Seats:</span> {booking.tickets.map(t => t.seatNumber).join(', ')}
                       </div>
                       <div className="font-semibold text-primary">{booking.totalPrice.toFixed(2)} ETB</div>
                     </div>
@@ -105,7 +105,7 @@ export function RecentBookings({ bookings, routes }: RecentBookingsProps) {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Ticket ID</TableHead>
+                      <TableHead>Booking ID</TableHead>
                       <TableHead>Passenger</TableHead>
                       <TableHead>Route</TableHead>
                       <TableHead>Seats</TableHead>
@@ -123,7 +123,7 @@ export function RecentBookings({ bookings, routes }: RecentBookingsProps) {
                           </TableCell>
                           <TableCell>{booking.passengerName}</TableCell>
                           <TableCell>{route ? `${route.origin.name} → ${route.destination.name}` : "N/A"}</TableCell>
-                          <TableCell>{booking.bookedSeats.map(s => s.seatNumber).join(', ')}</TableCell>
+                          <TableCell>{booking.tickets.map(t => t.seatNumber).join(', ')}</TableCell>
                           <TableCell>{new Date(booking.bookingTime).toLocaleDateString()}</TableCell>
                           <TableCell className="text-right">{booking.totalPrice.toFixed(2)} ETB</TableCell>
                         </TableRow>

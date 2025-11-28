@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import crypto from 'crypto';
-import { PaymentStatus, BookingStatus } from '@prisma/client';
+import { PaymentStatus, TicketStatus } from '@prisma/client';
 import { logAction } from '@/app/lib/logger';
 
 async function POST(request: NextRequest) {
@@ -90,12 +90,17 @@ async function POST(request: NextRequest) {
                 where: { id: payment.bookingId },
                 data: { 
                     paymentStatus: PaymentStatus.PAID,
-                    status: BookingStatus.VALID, // Mark booking as valid
                 }
+            });
+
+            // Update associated Tickets to VALID
+            await tx.ticket.updateMany({
+                where: { bookingId: payment.bookingId },
+                data: { status: TicketStatus.VALID }
             });
         });
         
-        await logAction({ actionType: 'PAYMENT_SUCCESS', description: `Payment confirmed for booking ${payment.bookingId} via transaction ${txnRef}.` });
+        await logAction({ actionType: 'PAYMENT_SUCCESS', description: `Payment confirmed for booking ${payment.bookingId} via transaction ${txnRef}. All associated tickets are now valid.` });
         return NextResponse.json({ message: "Payment confirmed and updated.", bookingId: payment.bookingId }, { status: 200 });
 
     } catch (error) {

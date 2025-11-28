@@ -5,7 +5,7 @@ import { BookingForm } from '@/components/booking/BookingForm';
 import prisma from '@/lib/prisma';
 import { validateRequest } from '@/lib/server/auth';
 import { cookies } from 'next/headers';
-import { BookingStatus, SeatStatus } from '@prisma/client';
+import { TicketStatus } from '@prisma/client';
 
 interface BookPageProps {
   params: { id: string };
@@ -31,43 +31,33 @@ async function getMiniAppData() {
 }
 
 async function releaseExpiredBookings(routeId: string) {
-    await prisma.$transaction(async (tx) => {
-        const expiredBookings = await tx.booking.findMany({
-            where: {
-                routeId: routeId,
-                status: BookingStatus.PENDING,
-                expiresAt: {
-                    lt: new Date(),
-                },
+    const expiredBookings = await prisma.booking.findMany({
+        where: {
+            routeId: routeId,
+            paymentStatus: 'PENDING',
+            expiresAt: {
+                lt: new Date(),
             },
-            include: {
-                bookedSeats: true,
-                route: {
-                    include: {
-                        bus: {
-                            include: {
-                                layout: true,
-                            },
-                        },
-                    },
-                },
-            },
-        });
-
-        if (expiredBookings.length === 0) {
-            return;
-        }
-        
-        // This transaction part is no longer needed as seat status is not a reliable source of truth
-        // for seat availability, because PENDING bookings also make seats unavailable.
-        // Instead, the client will determine availability based on OCCUPIED seats and seats in PENDING bookings.
-
-        const expiredBookingIds = expiredBookings.map(b => b.id);
-        await tx.booking.updateMany({
-            where: { id: { in: expiredBookingIds } },
-            data: { status: BookingStatus.EXPIRED, paymentStatus: 'FAILED' },
-        });
+        },
+        select: { id: true }
     });
+
+    if (expiredBookings.length === 0) {
+        return;
+    }
+    
+    const expiredBookingIds = expiredBookings.map(b => b.id);
+    
+    await prisma.$transaction([
+        prisma.ticket.updateMany({
+            where: { bookingId: { in: expiredBookingIds } },
+            data: { status: TicketStatus.EXPIRED },
+        }),
+        prisma.booking.updateMany({
+            where: { id: { in: expiredBookingIds } },
+            data: { paymentStatus: 'FAILED' },
+        })
+    ]);
 }
 
 
@@ -98,15 +88,11 @@ export default async function BookPage({ params }: BookPageProps) {
           tiers: true,
         },
       },
-       bookings: { // Fetch bookings to determine seat availability
+       tickets: { // Fetch tickets to determine seat availability
         where: {
           status: { in: ['PENDING', 'VALID'] }
         },
-        include: {
-          bookedSeats: {
-            select: { seatNumber: true }
-          }
-        }
+        select: { seatNumber: true }
       }
     },
   });
@@ -183,5 +169,3 @@ export default async function BookPage({ params }: BookPageProps) {
     </div>
   );
 }
-
-    

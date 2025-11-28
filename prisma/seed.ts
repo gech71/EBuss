@@ -21,7 +21,7 @@ async function main() {
   // Clear existing data to ensure a clean slate
   await prisma.apiRequestAttempt.deleteMany({});
   await prisma.payment.deleteMany({});
-  await prisma.bookedSeat.deleteMany({});
+  await prisma.ticket.deleteMany({});
   await prisma.booking.deleteMany({});
   await prisma.busRoute.deleteMany({});
   await prisma.route.deleteMany({});

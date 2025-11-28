@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { validateRequest } from '@/lib/server/auth';
-import { BookingStatus } from '@prisma/client';
+import { TicketStatus } from '@prisma/client';
 import { logAction } from '@/app/lib/logger';
 import { getIP } from '@/app/lib/get-ip';
 
@@ -58,55 +58,51 @@ export async function POST(
         return NextResponse.json({ message: 'Ticket ID is required.' }, { status: 400 });
     }
     
-    const booking = await prisma.$transaction(async (tx) => {
-        const bookingToScan = await tx.booking.findUnique({
+    const ticket = await prisma.$transaction(async (tx) => {
+        const ticketToScan = await tx.ticket.findUnique({
             where: { id: ticketId },
             include: {
-                route: { include: { bus: true } },
+                route: { include: { bus: true, origin: true, destination: true } },
+                booking: true,
             },
         });
 
-        if (!bookingToScan) {
+        if (!ticketToScan) {
             throw { status: 404, message: 'Ticket not found.', details: { ticketId } };
         }
 
-        if (bookingToScan.route.bus.ownerId !== user.busOwnerId) {
-            throw { status: 403, message: 'Ticket is not valid for this bus operator.', details: { ticketId, scannedBy: user.id, actualOwner: bookingToScan.route.bus.ownerId } };
+        if (ticketToScan.route.bus.ownerId !== user.busOwnerId) {
+            throw { status: 403, message: 'Ticket is not valid for this bus operator.', details: { ticketId, scannedBy: user.id, actualOwner: ticketToScan.route.bus.ownerId } };
         }
 
         const now = new Date();
-        const departureTime = new Date(bookingToScan.route.departureTime);
+        const departureTime = new Date(ticketToScan.route.departureTime);
         if (now > departureTime) {
-            throw { status: 410, message: 'This ticket has expired.', details: { ticket: bookingToScan } };
+            throw { status: 410, message: 'This ticket has expired.', details: { ticket: ticketToScan } };
         }
 
-        if (bookingToScan.status === BookingStatus.USED) {
-            throw { status: 409, message: 'This ticket has already been used.', details: { ticket: bookingToScan } };
+        if (ticketToScan.status === TicketStatus.USED) {
+            throw { status: 409, message: 'This ticket has already been used.', details: { ticket: ticketToScan } };
         }
         
-        if (bookingToScan.status !== BookingStatus.VALID) {
-            throw { status: 400, message: `Ticket is not valid. Current status: ${bookingToScan.status}`, details: { ticket: bookingToScan } };
+        if (ticketToScan.status !== TicketStatus.VALID) {
+            throw { status: 400, message: `Ticket is not valid. Current status: ${ticketToScan.status}`, details: { ticket: ticketToScan } };
         }
 
-        const updatedBooking = await tx.booking.update({
+        const updatedTicket = await tx.ticket.update({
             where: { id: ticketId },
-            data: { status: BookingStatus.USED },
-            include: {
-                bookedSeats: true,
-                route: {
-                    include: {
-                        origin: true,
-                        destination: true,
-                    },
-                },
+            data: { status: TicketStatus.USED },
+             include: {
+                route: { include: { bus: true, origin: true, destination: true } },
+                booking: true,
             },
         });
         
-        await logAction({ userId: user.id, actionType: 'TICKET_SCAN_SUCCESS', description: `Ticket ${ticketId} validated and marked as USED.`, details: { ticket: updatedBooking } });
-        return updatedBooking;
+        await logAction({ userId: user.id, actionType: 'TICKET_SCAN_SUCCESS', description: `Ticket ${ticketId} validated and marked as USED.`, details: { ticket: updatedTicket } });
+        return updatedTicket;
     });
 
-    return NextResponse.json({ booking });
+    return NextResponse.json({ ticket });
 
   } catch (error: any) {
     const { user } = await validateRequest(); // We need user for logging

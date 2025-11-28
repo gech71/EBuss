@@ -39,7 +39,7 @@ export default async function AdminDashboard() {
       },
     },
     include: {
-      bookedSeats: true,
+      tickets: true,
     },
     orderBy: {
       bookingTime: 'desc',

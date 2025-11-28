@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { format } from 'date-fns';
-import { BookingStatus, PaymentStatus } from '@prisma/client';
+import { TicketStatus, PaymentStatus } from '@prisma/client';
 import { validateCsrf } from '@/app/lib/actions';
 import { logAction } from '@/app/lib/logger';
 
@@ -24,7 +24,7 @@ const createBookingSchema = z.object({
   returnTrip: z.string().nullable().optional().transform(str => str ? tripSchema.parse(JSON.parse(str)) : undefined),
 });
 
-async function createSingleBooking(tx: any, trip: z.infer<typeof tripSchema>, passengerName: string, passengerPhone: string, totalPriceForTrip: number, commonExpiresAt: Date, isReturn: boolean = false) {
+async function createTicketsForTrip(tx: any, trip: z.infer<typeof tripSchema>, passengerName: string, passengerPhone: string, totalPriceForTrip: number, commonExpiresAt: Date, isReturn: boolean = false) {
     const route = await tx.route.findUnique({
         where: { id: trip.routeId }
     });
@@ -32,15 +32,15 @@ async function createSingleBooking(tx: any, trip: z.infer<typeof tripSchema>, pa
     if (!route) throw new Error(`Route not found for trip: ${trip.routeId}`);
 
     // Server-side check for seat availability within the transaction
-    const existingBookingsForRoute = await tx.booking.findMany({
+    const existingTicketsForRoute = await tx.ticket.findMany({
         where: {
             routeId: trip.routeId,
             status: { in: ['VALID', 'PENDING'] }
         },
-        include: { bookedSeats: { select: { seatNumber: true } } }
+        select: { seatNumber: true }
     });
     
-    const occupiedSeatNumbers = new Set(existingBookingsForRoute.flatMap(b => b.bookedSeats.map(s => s.seatNumber)));
+    const occupiedSeatNumbers = new Set(existingTicketsForRoute.map(t => t.seatNumber));
     
     const unavailableSelectedSeats = trip.selectedSeatNumbers.filter(
         seatNum => occupiedSeatNumbers.has(seatNum)
@@ -49,21 +49,26 @@ async function createSingleBooking(tx: any, trip: z.infer<typeof tripSchema>, pa
     if (unavailableSelectedSeats.length > 0) {
         throw new Error(`One or more seats for the ${isReturn ? 'return' : 'outbound'} trip are no longer available: ${unavailableSelectedSeats.join(', ')}.`);
     }
-
+    
+    // Create one parent booking
     const booking = await tx.booking.create({
         data: {
             passengerName,
             passengerPhone,
             totalPrice: totalPriceForTrip,
             routeId: trip.routeId,
-            status: BookingStatus.PENDING,
             paymentStatus: 'PENDING',
             expiresAt: commonExpiresAt,
-            bookedSeats: {
-                create: trip.selectedSeatNumbers.map(seatNumber => ({ seatNumber })),
+            tickets: {
+                create: trip.selectedSeatNumbers.map(seatNumber => ({
+                    seatNumber,
+                    status: TicketStatus.PENDING,
+                    routeId: trip.routeId,
+                })),
             },
         },
     });
+
 
     await logAction({ actionType: 'CREATE_BOOKING', description: `Booking ${booking.id} created for passenger ${passengerName} on route ${trip.routeId}. Seats: ${trip.selectedSeatNumbers.join(', ')}`, details: { booking } });
     return booking;
@@ -115,19 +120,18 @@ export async function createBookingAction(formData: FormData) {
             if (!returnRoute) throw new Error("Return route not found.");
             const returnPrice = Number(returnRoute.price) * returnTrip.selectedSeatNumbers.length;
             
-            // This is a simplified check. A real app should recalculate discounts.
             if (Math.abs((outboundPrice + returnPrice) - totalPrice) > 0.01) {
                  console.warn(`Price mismatch: server calculated=${outboundPrice + returnPrice}, client sent=${totalPrice}. Allowing for now.`);
             }
 
-            const ob = await createSingleBooking(tx, outboundTrip, passengerName, passengerPhone, outboundPrice, expiresAt, false);
-            const rb = await createSingleBooking(tx, returnTrip, passengerName, passengerPhone, returnPrice, expiresAt, true);
+            const ob = await createTicketsForTrip(tx, outboundTrip, passengerName, passengerPhone, outboundPrice, expiresAt, false);
+            const rb = await createTicketsForTrip(tx, returnTrip, passengerName, passengerPhone, returnPrice, expiresAt, true);
             return [ob, rb];
         } else {
              if (Math.abs(outboundPrice - totalPrice) > 0.01) {
                  console.warn(`Price mismatch: server calculated=${outboundPrice}, client sent=${totalPrice}. Allowing for now.`);
             }
-            const ob = await createSingleBooking(tx, outboundTrip, passengerName, passengerPhone, outboundPrice, expiresAt, false);
+            const ob = await createTicketsForTrip(tx, outboundTrip, passengerName, passengerPhone, outboundPrice, expiresAt, false);
             return [ob];
         }
     });
