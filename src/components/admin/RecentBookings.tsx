@@ -87,7 +87,7 @@ export function RecentBookings({ bookings, routes }: RecentBookingsProps) {
                     </div>
                     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-sm items-center justify-between">
                       <div>
-                        <span className="font-semibold">Seats:</span> {booking.tickets.map(t => t.seatNumber).join(', ')}
+                        <span className="font-semibold">Seats:</span> {booking.tickets.length}
                       </div>
                       <div className="font-semibold text-primary">{booking.totalPrice.toFixed(2)} ETB</div>
                     </div>
@@ -123,7 +123,7 @@ export function RecentBookings({ bookings, routes }: RecentBookingsProps) {
                           </TableCell>
                           <TableCell>{booking.passengerName}</TableCell>
                           <TableCell>{route ? `${route.origin.name} → ${route.destination.name}` : "N/A"}</TableCell>
-                          <TableCell>{booking.tickets.map(t => t.seatNumber).join(', ')}</TableCell>
+                          <TableCell>{booking.tickets.length}</TableCell>
                           <TableCell>{new Date(booking.bookingTime).toLocaleDateString()}</TableCell>
                           <TableCell className="text-right">{booking.totalPrice.toFixed(2)} ETB</TableCell>
                         </TableRow>
