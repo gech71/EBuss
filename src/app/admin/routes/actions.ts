@@ -83,10 +83,10 @@ export async function createRouteAction(formData: FormData) {
         return { success: false, message: 'Arrival time must be after departure time.' };
     }
     
-    const oneHourFromNow = new Date(Date.now() + 60 * 60 * 1000);
-    if (fullDepartureTime < oneHourFromNow) {
+    const fiveMinutesFromNow = new Date(Date.now() + 5 * 60 * 1000);
+    if (fullDepartureTime < fiveMinutesFromNow) {
         await logAction({ userId: user.id, actionType: 'CREATE_ROUTE_FAIL', description: 'Departure time was in the past.', details: { attemptedData: validatedData.data } });
-        return { success: false, message: 'Departure time must be at least one hour from now.' };
+        return { success: false, message: 'Departure time must be at least five minutes from now.' };
     }
 
 
@@ -227,7 +227,7 @@ export async function updateRouteAction(formData: FormData) {
        await logAction({ userId: user.id, actionType: 'UPDATE_ROUTE', description: `Updated route ${routeId}.`, details: { oldValue: oldRoute, newValue: updatedRoute } });
 
     } catch (error) {
-        const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
+        const message = error instanceof Error ? error.message : 'Unknown error';
         await logAction({ userId: user.id, actionType: 'UPDATE_ROUTE_FAIL', description: `Failed to update route ${routeId}. Error: ${message}`, details: { error: message, attemptedData: validatedData.data } });
         return { success: false, message };
     }
