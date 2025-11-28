@@ -65,6 +65,7 @@ async function main() {
       name: 'Super Admin',
       hashed_password: superAdminPassword,
       role: Role.SUPER_ADMIN,
+      passwordChangeRequired: true,
     },
   });
 
@@ -76,6 +77,7 @@ async function main() {
       hashed_password: adminPassword,
       role: Role.ADMIN,
       busOwnerId: owner1.id,
+      passwordChangeRequired: true,
     },
   });
   console.log('Created users.');
