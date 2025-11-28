@@ -26,10 +26,11 @@ const routeSchema = z.object({
 });
 
 const combineDateTime = (dateStr: string, timeStr: string): Date => {
-    const dateInUtc = new Date(dateStr + 'T00:00:00.000Z');
+    // This creates a date object in the server's local timezone based on the input strings.
     const [hours, minutes] = timeStr.split(':').map(Number);
-    dateInUtc.setUTCHours(hours, minutes, 0, 0);
-    return dateInUtc;
+    const date = new Date(dateStr);
+    date.setHours(hours, minutes, 0, 0);
+    return date;
 };
 
 
