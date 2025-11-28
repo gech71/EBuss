@@ -20,9 +20,9 @@ const routeSchema = z.object({
   price: z.coerce.number().positive('Price must be a positive number.'),
   busIds: z.array(z.string()).min(1, 'At least one bus must be selected.'),
   discountId: z.string().optional().nullable(),
-  ticketType: z.nativeEnum(TicketType),
-  roundTripDiscountType: z.nativeEnum(DiscountValueType).optional().nullable(),
-  roundTripDiscountValue: z.coerce.number().positive().optional().nullable(),
+  // ticketType: z.nativeEnum(TicketType),
+  // roundTripDiscountType: z.nativeEnum(DiscountValueType).optional().nullable(),
+  // roundTripDiscountValue: z.coerce.number().positive().optional().nullable(),
 });
 
 const combineDateTime = (dateStr: string, timeStr: string): Date => {
@@ -51,9 +51,9 @@ export async function createRouteAction(formData: FormData) {
         price: formData.get('price'),
         busIds: JSON.parse(formData.get('busIds') as string),
         discountId: formData.get('discountId') || null,
-        ticketType: formData.get('ticketType'),
-        roundTripDiscountType: formData.get('roundTripDiscountType') || null,
-        roundTripDiscountValue: formData.get('roundTripDiscountValue') || null,
+        // ticketType: formData.get('ticketType'),
+        // roundTripDiscountType: formData.get('roundTripDiscountType') || null,
+        // roundTripDiscountValue: formData.get('roundTripDiscountValue') || null,
     };
     
     const validatedData = routeSchema.safeParse(rawData);
@@ -67,7 +67,7 @@ export async function createRouteAction(formData: FormData) {
         };
     }
 
-    const { originId, destinationId, departureDate, departureTime, arrivalDate, arrivalTime, price, busIds, discountId, ticketType, roundTripDiscountType, roundTripDiscountValue } = validatedData.data;
+    const { originId, destinationId, departureDate, departureTime, arrivalDate, arrivalTime, price, busIds, discountId } = validatedData.data;
 
     if (originId === destinationId) {
         await logAction({ userId: user.id, actionType: 'CREATE_ROUTE_FAIL', description: 'Origin and destination were the same.', details: { attemptedData: validatedData.data } });
@@ -110,9 +110,9 @@ export async function createRouteAction(formData: FormData) {
             price,
             busId,
             discountId: discountId === 'none' ? null : discountId,
-            ticketType,
-            roundTripDiscountType: ticketType === TicketType.ROUND_TRIP ? roundTripDiscountType : null,
-            roundTripDiscountValue: ticketType === TicketType.ROUND_TRIP ? roundTripDiscountValue : null,
+            ticketType: TicketType.ONE_WAY, // Hardcoding to ONE_WAY for now
+            roundTripDiscountType: null,
+            roundTripDiscountValue: null,
         }));
 
         await prisma.route.createMany({
@@ -168,7 +168,7 @@ export async function updateRouteAction(formData: FormData) {
         };
     }
 
-    const { originId, destinationId, departureDate, departureTime, arrivalDate, arrivalTime, price, busIds, discountId, ticketType, roundTripDiscountType, roundTripDiscountValue } = validatedData.data;
+    const { originId, destinationId, departureDate, departureTime, arrivalDate, arrivalTime, price, busIds, discountId } = validatedData.data;
     const busId = busIds[0];
 
     if (originId === destinationId) {
@@ -217,9 +217,9 @@ export async function updateRouteAction(formData: FormData) {
                 price,
                 busId,
                 discountId: discountId === 'none' ? null : discountId,
-                ticketType,
-                roundTripDiscountType: ticketType === TicketType.ROUND_TRIP ? roundTripDiscountType : null,
-                roundTripDiscountValue: ticketType === TicketType.ROUND_TRIP ? roundTripDiscountValue : null,
+                ticketType: TicketType.ONE_WAY, // Hardcoding to ONE_WAY for now
+                roundTripDiscountType: null,
+                roundTripDiscountValue: null,
            }
        });
 

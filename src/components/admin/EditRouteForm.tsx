@@ -192,7 +192,7 @@ export function EditRouteForm({ route, locations, buses, discounts }: EditRouteF
                             </Select>
                         </div>
                     </div>
-                    <div className="space-y-3">
+                    {/* <div className="space-y-3">
                         <Label>Ticket Type</Label>
                         <RadioGroup name="ticketType" value={ticketType} onValueChange={(v) => setTicketType(v as TicketType)} className="flex gap-4">
                             <div className="flex items-center space-x-2">
@@ -224,7 +224,7 @@ export function EditRouteForm({ route, locations, buses, discounts }: EditRouteF
                                 <Input id="roundTripDiscountValue" name="roundTripDiscountValue" type="number" step="0.01" placeholder="e.g., 10 or 50.00" defaultValue={route.roundTripDiscountValue ? Number(route.roundTripDiscountValue) : undefined} />
                             </div>
                         </div>
-                    )}
+                    )} */}
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
                      <Button type="button" variant="outline" onClick={() => router.push('/admin/routes')}>Cancel</Button>
