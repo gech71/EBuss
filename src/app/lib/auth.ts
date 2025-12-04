@@ -6,6 +6,7 @@ import { SignJWT, jwtVerify } from 'jose';
 import prisma from '@/lib/prisma';
 import type { User } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 
 const secretKey = process.env.JWT_SECRET;
 const key = new TextEncoder().encode(secretKey);
