@@ -13,6 +13,17 @@ const key = new TextEncoder().encode(secretKey);
 
 const SESSION_DURATION = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
 
+// Simple ID generator to replace lucia's generateId
+function generateId(length: number): string {
+    const characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return result;
+}
+
+
 export interface SessionPayload {
     userId: string;
     jti: string; // JWT ID - links the JWT to the database session
@@ -48,10 +59,12 @@ export async function decrypt(input: string): Promise<SessionPayload | null> {
 
 export async function createSession(userId: string, passwordChangeRequired: boolean) {
     const expiresAt = new Date(Date.now() + SESSION_DURATION);
+    const sessionId = generateId(40);
     
     // Create a session record in the database
     const sessionRecord = await prisma.session.create({
         data: {
+            id: sessionId,
             userId: userId,
             expiresAt: expiresAt,
         }
