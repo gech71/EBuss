@@ -26,7 +26,11 @@ const busSchema = z.object({
 });
 
 export async function createBusAction(formData: FormData) {
-    await validateCsrf(formData.get('csrfToken') as string);
+    try {
+        await validateCsrf(formData.get('csrfToken') as string);
+    } catch (error) {
+        return { success: false, message: 'Your session has expired or is invalid. Please refresh the page and try again.' };
+    }
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         await logAction({ actionType: 'CREATE_BUS_ATTEMPT_FAIL', description: 'Unauthorized attempt to create bus.' });
@@ -101,7 +105,12 @@ export async function createBusAction(formData: FormData) {
 }
 
 export async function updateBusAction(formData: FormData) {
-    await validateCsrf(formData.get('csrfToken') as string);
+    try {
+        await validateCsrf(formData.get('csrfToken') as string);
+    } catch (error) {
+        return { success: false, message: 'Your session has expired or is invalid. Please refresh the page and try again.' };
+    }
+
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         await logAction({ actionType: 'UPDATE_BUS_ATTEMPT_FAIL', description: 'Unauthorized attempt to update bus.' });
@@ -213,7 +222,11 @@ export async function updateBusAction(formData: FormData) {
 
 
 export async function deleteBusAction(busId: string, csrfToken: string): Promise<{ success: boolean; message: string }> {
-  await validateCsrf(csrfToken);
+  try {
+    await validateCsrf(csrfToken);
+  } catch (error) {
+    return { success: false, message: 'Your session has expired or is invalid. Please refresh the page and try again.' };
+  }
   
   const { user } = await validateRequest();
   if (!user || !user.busOwnerId) {

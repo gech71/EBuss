@@ -14,7 +14,12 @@ const locationSchema = z.object({
 });
 
 export async function createLocationAction(formData: FormData) {
-    await validateCsrf(formData.get('csrfToken') as string);
+    try {
+        await validateCsrf(formData.get('csrfToken') as string);
+    } catch (error) {
+        return { success: false, message: 'Your session has expired or is invalid. Please refresh the page and try again.' };
+    }
+
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         await logAction({ actionType: 'CREATE_LOCATION_ATTEMPT_FAIL', description: 'Unauthorized attempt to create location.' });
@@ -55,7 +60,12 @@ export async function createLocationAction(formData: FormData) {
 }
 
 export async function updateLocationAction(prevState: any, formData: FormData) {
-    await validateCsrf(formData.get('csrfToken') as string);
+    try {
+        await validateCsrf(formData.get('csrfToken') as string);
+    } catch (error) {
+        return { success: false, message: 'Your session has expired or is invalid. Please refresh the page and try again.' };
+    }
+
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         await logAction({ actionType: 'UPDATE_LOCATION_ATTEMPT_FAIL', description: 'Unauthorized attempt to update location.' });
@@ -97,7 +107,11 @@ export async function updateLocationAction(prevState: any, formData: FormData) {
 
 
 export async function deleteLocationAction(locationId: string, csrfToken: string): Promise<{ success: boolean; message: string }> {
-  await validateCsrf(csrfToken);
+  try {
+    await validateCsrf(csrfToken);
+  } catch (error) {
+    return { success: false, message: 'Your session has expired or is invalid. Please refresh the page and try again.' };
+  }
   
   const { user } = await validateRequest();
   if (!user || !user.busOwnerId) {

@@ -76,7 +76,11 @@ async function createTicketsForTrip(tx: any, trip: z.infer<typeof tripSchema>, p
 
 
 export async function createBookingAction(formData: FormData) {
-  await validateCsrf(formData);
+  try {
+    await validateCsrf(formData);
+  } catch (error) {
+    return { success: false, message: 'Your session has expired or is invalid. Please refresh the page and try again.' };
+  }
 
   const rawData = {
     isRoundTrip: formData.get('isRoundTrip'),

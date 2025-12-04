@@ -15,7 +15,11 @@ const busRouteSchema = z.object({
 });
 
 export async function createBusRouteAction(formData: FormData) {
-    await validateCsrf(formData);
+    try {
+        await validateCsrf(formData);
+    } catch (error) {
+        return { success: false, message: 'Your session has expired or is invalid. Please refresh the page and try again.' };
+    }
 
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
@@ -81,7 +85,11 @@ export async function createBusRouteAction(formData: FormData) {
 }
 
 export async function deleteBusRouteAction(id: string, csrfToken: string): Promise<{ success: boolean; message: string }> {
-  await validateCsrf(csrfToken);
+  try {
+    await validateCsrf(csrfToken);
+  } catch (error) {
+    return { success: false, message: 'Your session has expired or is invalid. Please refresh the page and try again.' };
+  }
   
   const { user } = await validateRequest();
   if (!user || !user.busOwnerId) {

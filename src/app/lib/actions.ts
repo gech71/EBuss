@@ -121,6 +121,9 @@ export async function authenticate(
        if (error.message.includes('NEXT_REDIRECT')) {
          throw error;
        }
+        if (error.message === 'Invalid CSRF token.') {
+            return { message: 'Your session has expired or is invalid. Please refresh the page and try again.', success: false };
+        }
        return { message: error.message, success: false };
     }
     console.error(error);
@@ -162,7 +165,12 @@ const changePasswordSchema = z.object({
 
 
 export async function changePasswordAction(formData: FormData) {
-    await validateCsrf(formData);
+    try {
+        await validateCsrf(formData);
+    } catch (error) {
+        return { success: false, message: 'Your session has expired or is invalid. Please refresh the page and try again.' };
+    }
+    
     const { user, session } = await validateRequest();
     if (!user || !session) {
         await logAction({ actionType: 'CHANGE_PASSWORD_UNAUTHORIZED', description: 'Unauthorized password change attempt.' });

@@ -35,7 +35,12 @@ const combineDateTime = (dateStr: string, timeStr: string): Date => {
 
 
 export async function createRouteAction(formData: FormData) {
-    await validateCsrf(formData.get('csrfToken') as string);
+    try {
+        await validateCsrf(formData.get('csrfToken') as string);
+    } catch (error) {
+        return { success: false, message: 'Your session has expired or is invalid. Please refresh the page and try again.' };
+    }
+
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         await logAction({ actionType: 'CREATE_ROUTE_ATTEMPT_FAIL', description: 'Unauthorized attempt to create route.' });
@@ -133,7 +138,12 @@ export async function createRouteAction(formData: FormData) {
 
 
 export async function updateRouteAction(formData: FormData) {
-    await validateCsrf(formData.get('csrfToken') as string);
+    try {
+        await validateCsrf(formData.get('csrfToken') as string);
+    } catch (error) {
+        return { success: false, message: 'Your session has expired or is invalid. Please refresh the page and try again.' };
+    }
+
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         await logAction({ actionType: 'UPDATE_ROUTE_ATTEMPT_FAIL', description: 'Unauthorized attempt to update route.' });
@@ -238,7 +248,11 @@ export async function updateRouteAction(formData: FormData) {
 
 
 export async function deleteRouteAction(routeId: string, csrfToken: string): Promise<{ success: boolean; message: string }> {
-  await validateCsrf(csrfToken);
+  try {
+    await validateCsrf(csrfToken);
+  } catch (error) {
+    return { success: false, message: 'Your session has expired or is invalid. Please refresh the page and try again.' };
+  }
 
   const { user } = await validateRequest();
   if (!user || !user.busOwnerId) {

@@ -27,7 +27,12 @@ const discountSchema = z.object({
 });
 
 export async function createDiscountAction(formData: FormData) {
-    await validateCsrf(formData.get('csrfToken') as string);
+    try {
+        await validateCsrf(formData.get('csrfToken') as string);
+    } catch (error) {
+        return { success: false, message: 'Your session has expired or is invalid. Please refresh the page and try again.' };
+    }
+
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         await logAction({ actionType: 'CREATE_DISCOUNT_ATTEMPT_FAIL', description: 'Unauthorized attempt to create discount.' });
@@ -86,7 +91,12 @@ export async function createDiscountAction(formData: FormData) {
 }
 
 export async function updateDiscountAction(formData: FormData) {
-    await validateCsrf(formData.get('csrfToken') as string);
+    try {
+        await validateCsrf(formData.get('csrfToken') as string);
+    } catch (error) {
+        return { success: false, message: 'Your session has expired or is invalid. Please refresh the page and try again.' };
+    }
+
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
         await logAction({ actionType: 'UPDATE_DISCOUNT_ATTEMPT_FAIL', description: 'Unauthorized attempt to update discount.' });
@@ -164,7 +174,11 @@ export async function updateDiscountAction(formData: FormData) {
 }
 
 export async function deleteDiscountAction(discountId: string, csrfToken: string): Promise<{ success: boolean; message: string }> {
-    await validateCsrf(csrfToken);
+    try {
+        await validateCsrf(csrfToken);
+    } catch (error) {
+        return { success: false, message: 'Your session has expired or is invalid. Please refresh the page and try again.' };
+    }
 
     const { user } = await validateRequest();
     if (!user || !user.busOwnerId) {
