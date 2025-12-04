@@ -5,7 +5,8 @@
 import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
 import type { User } from '@prisma/client';
-import { decrypt, SessionPayload, SESSION_DURATION } from '@/app/lib/auth';
+import { decrypt, SessionPayload } from '@/app/lib/auth';
+import { SESSION_DURATION } from '@/app/lib/constants';
 
 export async function validateRequest(): Promise<{ user: User | null; session: SessionPayload | null; }> {
     const cookieStore = await cookies();
@@ -64,6 +65,7 @@ export async function validateRequest(): Promise<{ user: User | null; session: S
         return { user: null, session: null };
     }
 };
+
 
 
 

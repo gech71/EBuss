@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { cookies } from 'next/headers';
@@ -8,11 +7,11 @@ import prisma from '@/lib/prisma';
 import type { User } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { SESSION_DURATION } from './constants';
 
 const secretKey = process.env.JWT_SECRET;
 const key = new TextEncoder().encode(secretKey);
 
-const SESSION_DURATION = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
 
 // Simple ID generator
 function generateId(length: number): string {
