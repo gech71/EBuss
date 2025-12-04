@@ -1,9 +1,9 @@
-
 // middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { decrypt, SessionPayload, deleteSession } from './app/lib/auth';
-import { cookies } from 'next/headers';
+import { decrypt, SessionPayload } from './app/lib/auth';
+import { validateRequest } from './lib/server/auth';
+
 
 const ALLOWED_ORIGINS = ['https://yourdomain.com', 'https://admin.yourdomain.com'];
 
@@ -25,26 +25,16 @@ export async function middleware(request: NextRequest) {
   requestHeaders.set('X-CSRF-Token', csrfToken);
 
 
-  // 3. Session Validation
+  // 3. Session Validation & Route Protection
   const sessionCookieValue = request.cookies.get('session')?.value;
   let sessionPayload: SessionPayload | null = null;
-  
+
   if (sessionCookieValue) {
-      const decryptedPayload = await decrypt(sessionCookieValue);
-      if (decryptedPayload) {
-          // Additional validation can happen here if needed, like checking against DB
-          sessionPayload = decryptedPayload;
-      }
+      sessionPayload = await decrypt(sessionCookieValue);
   }
   
-  let response = NextResponse.next({
-    request: { headers: requestHeaders },
-  });
-
-
-  // 4. Route Protection Logic
-  const { user, session } = await validateRequest();
-  const isAuthenticated = !!user && !!session;
+  const isAuthenticated = !!sessionPayload?.userId;
+  const requiresPasswordChange = sessionPayload?.passwordChangeRequired ?? false;
   
   const isAdminRoute = pathname.startsWith('/admin');
   const isSuperAdminRoute = pathname.startsWith('/super-admin');
@@ -52,7 +42,7 @@ export async function middleware(request: NextRequest) {
   const isForcePasswordChangeRoute = pathname === '/force-password-change';
 
   // Enforce password change if required
-  if (isAuthenticated && session.passwordChangeRequired) {
+  if (isAuthenticated && requiresPasswordChange) {
     if (!isForcePasswordChangeRoute) {
         return NextResponse.redirect(new URL('/force-password-change', request.url));
     }
@@ -69,9 +59,13 @@ export async function middleware(request: NextRequest) {
 
   // Redirect authenticated users away from login pages
   if (isAuthRoute && isAuthenticated) {
-      const redirectPath = session.passwordChangeRequired ? '/force-password-change' : '/admin';
+      const redirectPath = requiresPasswordChange ? '/force-password-change' : '/admin';
       return NextResponse.redirect(new URL(redirectPath, request.url));
   }
+
+  let response = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
   
   // Set the CSRF cookie on the response
   response.cookies.set({
@@ -116,48 +110,6 @@ export async function middleware(request: NextRequest) {
 
   return response;
 }
-
-
-async function validateRequest(): Promise<{ user: any | null; session: SessionPayload | null; }> {
-    const cookieStore = cookies();
-    const sessionCookieValue = cookieStore.get('session')?.value;
-    
-    if (!sessionCookieValue) {
-        return { user: null, session: null };
-    }
-
-    const sessionPayload = await decrypt(sessionCookieValue);
-    
-    if (!sessionPayload || !sessionPayload.jti) {
-        return { user: null, session: null };
-    }
-
-    const dbSession = await prisma.session.findUnique({
-        where: { id: sessionPayload.jti }
-    });
-
-    if (!dbSession || !dbSession.fresh) {
-        await deleteSession(sessionPayload.jti); // Clean up invalid session
-        return { user: null, session: null };
-    }
-    
-    const now = new Date();
-    if (now > new Date(dbSession.expiresAt)) {
-        await deleteSession(sessionPayload.jti); // Clean up expired session
-        return { user: null, session: null };
-    }
-
-    const user = await prisma.user.findUnique({
-        where: { id: sessionPayload.userId },
-    });
-    
-    if (!user) {
-        return { user: null, session: null };
-    }
-
-    const { hashed_password, ...userWithoutPassword } = user;
-    return { user: userWithoutPassword, session: sessionPayload };
-};
 
 
 // 8. Apply middleware to all routes except Next.js internals
