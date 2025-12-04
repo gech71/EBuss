@@ -17,13 +17,22 @@ export async function validateRequest(): Promise<{ user: User | null; session: S
 
     const sessionPayload = await decrypt(sessionCookieValue);
     
-    if (!sessionPayload || !sessionPayload.userId) {
+    if (!sessionPayload || !sessionPayload.jti) {
         return { user: null, session: null };
     }
     
+    // Validate against the database
+    const dbSession = await prisma.session.findUnique({
+        where: { id: sessionPayload.jti }
+    });
+
+    if (!dbSession || !dbSession.fresh) {
+        return { user: null, session: null };
+    }
+
     const now = new Date();
-    if (now > new Date(sessionPayload.expiresAt) || now > new Date(sessionPayload.idleExpiresAt)) {
-        // Session or idle time has expired
+    if (now > new Date(dbSession.expiresAt)) {
+        // Session has expired
         return { user: null, session: null };
     }
 
@@ -38,8 +47,8 @@ export async function validateRequest(): Promise<{ user: User | null; session: S
     // Omit hashed_password from the returned user object
     const { hashed_password, ...userWithoutPassword } = user;
 
-    // The user object returned now includes the `passwordChangeRequired` flag
     return { user: userWithoutPassword as User, session: sessionPayload };
 };
+
 
 

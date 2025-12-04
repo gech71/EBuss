@@ -16,7 +16,12 @@ import { getIP } from './get-ip';
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_ATTEMPT_WINDOW_SECONDS = 60;
 
-export async function validateCsrf(tokenFromRequest: string | FormData) {
+export async function validateCsrf(tokenFromRequest: string | FormData | undefined) {
+    if (tokenFromRequest === undefined) {
+        await logAction({ actionType: 'CSRF_VALIDATION_FAIL', description: 'CSRF token was missing from the request.' });
+        throw new Error('Invalid CSRF token.');
+    }
+
     const cookieStore = await cookies();
     const tokenFromCookie = cookieStore.get('csrf_token')?.value;
 
@@ -64,7 +69,7 @@ export async function authenticate(
 
 
   try {
-    await validateCsrf(formData);
+    await validateCsrf(formData.get('csrfToken') as string);
 
     const password = formData.get('password') as string;
 
@@ -139,7 +144,7 @@ export async function logout(): Promise<ActionResult> {
 		};
 	}
 
-	await deleteSession();
+	await deleteSession(session.jti);
     await logAction({ userId: user.id, actionType: 'LOGOUT', description: `User ${user.id} logged out successfully.` });
 	
     // We no longer redirect from the server action. Client will handle navigation.
@@ -165,13 +170,14 @@ const changePasswordSchema = z.object({
 
 
 export async function changePasswordAction(formData: FormData) {
+    const { user, session } = await validateRequest();
+
     try {
-        await validateCsrf(formData);
+        await validateCsrf(formData.get('csrfToken') as string);
     } catch (error) {
         return { success: false, message: 'Your session has expired or is invalid. Please refresh the page and try again.' };
     }
     
-    const { user, session } = await validateRequest();
     if (!user || !session) {
         await logAction({ actionType: 'CHANGE_PASSWORD_UNAUTHORIZED', description: 'Unauthorized password change attempt.' });
         return { success: false, message: 'Unauthorized' };
@@ -224,7 +230,7 @@ export async function changePasswordAction(formData: FormData) {
         });
 
         // Invalidate the current session, forcing a re-login for security.
-        await deleteSession();
+        await deleteSession(session.jti);
         await logAction({ userId: user.id, actionType: 'CHANGE_PASSWORD_SUCCESS', description: 'Password changed successfully, user logged out.' });
         
         return { success: true, message: 'Password updated successfully. Please log in again.' };

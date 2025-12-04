@@ -1,11 +1,11 @@
+
 // middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { decrypt, encrypt, SessionPayload } from './app/lib/auth';
+import { decrypt, SessionPayload, deleteSession } from './app/lib/auth';
+import { cookies } from 'next/headers';
 
 const ALLOWED_ORIGINS = ['https://yourdomain.com', 'https://admin.yourdomain.com'];
-const SESSION_DURATION = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
-const IDLE_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -25,42 +25,26 @@ export async function middleware(request: NextRequest) {
   requestHeaders.set('X-CSRF-Token', csrfToken);
 
 
-  // 3. Session Validation & Refresh
+  // 3. Session Validation
   const sessionCookieValue = request.cookies.get('session')?.value;
   let sessionPayload: SessionPayload | null = null;
+  
+  if (sessionCookieValue) {
+      const decryptedPayload = await decrypt(sessionCookieValue);
+      if (decryptedPayload) {
+          // Additional validation can happen here if needed, like checking against DB
+          sessionPayload = decryptedPayload;
+      }
+  }
+  
   let response = NextResponse.next({
     request: { headers: requestHeaders },
   });
 
-  if (sessionCookieValue) {
-    sessionPayload = await decrypt(sessionCookieValue);
-    const now = new Date();
-    
-    // Only refresh the session if it's valid (not null, not expired)
-    if (sessionPayload?.userId && now < new Date(sessionPayload.expiresAt) && now < new Date(sessionPayload.idleExpiresAt)) {
-      const newIdleExpiresAt = new Date(now.getTime() + IDLE_TIMEOUT);
-      const newSessionPayload: SessionPayload = {
-          ...sessionPayload,
-          idleExpiresAt: newIdleExpiresAt,
-      };
-      const newSessionCookie = await encrypt(newSessionPayload);
-      
-      response.cookies.set('session', newSessionCookie, {
-          expires: new Date(newSessionPayload.expiresAt),
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          path: '/',
-          sameSite: 'strict',
-      });
-    } else {
-      // If session is invalid or expired, clear it
-      sessionPayload = null;
-    }
-  }
-
 
   // 4. Route Protection Logic
-  const isAuthenticated = !!sessionPayload;
+  const { user, session } = await validateRequest();
+  const isAuthenticated = !!user && !!session;
   
   const isAdminRoute = pathname.startsWith('/admin');
   const isSuperAdminRoute = pathname.startsWith('/super-admin');
@@ -68,11 +52,12 @@ export async function middleware(request: NextRequest) {
   const isForcePasswordChangeRoute = pathname === '/force-password-change';
 
   // Enforce password change if required
-  if (isAuthenticated && sessionPayload.passwordChangeRequired) {
+  if (isAuthenticated && session.passwordChangeRequired) {
     if (!isForcePasswordChangeRoute) {
         return NextResponse.redirect(new URL('/force-password-change', request.url));
     }
   } else if (isAuthenticated && isForcePasswordChangeRoute) {
+    // If password change is NOT required but user is on the page, redirect them away
     return NextResponse.redirect(new URL('/admin', request.url));
   }
 
@@ -84,7 +69,7 @@ export async function middleware(request: NextRequest) {
 
   // Redirect authenticated users away from login pages
   if (isAuthRoute && isAuthenticated) {
-      const redirectPath = sessionPayload.passwordChangeRequired ? '/force-password-change' : '/admin';
+      const redirectPath = session.passwordChangeRequired ? '/force-password-change' : '/admin';
       return NextResponse.redirect(new URL(redirectPath, request.url));
   }
   
@@ -131,6 +116,49 @@ export async function middleware(request: NextRequest) {
 
   return response;
 }
+
+
+async function validateRequest(): Promise<{ user: any | null; session: SessionPayload | null; }> {
+    const cookieStore = cookies();
+    const sessionCookieValue = cookieStore.get('session')?.value;
+    
+    if (!sessionCookieValue) {
+        return { user: null, session: null };
+    }
+
+    const sessionPayload = await decrypt(sessionCookieValue);
+    
+    if (!sessionPayload || !sessionPayload.jti) {
+        return { user: null, session: null };
+    }
+
+    const dbSession = await prisma.session.findUnique({
+        where: { id: sessionPayload.jti }
+    });
+
+    if (!dbSession || !dbSession.fresh) {
+        await deleteSession(sessionPayload.jti); // Clean up invalid session
+        return { user: null, session: null };
+    }
+    
+    const now = new Date();
+    if (now > new Date(dbSession.expiresAt)) {
+        await deleteSession(sessionPayload.jti); // Clean up expired session
+        return { user: null, session: null };
+    }
+
+    const user = await prisma.user.findUnique({
+        where: { id: sessionPayload.userId },
+    });
+    
+    if (!user) {
+        return { user: null, session: null };
+    }
+
+    const { hashed_password, ...userWithoutPassword } = user;
+    return { user: userWithoutPassword, session: sessionPayload };
+};
+
 
 // 8. Apply middleware to all routes except Next.js internals
 export const config = {
