@@ -12,7 +12,7 @@ import crypto from 'crypto';
 const secretKey = process.env.JWT_SECRET;
 const key = new TextEncoder().encode(secretKey);
 
-export const SESSION_DURATION = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+const SESSION_DURATION = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
 
 // Simple ID generator
 function generateId(length: number): string {
