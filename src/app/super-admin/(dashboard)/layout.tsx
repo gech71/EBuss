@@ -1,5 +1,4 @@
 
-
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "@/components/ui/sidebar";
@@ -10,7 +9,7 @@ import { redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
 
 async function getIsMiniApp() {
-  const cookieStore = await cookies();
+  const cookieStore = cookies();
   const sessionCookie = cookieStore.get('miniapp_session');
   if (sessionCookie) {
     try {

@@ -22,7 +22,7 @@ export async function validateCsrf(tokenFromRequest: string | FormData | undefin
         throw new Error('Invalid CSRF token.');
     }
 
-    const cookieStore = await cookies();
+    const cookieStore = cookies();
     const tokenFromCookie = cookieStore.get('csrf_token')?.value;
 
     let token: string | null;

@@ -7,7 +7,7 @@ import { cookies } from 'next/headers';
 export const dynamic = 'force-dynamic';
 
 async function getPhoneNumberFromSession(): Promise<string | null> {
-    const cookieStore = await cookies();
+    const cookieStore = cookies();
     const sessionCookie = cookieStore.get('miniapp_session');
     if (sessionCookie) {
         try {

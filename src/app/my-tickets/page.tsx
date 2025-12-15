@@ -5,7 +5,7 @@ import { MyTicketsClientPage } from '@/components/my-tickets/MyTicketsClientPage
 import { validateRequest } from '@/lib/server/auth';
 
 async function getMiniAppData() {
-    const cookieStore =  await cookies();
+    const cookieStore = cookies();
     const sessionCookie = cookieStore.get('miniapp_session');
     if (sessionCookie) {
         try {
