@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { redirect } from 'next/navigation';
@@ -12,6 +11,7 @@ import type { ActionResult } from 'next/dist/server/app-render/types';
 import { z } from 'zod';
 import { logAction } from './logger';
 import { getIP } from './get-ip';
+import { passwordPolicy } from './password-policy';
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_ATTEMPT_WINDOW_SECONDS = 60;
@@ -151,14 +151,6 @@ export async function logout(): Promise<ActionResult> {
     return { success: true };
 }
 
-const passwordPolicy = z.string()
-    .min(8, "Password must be at least 8 characters long.")
-    .regex(/[A-Z]/, "Password must contain at least one uppercase letter.")
-    .regex(/[a-z]/, "Password must contain at least one lowercase letter.")
-    .regex(/[0-9]/, "Password must contain at least one number.")
-    .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character.");
-
-
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Current password is required.'),
   newPassword: passwordPolicy,
@@ -183,7 +175,7 @@ export async function changePasswordAction(formData: FormData) {
         return { success: false, message: 'Unauthorized' };
     }
 
-    const validatedData = changePasswordSchema.safeParse(Object.fromEntries(formData.entries()));
+    const validatedData = await changePasswordSchema.spa(Object.fromEntries(formData.entries()));
 
     if (!validatedData.success) {
         const messages = validatedData.error.errors.map(e => {
