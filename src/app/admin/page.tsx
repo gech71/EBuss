@@ -1,5 +1,3 @@
-
-
 import { RecentBookings } from "@/components/admin/RecentBookings";
 import { Analytics } from "@/components/admin/Analytics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +9,7 @@ import { redirect } from "next/navigation";
 export default async function AdminDashboard() {
   const { user } = await validateRequest();
   if (!user || !user.busOwnerId) {
-    return redirect('/login');
+    return redirect("/login");
   }
 
   const buses = await prisma.bus.findMany({
@@ -25,12 +23,12 @@ export default async function AdminDashboard() {
       },
     },
     include: {
-        origin: true,
-        destination: true,
-    }
+      origin: true,
+      destination: true,
+    },
   });
 
-  const routeIds = routes.map(r => r.id);
+  const routeIds = routes.map((r) => r.id);
 
   const bookingsData = await prisma.booking.findMany({
     where: {
@@ -42,35 +40,36 @@ export default async function AdminDashboard() {
       tickets: true,
     },
     orderBy: {
-      bookingTime: 'desc',
+      bookingTime: "desc",
     },
   });
 
-  const totalRevenue = bookingsData.reduce((acc, booking) => acc + Number(booking.totalPrice), 0);
-  
-  const bookings = bookingsData.map(booking => ({
+  const totalRevenue = bookingsData.reduce(
+    (acc, booking) => acc + Number(booking.totalPrice),
+    0
+  );
+
+  const bookings = bookingsData.map((booking) => ({
     ...booking,
     totalPrice: Number(booking.totalPrice),
   }));
 
-  const sanitizedRoutes = routes.map(r => ({ ...r, price: Number(r.price)}));
-
+  const sanitizedRoutes = routes.map((r) => ({ ...r, price: Number(r.price) }));
 
   return (
     <div className="space-y-8">
-
       <Analytics bookings={bookings} routes={sanitizedRoutes} buses={buses} />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Revenue
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
             <span className="text-muted-foreground font-bold">ETB</span>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalRevenue.toLocaleString()} ETB</div>
+            <div className="text-2xl font-bold">
+              {totalRevenue.toLocaleString()} ETB
+            </div>
             <p className="text-xs text-muted-foreground">
               Based on your company's bookings
             </p>
@@ -90,7 +89,9 @@ export default async function AdminDashboard() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Buses in Fleet</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Buses in Fleet
+            </CardTitle>
             <Bus className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -103,7 +104,7 @@ export default async function AdminDashboard() {
       </div>
 
       <div>
-        <RecentBookings bookings={bookings} routes={routes} />
+        <RecentBookings bookings={bookings} routes={sanitizedRoutes} />
       </div>
     </div>
   );

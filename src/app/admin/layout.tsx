@@ -1,8 +1,24 @@
-
 import Link from "next/link";
 import { Header } from "@/components/Header";
-import { SidebarProvider, Sidebar, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "@/components/ui/sidebar";
-import { LayoutDashboard, Route as RouteIcon, Bus, QrCode, MapPin, Percent, Settings, GitFork } from "lucide-react";
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarContent,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarFooter,
+} from "@/components/ui/sidebar";
+import {
+  LayoutDashboard,
+  Route as RouteIcon,
+  Bus,
+  QrCode,
+  MapPin,
+  Percent,
+  Settings,
+  GitFork,
+} from "lucide-react";
 import { UserNav } from "@/components/UserNav";
 import { validateRequest } from "@/lib/server/auth";
 import { redirect } from "next/navigation";
@@ -12,11 +28,14 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Info } from "lucide-react";
 
 async function getIsMiniApp() {
-  const cookieStore = cookies();
-  const sessionCookie = cookieStore.get('miniapp_session');
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get("miniapp_session");
   if (sessionCookie) {
     try {
-      const decodedSession = Buffer.from(sessionCookie.value, 'base64').toString('ascii');
+      const decodedSession = Buffer.from(
+        sessionCookie.value,
+        "base64"
+      ).toString("ascii");
       const sessionData = JSON.parse(decodedSession);
       return sessionData.isAuthenticated;
     } catch (error) {
@@ -33,23 +52,23 @@ export default async function AdminLayout({
 }) {
   const { user } = await validateRequest();
   if (!user) {
-    return redirect('/login');
+    return redirect("/login");
   }
-  if (user.role !== 'ADMIN') {
-    return redirect('/unauthorized');
+  if (user.role !== "ADMIN") {
+    return redirect("/unauthorized");
   }
-  
+
   const isMiniApp = await getIsMiniApp();
 
   let ownerName = null;
   if (user.busOwnerId) {
     const owner = await prisma.busOwner.findUnique({
       where: { id: user.busOwnerId },
-      select: { name: true }
+      select: { name: true },
     });
     ownerName = owner?.name;
   }
-  
+
   return (
     <SidebarProvider>
       <div className="flex flex-col min-h-screen w-full">
@@ -68,13 +87,13 @@ export default async function AdminLayout({
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip="Routes">
-                     <Link href="/admin/routes">
+                    <Link href="/admin/routes">
                       <RouteIcon />
                       <span>Routes</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                 <SidebarMenuItem>
+                <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip="Locations">
                     <Link href="/admin/locations">
                       <MapPin />
@@ -90,7 +109,7 @@ export default async function AdminLayout({
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                 <SidebarMenuItem>
+                <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip="Bus Mappings">
                     <Link href="/admin/bus-mappings">
                       <GitFork />
@@ -98,7 +117,7 @@ export default async function AdminLayout({
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                 <SidebarMenuItem>
+                <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip="Discounts">
                     <Link href="/admin/discounts">
                       <Percent />
@@ -114,7 +133,7 @@ export default async function AdminLayout({
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                 <SidebarMenuItem>
+                <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip="Settings">
                     <Link href="/admin/settings">
                       <Settings />
@@ -125,7 +144,7 @@ export default async function AdminLayout({
               </SidebarMenu>
             </SidebarContent>
             <SidebarFooter>
-                <UserNav user={user} ownerName={ownerName} />
+              <UserNav user={user} ownerName={ownerName} />
             </SidebarFooter>
           </Sidebar>
           <main className="flex-1 container mx-auto p-4 md:p-6">

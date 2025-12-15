@@ -1,8 +1,14 @@
-
 "use client";
 
 import { authenticate } from "@/app/lib/actions";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,63 +19,66 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Gem } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCsrf } from "@/hooks/useCsrf";
-import { useFormState, useFormStatus } from "react-dom";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useFormStatus } from "react-dom";
 
 function LoginButton() {
-    const { pending } = useFormStatus();
-    const [lockoutTime, setLockoutTime] = useState(0);
-    const { csrfToken, loading: csrfLoading } = useCsrf();
-    
-    useEffect(() => {
-        const component = document.querySelector('[data-error-message]');
-        if (component) {
-            const errorMessage = component.textContent;
-            const lockoutMatch = errorMessage?.match(/try again in (\d+) seconds/);
-            if (lockoutMatch && lockoutMatch[1]) {
-              setLockoutTime(parseInt(lockoutMatch[1], 10));
-            }
-        }
-    }, [pending]);
+  const { pending } = useFormStatus();
+  const [lockoutTime, setLockoutTime] = useState(0);
+  const { csrfToken, loading: csrfLoading } = useCsrf();
 
-
-    useEffect(() => {
-        if (lockoutTime > 0) {
-          const timer = setTimeout(() => {
-            setLockoutTime(lockoutTime - 1);
-          }, 1000);
-          return () => clearTimeout(timer);
-        }
-    }, [lockoutTime]);
-
-    const isButtonDisabled = pending || lockoutTime > 0 || csrfLoading;
-
-    const buttonText = () => {
-        if (pending) return 'Logging in...';
-        if (lockoutTime > 0) return `Try again in ${lockoutTime}s`;
-        if (csrfLoading) return 'Initializing...';
-        return 'Login';
+  useEffect(() => {
+    const component = document.querySelector("[data-error-message]");
+    if (component) {
+      const errorMessage = component.textContent;
+      const lockoutMatch = errorMessage?.match(/try again in (\d+) seconds/);
+      if (lockoutMatch && lockoutMatch[1]) {
+        setLockoutTime(parseInt(lockoutMatch[1], 10));
+      }
     }
+  }, [pending]);
 
-    return (
-      <Button className="w-full" aria-disabled={isButtonDisabled} disabled={isButtonDisabled} type="submit">
-        {buttonText()}
-      </Button>
-    );
+  useEffect(() => {
+    if (lockoutTime > 0) {
+      const timer = setTimeout(() => {
+        setLockoutTime(lockoutTime - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [lockoutTime]);
+
+  const isButtonDisabled = pending || lockoutTime > 0 || csrfLoading;
+
+  const buttonText = () => {
+    if (pending) return "Logging in...";
+    if (lockoutTime > 0) return `Try again in ${lockoutTime}s`;
+    if (csrfLoading) return "Initializing...";
+    return "Login";
+  };
+
+  return (
+    <Button
+      className="w-full"
+      aria-disabled={isButtonDisabled}
+      disabled={isButtonDisabled}
+      type="submit"
+    >
+      {buttonText()}
+    </Button>
+  );
 }
-
 
 export default function SuperAdminLoginPage() {
   const { csrfToken, loading: csrfLoading } = useCsrf();
   const { toast } = useToast();
-  
+
   const initialState = { message: "", success: false };
-  const [state, dispatch] = useFormState(authenticate, initialState);
+  const [state, dispatch] = React.useActionState(authenticate, initialState);
 
   useEffect(() => {
-      if(state?.success === true) {
-          toast({ title: "Login Successful!" });
-      }
+    if (state?.success === true) {
+      toast({ title: "Login Successful!" });
+    }
   }, [state, toast]);
 
   return (
@@ -80,10 +89,12 @@ export default function SuperAdminLoginPage() {
             <Logo />
           </div>
           <CardTitle className="flex items-center justify-center gap-2">
-            <Gem className="h-6 w-6 text-primary"/>
+            <Gem className="h-6 w-6 text-primary" />
             Super Admin Login
           </CardTitle>
-          <CardDescription>Enter your credentials for platform administration.</CardDescription>
+          <CardDescription>
+            Enter your credentials for platform administration.
+          </CardDescription>
         </CardHeader>
         <form action={dispatch}>
           <CardContent className="space-y-4">
@@ -101,11 +112,11 @@ export default function SuperAdminLoginPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input 
-                id="password" 
+              <Input
+                id="password"
                 name="password"
                 type="password"
-                required 
+                required
                 defaultValue="password"
               />
             </div>
@@ -121,8 +132,8 @@ export default function SuperAdminLoginPage() {
           <CardFooter className="flex-col gap-4">
             <LoginButton />
             <Separator className="my-2" />
-             <Button variant="outline" asChild className="w-full">
-                <Link href="/login">Switch to Admin Login</Link>
+            <Button variant="outline" asChild className="w-full">
+              <Link href="/login">Switch to Admin Login</Link>
             </Button>
           </CardFooter>
         </form>

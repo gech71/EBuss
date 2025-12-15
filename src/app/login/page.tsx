@@ -1,9 +1,15 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
 import { authenticate } from "@/app/lib/actions";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,52 +19,57 @@ import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { useCsrf } from "@/hooks/useCsrf";
-import { useFormState, useFormStatus } from "react-dom";
+import React from "react";
+import { useFormStatus } from "react-dom";
 import { useToast } from "@/hooks/use-toast";
 
 function LoginButton() {
-    const { pending } = useFormStatus();
-    const [lockoutTime, setLockoutTime] = useState(0);
-    const { csrfToken, loading: csrfLoading } = useCsrf();
-    
-    // This effect will run when the component mounts and the state has a message
-    // It's a bit of a workaround to get the lockout time from the server action
-    // A better approach might involve a more complex state object.
-    useEffect(() => {
-        const component = document.querySelector('[data-error-message]');
-        if (component) {
-            const errorMessage = component.textContent;
-            const lockoutMatch = errorMessage?.match(/try again in (\d+) seconds/);
-            if (lockoutMatch && lockoutMatch[1]) {
-              setLockoutTime(parseInt(lockoutMatch[1], 10));
-            }
-        }
-    }, [pending]);
+  const { pending } = useFormStatus();
+  const [lockoutTime, setLockoutTime] = useState(0);
+  const { csrfToken, loading: csrfLoading } = useCsrf();
 
-
-    useEffect(() => {
-        if (lockoutTime > 0) {
-          const timer = setTimeout(() => {
-            setLockoutTime(lockoutTime - 1);
-          }, 1000);
-          return () => clearTimeout(timer);
-        }
-    }, [lockoutTime]);
-
-    const isButtonDisabled = pending || lockoutTime > 0 || csrfLoading;
-
-    const buttonText = () => {
-        if (pending) return 'Logging in...';
-        if (lockoutTime > 0) return `Try again in ${lockoutTime}s`;
-        if (csrfLoading) return 'Initializing...';
-        return 'Login';
+  // This effect will run when the component mounts and the state has a message
+  // It's a bit of a workaround to get the lockout time from the server action
+  // A better approach might involve a more complex state object.
+  useEffect(() => {
+    const component = document.querySelector("[data-error-message]");
+    if (component) {
+      const errorMessage = component.textContent;
+      const lockoutMatch = errorMessage?.match(/try again in (\d+) seconds/);
+      if (lockoutMatch && lockoutMatch[1]) {
+        setLockoutTime(parseInt(lockoutMatch[1], 10));
+      }
     }
+  }, [pending]);
 
-    return (
-      <Button className="w-full" aria-disabled={isButtonDisabled} disabled={isButtonDisabled} type="submit">
-        {buttonText()}
-      </Button>
-    );
+  useEffect(() => {
+    if (lockoutTime > 0) {
+      const timer = setTimeout(() => {
+        setLockoutTime(lockoutTime - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [lockoutTime]);
+
+  const isButtonDisabled = pending || lockoutTime > 0 || csrfLoading;
+
+  const buttonText = () => {
+    if (pending) return "Logging in...";
+    if (lockoutTime > 0) return `Try again in ${lockoutTime}s`;
+    if (csrfLoading) return "Initializing...";
+    return "Login";
+  };
+
+  return (
+    <Button
+      className="w-full"
+      aria-disabled={isButtonDisabled}
+      disabled={isButtonDisabled}
+      type="submit"
+    >
+      {buttonText()}
+    </Button>
+  );
 }
 
 export default function LoginPage() {
@@ -66,12 +77,12 @@ export default function LoginPage() {
   const { toast } = useToast();
 
   const initialState = { message: "", success: false };
-  const [state, dispatch] = useFormState(authenticate, initialState);
+  const [state, dispatch] = React.useActionState(authenticate, initialState);
 
   useEffect(() => {
-      if(state?.success === true) {
-          toast({ title: "Login Successful!" });
-      }
+    if (state?.success === true) {
+      toast({ title: "Login Successful!" });
+    }
   }, [state, toast]);
 
   return (
@@ -82,11 +93,13 @@ export default function LoginPage() {
             <Logo />
           </div>
           <CardTitle>Welcome Back</CardTitle>
-          <CardDescription>Enter your credentials to access your account.</CardDescription>
+          <CardDescription>
+            Enter your credentials to access your account.
+          </CardDescription>
         </CardHeader>
         <form action={dispatch}>
           <CardContent className="space-y-4">
-            <input type="hidden" name="csrfToken" value={csrfToken || ''} />
+            <input type="hidden" name="csrfToken" value={csrfToken || ""} />
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -100,11 +113,11 @@ export default function LoginPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input 
-                id="password" 
+              <Input
+                id="password"
                 name="password"
                 type="password"
-                required 
+                required
                 defaultValue="password"
               />
             </div>
@@ -120,8 +133,8 @@ export default function LoginPage() {
           <CardFooter className="flex-col gap-4">
             <LoginButton />
             <Separator className="my-2" />
-             <Button variant="outline" asChild className="w-full">
-                <Link href="/">Continue as a customer</Link>
+            <Button variant="outline" asChild className="w-full">
+              <Link href="/">Continue as a customer</Link>
             </Button>
           </CardFooter>
         </form>

@@ -1,39 +1,42 @@
-
 import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { validateRequest } from "@/lib/server/auth";
 import { EditDiscountForm } from "@/components/admin/EditDiscountForm";
 
 interface EditDiscountPageProps {
-    params: { id: string };
+  params: { id: string };
 }
 
-export default async function EditDiscountPage({ params }: EditDiscountPageProps) {
-    const { user } = await validateRequest();
-    if (!user || !user.busOwnerId) {
-        return notFound();
-    }
+export default async function EditDiscountPage({
+  params,
+}: EditDiscountPageProps) {
+  const { id } = (await params) as { id: string };
+  const { user } = await validateRequest();
+  if (!user || !user.busOwnerId) {
+    return notFound();
+  }
 
-    const discount = await prisma.discount.findUnique({
-        where: { 
-            id: params.id,
-            ownerId: user.busOwnerId 
-        },
-        include: { tiers: { orderBy: { minTickets: 'asc' } } }
-    });
+  const discount = await prisma.discount.findUnique({
+    where: {
+      id: id,
+      ownerId: user.busOwnerId,
+    },
+    include: { tiers: { orderBy: { minTickets: "asc" } } },
+  });
 
-    if (!discount) {
-        notFound();
-    }
-    
-    // Prisma returns Decimal for 'value', which needs to be serialized for the client.
-    const sanitizedDiscount = {
-      ...discount,
-      percentage: discount.percentage ? Number(discount.percentage) : null,
-      tiers: discount.tiers.map(tier => ({...tier, percentage: Number(tier.percentage)}))
-    }
+  if (!discount) {
+    notFound();
+  }
 
-    return (
-       <EditDiscountForm discount={sanitizedDiscount} />
-    );
+  // Prisma returns Decimal for 'value', which needs to be serialized for the client.
+  const sanitizedDiscount = {
+    ...discount,
+    percentage: discount.percentage ? Number(discount.percentage) : null,
+    tiers: discount.tiers.map((tier) => ({
+      ...tier,
+      percentage: Number(tier.percentage),
+    })),
+  };
+
+  return <EditDiscountForm discount={sanitizedDiscount} />;
 }

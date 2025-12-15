@@ -1,7 +1,14 @@
-
 import Link from "next/link";
 import { Header } from "@/components/Header";
-import { SidebarProvider, Sidebar, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "@/components/ui/sidebar";
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarContent,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarFooter,
+} from "@/components/ui/sidebar";
 import { LayoutDashboard, Users, Gem, FileClock } from "lucide-react";
 import { UserNav } from "@/components/UserNav";
 import { validateRequest } from "@/lib/server/auth";
@@ -9,11 +16,14 @@ import { redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
 
 async function getIsMiniApp() {
-  const cookieStore = cookies();
-  const sessionCookie = cookieStore.get('miniapp_session');
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get("miniapp_session");
   if (sessionCookie) {
     try {
-      const decodedSession = Buffer.from(sessionCookie.value, 'base64').toString('ascii');
+      const decodedSession = Buffer.from(
+        sessionCookie.value,
+        "base64"
+      ).toString("ascii");
       const sessionData = JSON.parse(decodedSession);
       return sessionData.isAuthenticated;
     } catch (error) {
@@ -30,14 +40,14 @@ export default async function SuperAdminLayout({
 }) {
   const { user } = await validateRequest();
   if (!user) {
-    return redirect('/super-admin/login');
+    return redirect("/super-admin/login");
   }
-   if (user.role !== 'SUPER_ADMIN') {
-    return redirect('/unauthorized');
+  if (user.role !== "SUPER_ADMIN") {
+    return redirect("/unauthorized");
   }
 
   const isMiniApp = await getIsMiniApp();
-  
+
   return (
     <SidebarProvider>
       <div className="flex flex-col min-h-screen w-full">
@@ -56,13 +66,13 @@ export default async function SuperAdminLayout({
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip="Owners">
-                     <Link href="/super-admin/owners">
+                    <Link href="/super-admin/owners">
                       <Users />
                       <span>Bus Owners</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                 <SidebarMenuItem>
+                <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip="Platform Settings">
                     <Link href="/super-admin/settings">
                       <Gem />
@@ -70,7 +80,7 @@ export default async function SuperAdminLayout({
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                 <SidebarMenuItem>
+                <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip="Audit Logs">
                     <Link href="/super-admin/logs">
                       <FileClock />
