@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useTransition, useRef, useEffect } from "react";
+import { useState, useTransition, useRef, useEffect, useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -27,21 +27,7 @@ const passwordRules = [
     { text: "At least one special character", regex: /[^A-Za-z0-9]/ },
 ];
 
-function PasswordStrength({ password, onValidationChange }: { password?: string, onValidationChange: (isValid: boolean) => void }) {
-    if (!password) {
-        useEffect(() => {
-            onValidationChange(false);
-        }, [onValidationChange]);
-        return null;
-    }
-    
-    const validationResults = passwordRules.map(rule => rule.regex.test(password));
-    const allValid = validationResults.every(Boolean);
-
-    useEffect(() => {
-        onValidationChange(allValid);
-    }, [allValid, onValidationChange]);
-    
+function PasswordStrength({ validationResults }: { validationResults: boolean[] }) {
     return (
         <ul className="text-sm text-muted-foreground space-y-1 mt-2">
             {passwordRules.map((rule, index) => {
@@ -71,8 +57,14 @@ export function ChangePasswordForm({ csrfToken }: ChangePasswordFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [isPasswordPolicyMet, setIsPasswordPolicyMet] = useState(false);
 
+  const validationResults = useMemo(() => {
+      return passwordRules.map(rule => rule.regex.test(newPassword));
+  }, [newPassword]);
+  
+  const isPasswordPolicyMet = useMemo(() => {
+      return validationResults.every(Boolean);
+  }, [validationResults]);
 
   const handleSubmit = (formData: FormData) => {
     const newPasswordValue = formData.get("newPassword") as string;
@@ -123,6 +115,15 @@ export function ChangePasswordForm({ csrfToken }: ChangePasswordFormProps) {
 
   const isButtonDisabled = isPending || !csrfToken || !isPasswordPolicyMet || newPassword !== confirmPassword || newPassword === "";
 
+  console.log("--- Button State Debug ---");
+  console.log("isPending:", isPending);
+  console.log("csrfToken exists:", !!csrfToken);
+  console.log("isPasswordPolicyMet:", isPasswordPolicyMet);
+  console.log("passwordsMatch:", newPassword === confirmPassword);
+  console.log("newPassword is not empty:", newPassword !== "");
+  console.log("isButtonDisabled:", isButtonDisabled);
+  console.log("--------------------------");
+
   return (
     <Card className="max-w-xl border-0 shadow-none">
       <form ref={formRef} action={handleSubmit}>
@@ -166,7 +167,7 @@ export function ChangePasswordForm({ csrfToken }: ChangePasswordFormProps) {
                       {showNew ? <EyeOff /> : <Eye />}
                     </Button>
                 </div>
-                 <PasswordStrength password={newPassword} onValidationChange={setIsPasswordPolicyMet} />
+                 <PasswordStrength validationResults={validationResults} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm New Password</Label>
