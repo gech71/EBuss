@@ -9,14 +9,14 @@ import { decrypt, SessionPayload } from '@/app/lib/auth';
 import { SESSION_DURATION } from '@/app/lib/constants';
 
 export async function validateRequest(): Promise<{ user: User | null; session: SessionPayload | null; }> {
-    const cookieStore = await cookies();
-    const sessionCookieValue = cookieStore.get('session')?.value;
+    const cookieStore = cookies();
+    const sessionCookie = cookieStore.get('session');
     
-    if (!sessionCookieValue) {
+    if (!sessionCookie) {
         return { user: null, session: null };
     }
 
-    const sessionPayload = await decrypt(sessionCookieValue);
+    const sessionPayload = await decrypt(sessionCookie.value);
     
     if (!sessionPayload || !sessionPayload.jti) {
         return { user: null, session: null };
@@ -65,6 +65,7 @@ export async function validateRequest(): Promise<{ user: User | null; session: S
         return { user: null, session: null };
     }
 };
+
 
 
 
