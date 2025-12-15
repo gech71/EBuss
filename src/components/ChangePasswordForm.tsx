@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useTransition, useRef } from "react";
+import { useState, useTransition, useRef, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -20,20 +20,32 @@ import { cn } from "@/lib/utils";
 import { Separator } from "./ui/separator";
 
 const passwordRules = [
-    { text: "At least 8 characters long", regex: /.{8,}/ },
+    { text: "At least 10 characters long", regex: /.{10,}/ },
     { text: "At least one uppercase letter", regex: /[A-Z]/ },
     { text: "At least one lowercase letter", regex: /[a-z]/ },
     { text: "At least one number", regex: /[0-9]/ },
     { text: "At least one special character", regex: /[^A-Za-z0-9]/ },
 ];
 
-function PasswordStrength({ password }: { password?: string }) {
-    if (!password) return null;
+function PasswordStrength({ password, onValidationChange }: { password?: string, onValidationChange: (isValid: boolean) => void }) {
+    if (!password) {
+        useEffect(() => {
+            onValidationChange(false);
+        }, [onValidationChange]);
+        return null;
+    }
+    
+    const validationResults = passwordRules.map(rule => rule.regex.test(password));
+    const allValid = validationResults.every(Boolean);
+
+    useEffect(() => {
+        onValidationChange(allValid);
+    }, [allValid, onValidationChange]);
     
     return (
         <ul className="text-sm text-muted-foreground space-y-1 mt-2">
             {passwordRules.map((rule, index) => {
-                const isValid = rule.regex.test(password);
+                const isValid = validationResults[index];
                 return (
                     <li key={index} className={cn("flex items-center gap-2", isValid ? "text-green-600" : "text-destructive")}>
                         {isValid ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
@@ -58,12 +70,15 @@ export function ChangePasswordForm({ csrfToken }: ChangePasswordFormProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isPasswordPolicyMet, setIsPasswordPolicyMet] = useState(false);
+
 
   const handleSubmit = (formData: FormData) => {
     const newPasswordValue = formData.get("newPassword") as string;
-    const confirmPassword = formData.get("confirmPassword") as string;
+    const confirmPasswordValue = formData.get("confirmPassword") as string;
 
-    if (newPasswordValue !== confirmPassword) {
+    if (newPasswordValue !== confirmPasswordValue) {
       toast({
         title: "Passwords do not match",
         description: "Please ensure the new passwords match.",
@@ -85,6 +100,7 @@ export function ChangePasswordForm({ csrfToken }: ChangePasswordFormProps) {
         });
         formRef.current?.reset();
         setNewPassword("");
+        setConfirmPassword("");
         // Redirect to login page after successful password change
         window.location.href = '/login';
       } else {
@@ -104,6 +120,8 @@ export function ChangePasswordForm({ csrfToken }: ChangePasswordFormProps) {
       window.location.href = '/';
     });
   };
+
+  const isButtonDisabled = isPending || !csrfToken || !isPasswordPolicyMet || newPassword !== confirmPassword || newPassword === "";
 
   return (
     <Card className="max-w-xl border-0 shadow-none">
@@ -148,7 +166,7 @@ export function ChangePasswordForm({ csrfToken }: ChangePasswordFormProps) {
                       {showNew ? <EyeOff /> : <Eye />}
                     </Button>
                 </div>
-                 <PasswordStrength password={newPassword} />
+                 <PasswordStrength password={newPassword} onValidationChange={setIsPasswordPolicyMet} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm New Password</Label>
@@ -158,6 +176,8 @@ export function ChangePasswordForm({ csrfToken }: ChangePasswordFormProps) {
                       name="confirmPassword"
                       type={showConfirm ? "text" : "password"}
                       required
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
                     />
                      <Button
                       type="button" variant="ghost" size="icon"
@@ -171,7 +191,7 @@ export function ChangePasswordForm({ csrfToken }: ChangePasswordFormProps) {
            </div>
         </CardContent>
         <CardFooter className="p-0 pt-6 flex-col items-stretch gap-4">
-          <Button type="submit" disabled={isPending || !csrfToken}>
+          <Button type="submit" disabled={isButtonDisabled}>
             {isPending ? "Updating..." : "Update Password"}
           </Button>
           <Separator />
