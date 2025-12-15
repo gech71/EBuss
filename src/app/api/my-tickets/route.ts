@@ -3,11 +3,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { PaymentStatus } from '@prisma/client';
 import { cookies } from 'next/headers';
+import type { ReadonlyRequestCookies } from 'next/dist/server/web/spec-extension/cookies';
+
 
 export const dynamic = 'force-dynamic';
 
-async function getPhoneNumberFromSession(): Promise<string | null> {
-    const cookieStore = cookies();
+async function getPhoneNumberFromSession(cookieStore: ReadonlyRequestCookies): Promise<string | null> {
     const sessionCookie = cookieStore.get('miniapp_session');
     if (sessionCookie) {
         try {
@@ -27,7 +28,8 @@ async function getPhoneNumberFromSession(): Promise<string | null> {
 
 export async function GET(request: NextRequest) {
   try {
-    const sessionPhoneNumber = await getPhoneNumberFromSession();
+    const cookieStore = cookies();
+    const sessionPhoneNumber = await getPhoneNumberFromSession(cookieStore);
 
     let phoneToQuery: string | null = sessionPhoneNumber;
 

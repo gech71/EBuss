@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { cookies } from 'next/headers';
@@ -7,8 +6,10 @@ import prisma from '@/lib/prisma';
 import type { User } from '@prisma/client';
 import { decrypt, SessionPayload } from '@/app/lib/auth';
 import { SESSION_DURATION } from '@/app/lib/constants';
+import { unstable_noStore as noStore } from 'next/cache';
 
 export async function validateRequest(): Promise<{ user: User | null; session: SessionPayload | null; }> {
+    noStore();
     const cookieStore = cookies();
     const sessionCookie = cookieStore.get('session');
     
@@ -65,9 +66,3 @@ export async function validateRequest(): Promise<{ user: User | null; session: S
         return { user: null, session: null };
     }
 };
-
-
-
-
-
-
