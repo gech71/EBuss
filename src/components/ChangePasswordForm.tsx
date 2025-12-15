@@ -187,6 +187,9 @@ export function ChangePasswordForm({ csrfToken }: ChangePasswordFormProps) {
                       {showConfirm ? <EyeOff /> : <Eye />}
                     </Button>
                 </div>
+                 {newPassword && confirmPassword && newPassword !== confirmPassword && (
+                    <p className="text-sm text-destructive mt-2">Passwords do not match.</p>
+                )}
               </div>
            </div>
         </CardContent>
