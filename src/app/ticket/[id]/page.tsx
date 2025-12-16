@@ -1,3 +1,4 @@
+
 import { Header } from "@/components/Header";
 import { TicketDisplay } from "@/components/booking/TicketDisplay";
 import { PaymentStatusChecker } from "@/components/booking/PaymentStatusChecker";
@@ -11,7 +12,7 @@ interface TicketPageProps {
 }
 
 async function getIsMiniApp() {
-  const cookieStore = await cookies();
+  const cookieStore = cookies();
   const sessionCookie = cookieStore.get("miniapp_session");
   if (sessionCookie) {
     try {
@@ -31,7 +32,7 @@ async function getIsMiniApp() {
 export default async function TicketPage({ params }: TicketPageProps) {
   const { user } = await validateRequest();
   const isMiniApp = await getIsMiniApp();
-  const bookingId = params.id; // This is now a booking ID from the URL
+  const { id: bookingId } = (await params) as { id: string }; // This is now a booking ID from the URL
 
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
