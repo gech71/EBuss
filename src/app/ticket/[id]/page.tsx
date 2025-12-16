@@ -12,7 +12,7 @@ interface TicketPageProps {
 }
 
 async function getIsMiniApp() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const sessionCookie = cookieStore.get("miniapp_session");
   if (sessionCookie) {
     try {
