@@ -5,11 +5,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Loader2, Ticket, Info, AlertTriangle } from 'lucide-react';
+import { Loader2, Ticket, AlertTriangle } from 'lucide-react';
 import type { Booking, PaymentStatus } from "@prisma/client";
 
-const POLLING_INTERVAL = 5000; // 5 seconds
-const POLLING_DURATION = 30 * 1000; // 30 seconds
+const POLLING_INTERVAL = 3000; // 3 seconds
+const POLLING_DURATION = 60 * 1000; // 1 minute max polling
 
 interface PaymentStatusCheckerProps {
     booking: Booking;
@@ -19,30 +19,22 @@ export function PaymentStatusChecker({ booking }: PaymentStatusCheckerProps) {
     const router = useRouter();
     const [status, setStatus] = useState<PaymentStatus>(booking.paymentStatus);
     const [isPolling, setIsPolling] = useState(true);
-    const [isTimedOut, setIsTimedOut] = useState(false);
-
-    const handleTimeout = useCallback(() => {
-        setIsPolling(false);
-        setIsTimedOut(true);
-        // The server will handle seat release, we just need to update the UI.
-        router.refresh();
-    }, [router]);
+    const [hasFailed, setHasFailed] = useState(false);
 
     useEffect(() => {
         if (status === 'PAID') {
             setIsPolling(false);
+            router.refresh();
             return;
         }
 
-        const bookingExpiryTime = new Date(booking.expiresAt || 0).getTime();
         const startTime = Date.now();
-        const effectivePollingDuration = bookingExpiryTime > startTime ? bookingExpiryTime - startTime : POLLING_DURATION;
-
-
         const intervalId = setInterval(async () => {
-            if (Date.now() - startTime > effectivePollingDuration) {
+            if (Date.now() - startTime > POLLING_DURATION) {
                 clearInterval(intervalId);
-                handleTimeout();
+                setIsPolling(false);
+                setHasFailed(true); // Assume failure after long polling
+                router.refresh(); // Refresh to get final state from server
                 return;
             }
 
@@ -54,8 +46,13 @@ export function PaymentStatusChecker({ booking }: PaymentStatusCheckerProps) {
                         clearInterval(intervalId);
                         setIsPolling(false);
                         setStatus('PAID');
-                        // Force a page reload to get the full ticket data
                         router.refresh();
+                    } else if (data.paymentStatus === 'FAILED') {
+                         clearInterval(intervalId);
+                         setIsPolling(false);
+                         setStatus('FAILED');
+                         setHasFailed(true);
+                         router.refresh();
                     }
                 }
             } catch (error) {
@@ -64,16 +61,16 @@ export function PaymentStatusChecker({ booking }: PaymentStatusCheckerProps) {
         }, POLLING_INTERVAL);
 
         return () => clearInterval(intervalId);
-    }, [booking.id, booking.expiresAt, status, router, handleTimeout]);
+    }, [booking.id, status, router]);
 
+    // This state is very temporary, as the router.refresh() will load the actual ticket page.
     if (status === 'PAID') {
-        // This state should be quickly replaced by the router refresh showing the real ticket.
         return (
              <Alert className="max-w-md">
                 <Ticket className="h-4 w-4" />
                 <AlertTitle>Payment Confirmed!</AlertTitle>
                 <AlertDescription>
-                   Your payment has been successfully processed. Redirecting to your ticket...
+                   Your payment has been successfully processed. Loading your ticket...
                 </AlertDescription>
                 <div className="flex items-center justify-center pt-4">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -88,7 +85,7 @@ export function PaymentStatusChecker({ booking }: PaymentStatusCheckerProps) {
                 <Ticket className="h-4 w-4" />
                 <AlertTitle>Awaiting Payment Confirmation</AlertTitle>
                 <AlertDescription>
-                    This booking is not yet paid for. We are actively checking for payment confirmation. Your seats are reserved for 30 seconds.
+                    We are checking for payment confirmation. Your seats are reserved for a limited time. Please do not close this page.
                 </AlertDescription>
                 <div className="flex items-center justify-center pt-4">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -97,13 +94,14 @@ export function PaymentStatusChecker({ booking }: PaymentStatusCheckerProps) {
         );
     }
     
-    if (isTimedOut) {
+    // This state is shown if polling times out or server confirms FAILED status
+    if (hasFailed || status === 'FAILED') {
         return (
              <Alert variant="destructive" className="max-w-md">
                 <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Booking Expired</AlertTitle>
+                <AlertTitle>Booking Expired or Failed</AlertTitle>
                 <AlertDescription>
-                   Your 30-second payment window has expired. The seats you selected have been released. If you believe you have paid, please contact support. Otherwise, you can try booking again.
+                   We could not confirm your payment in time, and the seats have been released. If you believe you have paid, please contact support.
                 </AlertDescription>
                  <div className="pt-4 flex justify-end gap-2">
                     <Button variant="outline" onClick={() => router.push('/')}>Go to Homepage</Button>
@@ -113,7 +111,7 @@ export function PaymentStatusChecker({ booking }: PaymentStatusCheckerProps) {
         )
     }
 
-    // Default state if not paid, not polling, and not timed out.
+    // Fallback for any other state
     return (
         <Alert variant="destructive" className="max-w-md">
             <Ticket className="h-4 w-4" />
