@@ -43,12 +43,12 @@ export function PaymentStatusChecker({ booking }: PaymentStatusCheckerProps) {
                 setStatus('PAID');
                 setIsPolling(false);
                 router.refresh();
-                return;
+                return; // <-- CRITICAL FIX: Stop execution if already paid
             }
             if (initialStatus === 'FAILED') {
                 setStatus('FAILED');
                 setIsPolling(false);
-                return;
+                return; // <-- CRITICAL FIX: Stop execution if already failed
             }
 
             const startTime = Date.now();
