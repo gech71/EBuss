@@ -19,49 +19,71 @@ export function PaymentStatusChecker({ booking }: PaymentStatusCheckerProps) {
     const router = useRouter();
     const [status, setStatus] = useState<PaymentStatus>(booking.paymentStatus);
     const [isPolling, setIsPolling] = useState(true);
-    const [hasFailed, setHasFailed] = useState(false);
+
+    const checkStatus = useCallback(async () => {
+        try {
+            const response = await fetch(`/api/ticket/${booking.id}/status`);
+            if (response.ok) {
+                const data = await response.json();
+                return data.paymentStatus as PaymentStatus;
+            }
+        } catch (error) {
+            console.error("Failed to poll for payment status:", error);
+        }
+        return status; // Return current status on error
+    }, [booking.id, status]);
 
     useEffect(() => {
-        if (status === 'PAID') {
-            setIsPolling(false);
-            router.refresh();
-            return;
-        }
+        let intervalId: NodeJS.Timeout | undefined;
 
-        const startTime = Date.now();
-        const intervalId = setInterval(async () => {
-            if (Date.now() - startTime > POLLING_DURATION) {
-                clearInterval(intervalId);
+        const startPolling = async () => {
+             // Perform an immediate check on mount
+            const initialStatus = await checkStatus();
+            if (initialStatus === 'PAID') {
+                setStatus('PAID');
                 setIsPolling(false);
-                setHasFailed(true); // Assume failure after long polling
-                router.refresh(); // Refresh to get final state from server
+                router.refresh();
+                return;
+            }
+            if (initialStatus === 'FAILED') {
+                setStatus('FAILED');
+                setIsPolling(false);
                 return;
             }
 
-            try {
-                const response = await fetch(`/api/ticket/${booking.id}/status`);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.paymentStatus === 'PAID') {
-                        clearInterval(intervalId);
-                        setIsPolling(false);
-                        setStatus('PAID');
+            const startTime = Date.now();
+            intervalId = setInterval(async () => {
+                if (Date.now() - startTime > POLLING_DURATION) {
+                    clearInterval(intervalId);
+                    setIsPolling(false);
+                    setStatus('FAILED'); // Assume failure after long polling
+                    return;
+                }
+
+                const newStatus = await checkStatus();
+                 if (newStatus === 'PAID' || newStatus === 'FAILED') {
+                    clearInterval(intervalId);
+                    setIsPolling(false);
+                    setStatus(newStatus);
+                    if (newStatus === 'PAID') {
                         router.refresh();
-                    } else if (data.paymentStatus === 'FAILED') {
-                         clearInterval(intervalId);
-                         setIsPolling(false);
-                         setStatus('FAILED');
-                         setHasFailed(true);
-                         router.refresh();
                     }
                 }
-            } catch (error) {
-                console.error("Failed to poll for payment status:", error);
-            }
-        }, POLLING_INTERVAL);
+            }, POLLING_INTERVAL);
+        }
 
-        return () => clearInterval(intervalId);
-    }, [booking.id, status, router]);
+        if (status === 'PENDING') {
+            startPolling();
+        } else {
+            setIsPolling(false);
+        }
+        
+        return () => {
+            if (intervalId) {
+                clearInterval(intervalId);
+            }
+        };
+    }, [booking.id, router, status, checkStatus]);
 
     // This state is very temporary, as the router.refresh() will load the actual ticket page.
     if (status === 'PAID') {
@@ -95,7 +117,7 @@ export function PaymentStatusChecker({ booking }: PaymentStatusCheckerProps) {
     }
     
     // This state is shown if polling times out or server confirms FAILED status
-    if (hasFailed || status === 'FAILED') {
+    if (status === 'FAILED') {
         return (
              <Alert variant="destructive" className="max-w-md">
                 <AlertTriangle className="h-4 w-4" />
