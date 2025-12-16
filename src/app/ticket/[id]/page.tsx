@@ -7,6 +7,8 @@ import prisma from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 
+export const dynamic = 'force-dynamic';
+
 interface TicketPageProps {
   params: { id: string };
 }
