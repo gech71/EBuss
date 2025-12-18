@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { CommissionType, Role } from '@prisma/client';
 import { validateRequest } from '@/lib/server/auth';
 import { logAction } from '@/app/lib/logger';
+import { validateCsrf } from '@/app/lib/actions';
 
 // Simple ID generator
 function generateId(length: number): string {
@@ -47,6 +48,12 @@ const updateOwnerSchema = z.object({
 });
 
 export async function createOwnerAction(formData: FormData) {
+    try {
+        await validateCsrf(formData);
+    } catch (error) {
+        return { success: false, message: 'Your session has expired or is invalid. Please refresh the page and try again.' };
+    }
+
     const { user } = await validateRequest();
     if (!user || user.role !== 'SUPER_ADMIN') {
         await logAction({ actionType: 'CREATE_OWNER_UNAUTHORIZED', description: 'Unauthorized attempt to create bus owner.' });
@@ -118,6 +125,12 @@ export async function createOwnerAction(formData: FormData) {
 }
 
 export async function updateOwnerAction(formData: FormData) {
+     try {
+        await validateCsrf(formData);
+    } catch (error) {
+        return { success: false, message: 'Your session has expired or is invalid. Please refresh the page and try again.' };
+    }
+
     const { user } = await validateRequest();
     if (!user || user.role !== 'SUPER_ADMIN') {
         await logAction({ actionType: 'UPDATE_OWNER_UNAUTHORIZED', description: 'Unauthorized attempt to update bus owner.' });
@@ -197,7 +210,13 @@ export async function updateOwnerAction(formData: FormData) {
 }
 
 
-export async function deleteOwnerAction(ownerId: string): Promise<{ success: boolean; message: string }> {
+export async function deleteOwnerAction(ownerId: string, csrfToken: string): Promise<{ success: boolean; message: string }> {
+  try {
+    await validateCsrf(csrfToken);
+  } catch (error) {
+    return { success: false, message: 'Your session has expired or is invalid. Please refresh the page and try again.' };
+  }
+  
   const { user } = await validateRequest();
   if (!user || user.role !== 'SUPER_ADMIN') {
     await logAction({ actionType: 'DELETE_OWNER_UNAUTHORIZED', description: `Unauthorized attempt to delete owner ${ownerId}.` });

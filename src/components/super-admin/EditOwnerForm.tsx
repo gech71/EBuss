@@ -13,6 +13,7 @@ import type { CommissionTier, BusOwner, CommissionType } from "@prisma/client";
 import { PlusCircle, Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { updateOwnerAction } from "@/app/super-admin/(dashboard)/owners/actions";
+import { useCsrf } from "@/hooks/useCsrf";
 
 
 interface EditOwnerFormProps {
@@ -27,6 +28,7 @@ export function EditOwnerForm({ owner: initialOwner, otherOwnerNames }: EditOwne
     const { toast } = useToast();
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
+    const { csrfToken, loading: csrfLoading } = useCsrf();
     
     const [owner, setOwner] = useState(initialOwner);
     const [tiers, setTiers] = useState<ClientCommissionTier[]>(initialOwner.commissionTiers);
@@ -89,6 +91,7 @@ export function EditOwnerForm({ owner: initialOwner, otherOwnerNames }: EditOwne
         
         const formData = new FormData();
         formData.append('id', owner.id);
+        formData.append('csrfToken', csrfToken || '');
         formData.append('name', owner.name);
         formData.append('bankAccountNumber', owner.bankAccountNumber);
         formData.append('commissionTiers', JSON.stringify(tiers));
@@ -191,7 +194,7 @@ export function EditOwnerForm({ owner: initialOwner, otherOwnerNames }: EditOwne
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={() => router.push('/super-admin/owners')}>Cancel</Button>
-                    <Button type="submit" disabled={isPending}>
+                    <Button type="submit" disabled={isPending || csrfLoading}>
                         {isPending ? 'Saving...' : 'Save Changes'}
                     </Button>
                 </CardFooter>

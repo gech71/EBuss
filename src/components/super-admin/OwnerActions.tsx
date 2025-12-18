@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { deleteOwnerAction } from '@/app/super-admin/(dashboard)/owners/actions';
 import type { BusOwner } from '@prisma/client';
 import { useCsrf } from '@/hooks/useCsrf';
+import { useTransition } from 'react';
 
 interface OwnerActionsProps {
   owner: BusOwner & {
@@ -22,24 +23,30 @@ interface OwnerActionsProps {
 
 export function OwnerActions({ owner }: OwnerActionsProps) {
   const { toast } = useToast();
-  const { csrfToken } = useCsrf();
+  const { csrfToken, loading: csrfLoading } = useCsrf();
+  const [isPending, startTransition] = useTransition();
 
   const handleDelete = async () => {
-    // CSRF token is not needed for super-admin actions in this implementation,
-    // but a robust app would include it. We will call the action directly.
-    const result = await deleteOwnerAction(owner.id);
-    if (result.success) {
-      toast({
-        title: "Owner Deleted",
-        description: `"${owner.name}" has been removed.`,
-      });
-    } else {
-      toast({
-        title: "Deletion Failed",
-        description: result.message,
-        variant: "destructive",
-      });
+    if (!csrfToken) {
+        toast({ title: "Error", description: "Invalid session. Please refresh.", variant: "destructive"});
+        return;
     }
+
+    startTransition(async () => {
+        const result = await deleteOwnerAction(owner.id, csrfToken);
+        if (result.success) {
+        toast({
+            title: "Owner Deleted",
+            description: `"${owner.name}" has been removed.`,
+        });
+        } else {
+        toast({
+            title: "Deletion Failed",
+            description: result.message,
+            variant: "destructive",
+        });
+        }
+    });
   };
 
   return (
@@ -57,7 +64,7 @@ export function OwnerActions({ owner }: OwnerActionsProps) {
             <Link href={`/super-admin/owners/${owner.id}/edit`}>Edit</Link>
           </DropdownMenuItem>
           <AlertDialogTrigger asChild>
-            <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(e) => e.preventDefault()}>
+            <DropdownMenuItem disabled={csrfLoading} className="text-destructive focus:text-destructive" onSelect={(e) => e.preventDefault()}>
               Delete
             </DropdownMenuItem>
           </AlertDialogTrigger>
@@ -73,8 +80,8 @@ export function OwnerActions({ owner }: OwnerActionsProps) {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
-            Yes, delete it
+          <AlertDialogAction onClick={handleDelete} disabled={isPending || csrfLoading} className="bg-destructive hover:bg-destructive/90">
+            {isPending ? "Deleting..." : "Yes, delete it"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

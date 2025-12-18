@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { CommissionType } from "@prisma/client";
 import { createOwnerAction } from "@/app/super-admin/(dashboard)/owners/actions";
 import { BackButton } from "../BackButton";
+import { useCsrf } from "@/hooks/useCsrf";
 
 interface NewOwnerFormProps {
     existingOwnerNames: string[];
@@ -32,6 +33,7 @@ export function NewOwnerForm({ existingOwnerNames, existingAccountNumbers, exist
     const { toast } = useToast();
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
+    const { csrfToken, loading: csrfLoading } = useCsrf();
     
     const [name, setName] = useState('');
     const [bankAccountNumber, setBankAccountNumber] = useState('');
@@ -97,6 +99,7 @@ export function NewOwnerForm({ existingOwnerNames, existingAccountNumbers, exist
         }
         
         const formData = new FormData();
+        formData.append('csrfToken', csrfToken || '');
         formData.append('name', name);
         formData.append('bankAccountNumber', bankAccountNumber);
         formData.append('commissionTiers', JSON.stringify(tiers));
@@ -203,7 +206,7 @@ export function NewOwnerForm({ existingOwnerNames, existingAccountNumbers, exist
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
-                    <Button type="submit" disabled={isPending}>
+                    <Button type="submit" disabled={isPending || csrfLoading}>
                         {isPending ? 'Saving...' : 'Save Owner'}
                     </Button>
                 </CardFooter>
