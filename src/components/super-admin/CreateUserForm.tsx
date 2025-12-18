@@ -25,6 +25,7 @@ import { UserPlus, Eye, EyeOff, Check, X } from "lucide-react";
 import type { BusOwner } from "@prisma/client";
 import { createUserAction } from "@/app/super-admin/(dashboard)/settings/actions";
 import { cn } from "@/lib/utils";
+import { useCsrf } from "@/hooks/useCsrf";
 
 interface CreateUserFormProps {
   owners: BusOwner[];
@@ -32,7 +33,7 @@ interface CreateUserFormProps {
 }
 
 const passwordRules = [
-    { text: "At least 8 characters long", regex: /.{8,}/ },
+    { text: "At least 10 characters long", regex: /.{10,}/ },
     { text: "At least one uppercase letter", regex: /[A-Z]/ },
     { text: "At least one lowercase letter", regex: /[a-z]/ },
     { text: "At least one number", regex: /[0-9]/ },
@@ -63,6 +64,8 @@ export function CreateUserForm({ owners, existingEmails }: CreateUserFormProps) 
   const [showPassword, setShowPassword] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const [password, setPassword] = useState("");
+  const { csrfToken, loading: csrfLoading } = useCsrf();
+
 
   const handleSubmit = (formData: FormData) => {
     const email = formData.get("email") as string;
@@ -103,6 +106,7 @@ export function CreateUserForm({ owners, existingEmails }: CreateUserFormProps) 
         </CardDescription>
       </CardHeader>
       <form ref={formRef} action={handleSubmit}>
+        <input type="hidden" name="csrfToken" value={csrfToken} />
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -175,7 +179,7 @@ export function CreateUserForm({ owners, existingEmails }: CreateUserFormProps) 
           </div>
         </CardContent>
         <CardFooter>
-          <Button type="submit" disabled={isPending}>
+          <Button type="submit" disabled={isPending || csrfLoading}>
             <UserPlus className="mr-2 h-4 w-4" />
             {isPending ? "Creating..." : "Create User"}
           </Button>

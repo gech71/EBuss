@@ -10,6 +10,7 @@ import { validateRequest } from '@/lib/server/auth';
 import { logAction } from '@/app/lib/logger';
 import { sendCredentialsEmail } from '@/lib/server/email';
 import { passwordPolicy } from '@/app/lib/password-policy';
+import { validateCsrf } from '@/app/lib/actions';
 
 const createUserSchema = z.object({
   name: z.string().min(1, "Full name is required."),
@@ -30,6 +31,12 @@ function generateId(length: number): string {
 
 
 export async function createUserAction(formData: FormData) {
+    try {
+        await validateCsrf(formData);
+    } catch (error) {
+        return { success: false, message: 'Your session has expired or is invalid. Please refresh the page and try again.' };
+    }
+
     const { user: superAdmin } = await validateRequest();
     if (!superAdmin || superAdmin.role !== 'SUPER_ADMIN') {
         await logAction({ actionType: 'CREATE_ADMIN_USER_UNAUTHORIZED', description: 'Unauthorized attempt to create admin user.' });
