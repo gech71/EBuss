@@ -15,12 +15,7 @@ const key = new TextEncoder().encode(secretKey);
 
 // Simple ID generator
 function generateId(length: number): string {
-    const characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
-    for (let i = 0; i < length; i++) {
-        result += characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-    return result;
+    return crypto.randomBytes(Math.ceil(length / 2)).toString('hex').slice(0, length);
 }
 
 
@@ -105,3 +100,4 @@ export async function deleteSession(jti: string | undefined) {
   sessionCookie.set('session', '', { expires: new Date(0), path: '/' });
   sessionCookie.set('csrf_token', '', { expires: new Date(0), path: '/' });
 }
+

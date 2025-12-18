@@ -11,6 +11,7 @@ import { logAction } from '@/app/lib/logger';
 import { sendCredentialsEmail } from '@/lib/server/email';
 import { passwordPolicy } from '@/app/lib/password-policy';
 import { validateCsrf } from '@/app/lib/actions';
+import crypto from 'crypto';
 
 const createUserSchema = z.object({
   name: z.string().min(1, "Full name is required."),
@@ -21,12 +22,7 @@ const createUserSchema = z.object({
 
 // A simple function to generate a random ID
 function generateId(length: number): string {
-    const characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
-    for (let i = 0; i < length; i++) {
-        result += characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-    return result;
+    return crypto.randomBytes(Math.ceil(length / 2)).toString('hex').slice(0, length);
 }
 
 

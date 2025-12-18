@@ -9,15 +9,11 @@ import { CommissionType, Role } from '@prisma/client';
 import { validateRequest } from '@/lib/server/auth';
 import { logAction } from '@/app/lib/logger';
 import { validateCsrf } from '@/app/lib/actions';
+import crypto from 'crypto';
 
 // Simple ID generator
 function generateId(length: number): string {
-    const characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
-    for (let i = 0; i < length; i++) {
-        result += characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-    return result;
+    return crypto.randomBytes(Math.ceil(length / 2)).toString('hex').slice(0, length);
 }
 
 
