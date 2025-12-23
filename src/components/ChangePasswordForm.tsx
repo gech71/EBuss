@@ -160,16 +160,6 @@ export function ChangePasswordForm({ csrfToken }: ChangePasswordFormProps) {
     newPassword !== confirmPassword ||
     newPassword === "";
 
-  console.log("--- Button State Debug ---");
-  console.log("isPending:", isPending);
-  console.log("csrfToken prop exists:", !!csrfToken);
-  console.log("clientCsrf exists:", !!clientCsrf);
-  console.log("isPasswordPolicyMet:", isPasswordPolicyMet);
-  console.log("passwordsMatch:", newPassword === confirmPassword);
-  console.log("newPassword is not empty:", newPassword !== "");
-  console.log("isButtonDisabled:", isButtonDisabled);
-  console.log("--------------------------");
-
   return (
     <Card className="max-w-xl border-0 shadow-none">
       <form ref={formRef} action={handleSubmit}>

@@ -80,7 +80,6 @@ export async function createUserAction(formData: FormData) {
             await sendPasswordSetupEmail(email, setupToken);
         } catch (emailError) {
             console.error("Failed to send setup email for new admin user, but user was created successfully.", emailError);
-            console.log(`DEV ONLY: Setup token for ${email} -> ${setupToken}`);
         }
 
         revalidatePath('/super-admin/settings');

@@ -49,18 +49,15 @@ export function QRScanner() {
 
   const handleScanResult = useCallback(async (encodedData: string) => {
     stopScan();
-    console.log("QR Code detected:", encodedData);
     try {
         const decodedData = atob(encodedData);
         const { ticketId } = JSON.parse(decodedData);
         if (!ticketId) throw new Error("Invalid QR code format.");
 
-        console.log(`[AUDIT] Sending scan request for ticketId: ${ticketId}`);
         const response = await fetch(`/api/ticket/${ticketId}/scan`, {
             method: 'POST',
         });
         const result = await response.json();
-        console.log("API Response:", { status: response.status, body: result });
 
         if (response.ok && result.ticket) {
             setScanStatus("success");
@@ -99,7 +96,6 @@ export function QRScanner() {
                 });
 
                 if (code) {
-                    console.log("jsQR detected a code:", code.data);
                     handleScanResult(code.data);
                 }
             } catch (e) {
