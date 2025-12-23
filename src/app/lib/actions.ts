@@ -116,24 +116,24 @@ export async function authenticate(
       return { message: "Invalid email or password.", success: false };
     }
     
-    // Check if the user needs to set up their password first
-    if (!existingUser.hashed_password && existingUser.passwordSetupToken) {
-       await logAction({
-        ipAddress: ip,
-        actionType: "LOGIN_FAIL",
-        description: `Login attempt for "${email}" failed. Reason: Password not set.`,
-      });
-      return { message: "Your account setup is not complete. Please check your email for a password setup link.", success: false };
-    }
-    
+    // Check if the user has no password and needs to complete setup
     if (!existingUser.hashed_password) {
+      if (existingUser.passwordSetupToken) {
+         await logAction({
+          ipAddress: ip,
+          actionType: "LOGIN_FAIL",
+          description: `Login attempt for "${email}" failed. Reason: Password not set.`,
+        });
+        return { message: "Your account setup is not complete. Please check your email for a password setup link.", success: false };
+      } else {
         // This case should ideally not be hit if the setup flow is followed.
          await logAction({
             ipAddress: ip,
             actionType: "LOGIN_FAIL",
-            description: `Login attempt for "${email}" failed. Reason: Account has no password.`,
+            description: `Login attempt for "${email}" failed. Reason: Account has no password and no setup token.`,
         });
         return { message: "Invalid account configuration. Please contact support.", success: false };
+      }
     }
 
 
@@ -381,3 +381,5 @@ export async function setupPasswordAction(formData: FormData) {
     return { success: false, message: 'An unexpected error occurred. Please try again.' };
   }
 }
+
+    
