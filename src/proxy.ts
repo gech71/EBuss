@@ -1,3 +1,4 @@
+
 // proxy.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -70,11 +71,14 @@ export async function proxy(request: NextRequest) {
 
   // Redirect authenticated users away from login pages
   if (isAuthRoute && isAuthenticated) {
-    const redirectPath = requiresPasswordChange
-      ? "/force-password-change"
-      : "/admin";
+    const { user } = await validateRequest(); // Re-validate to get user role
+    if (requiresPasswordChange) {
+      return NextResponse.redirect(new URL("/force-password-change", request.url));
+    }
+    const redirectPath = user?.role === 'SUPER_ADMIN' ? "/super-admin" : "/admin";
     return NextResponse.redirect(new URL(redirectPath, request.url));
   }
+
 
   let response = NextResponse.next({
     request: { headers: requestHeaders },
