@@ -1,15 +1,15 @@
+
 'use server';
 
 import nodemailer from 'nodemailer';
 
 const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
-    secure: false, // use TLS
+    host: "sandbox.smtp.mailtrap.io",
+    port: 2525,
     auth: {
-      user: process.env.SMTP_USER, // your Gmail address
-      pass: process.env.SMTP_PASS, // your Gmail App Password
-    },
+      user: process.env.MAILTRAP_USER,
+      pass: process.env.MAILTRAP_PASS
+    }
 });
 
 export async function sendCredentialsEmail(to: string, username: string, password: string) {
