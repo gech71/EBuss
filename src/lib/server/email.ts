@@ -4,42 +4,13 @@
 import nodemailer from 'nodemailer';
 
 const transporter = nodemailer.createTransport({
-    host: "sandbox.smtp.mailtrap.io",
-    port: 2525,
+    host: process.env.SMTP_HOST,
+    port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587,
     auth: {
-      user: process.env.MAILTRAP_USER,
-      pass: process.env.MAILTRAP_PASS
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS
     }
 });
-
-export async function sendCredentialsEmail(to: string, username: string, password: string) {
-  const mailOptions = {
-    from: `"NibTeraBuss Support" <support@nibterabuss.com>`,
-    to,
-    subject: "Your NibTeraBuss Login Credentials",
-    html: `
-            <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-                <h2>Welcome to NibTeraBuss!</h2>
-                <p>An administrator account has been created for you. You can now manage your buses, routes, and bookings.</p>
-                <p>Here are your login details:</p>
-                <ul>
-                    <li><strong>Username:</strong> ${username}</li>
-                    <li><strong>Password:</strong> <code>${password}</code></li>
-                </ul>
-                <p>For security, we require that you change your password after your first login.</p>
-                <p>
-                    <a href="${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:9002'}/login" style="background-color: #3B82F6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
-                        Login to Your Account
-                    </a>
-                </p>
-                <p>If you have any questions, please contact our support team.</p>
-                <p>Thank you,<br/>The NibTeraBuss Team</p>
-            </div>
-        `,
-  };
-
-  await transporter.sendMail(mailOptions);
-}
 
 export async function sendPasswordSetupEmail(to: string, token: string) {
     const setupLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:9002'}/setup-password/${token}`;

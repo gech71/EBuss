@@ -30,7 +30,7 @@ async function validateToken(token: string) {
 }
 
 export default async function SetupPasswordPage({ params }: SetupPasswordPageProps) {
-  const { token } = params;
+  const { token } = await params;
 
   if (!token) {
     notFound();
