@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useTransition, useRef } from "react";
@@ -21,10 +20,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Eye, EyeOff, Check, X } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import type { BusOwner } from "@prisma/client";
 import { createUserAction } from "@/app/super-admin/(dashboard)/settings/actions";
-import { cn } from "@/lib/utils";
 import { useCsrf } from "@/hooks/useCsrf";
 
 interface CreateUserFormProps {
@@ -32,38 +30,10 @@ interface CreateUserFormProps {
   existingEmails: string[];
 }
 
-const passwordRules = [
-    { text: "At least 10 characters long", regex: /.{10,}/ },
-    { text: "At least one uppercase letter", regex: /[A-Z]/ },
-    { text: "At least one lowercase letter", regex: /[a-z]/ },
-    { text: "At least one number", regex: /[0-9]/ },
-    { text: "At least one special character", regex: /[^A-Za-z0-9]/ },
-];
-
-function PasswordStrength({ password }: { password?: string }) {
-    if (!password) return null;
-    
-    return (
-        <ul className="text-sm text-muted-foreground space-y-1 mt-2">
-            {passwordRules.map((rule, index) => {
-                const isValid = rule.regex.test(password);
-                return (
-                    <li key={index} className={cn("flex items-center gap-2", isValid ? "text-green-600" : "text-destructive")}>
-                        {isValid ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
-                        <span>{rule.text}</span>
-                    </li>
-                );
-            })}
-        </ul>
-    );
-}
-
 export function CreateUserForm({ owners, existingEmails }: CreateUserFormProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  const [showPassword, setShowPassword] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
-  const [password, setPassword] = useState("");
   const { csrfToken, loading: csrfLoading } = useCsrf();
 
 
@@ -86,7 +56,6 @@ export function CreateUserForm({ owners, existingEmails }: CreateUserFormProps) 
           description: result.message,
         });
         formRef.current?.reset();
-        setPassword("");
       } else {
         toast({
           title: "Creation Failed",
@@ -102,11 +71,11 @@ export function CreateUserForm({ owners, existingEmails }: CreateUserFormProps) 
       <CardHeader>
         <CardTitle>Create New Admin User</CardTitle>
         <CardDescription>
-          Create a new administrative user and assign them to a bus owner.
+          Create a new administrative user and assign them to a bus owner. An email will be sent to the user with a link to set up their password.
         </CardDescription>
       </CardHeader>
       <form ref={formRef} action={handleSubmit}>
-        <input type="hidden" name="csrfToken" value={csrfToken} />
+        <input type="hidden" name="csrfToken" value={csrfToken || ''} />
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -129,39 +98,7 @@ export function CreateUserForm({ owners, existingEmails }: CreateUserFormProps) 
               />
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter a secure password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-0 right-0 h-full px-3 py-2 hover:bg-transparent"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" aria-hidden="true" />
-                  ) : (
-                    <Eye className="h-4 w-4" aria-hidden="true" />
-                  )}
-                  <span className="sr-only">
-                    {showPassword ? "Hide password" : "Show password"}
-                  </span>
-                </Button>
-              </div>
-              <PasswordStrength password={password} />
-            </div>
-            <div className="space-y-2">
+          <div className="space-y-2">
               <Label htmlFor="ownerId">Assign to Bus Owner</Label>
               <Select name="ownerId" required>
                 <SelectTrigger id="ownerId">
@@ -176,12 +113,11 @@ export function CreateUserForm({ owners, existingEmails }: CreateUserFormProps) 
                 </SelectContent>
               </Select>
             </div>
-          </div>
         </CardContent>
         <CardFooter>
           <Button type="submit" disabled={isPending || csrfLoading}>
             <UserPlus className="mr-2 h-4 w-4" />
-            {isPending ? "Creating..." : "Create User"}
+            {isPending ? "Creating User..." : "Create User and Send Invite"}
           </Button>
         </CardFooter>
       </form>
