@@ -11,6 +11,7 @@ import { z } from "zod";
 import { logAction } from "./logger";
 import { getIP } from "./get-ip";
 import { passwordPolicy } from "./password-policy";
+import crypto from "crypto";
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_ATTEMPT_WINDOW_SECONDS = 60;
@@ -102,7 +103,7 @@ export async function authenticate(
       },
     });
 
-    if (!existingUser || !existingUser.hashed_password) {
+    if (!existingUser) {
       if (ip) {
         await prisma.loginAttempt.create({ data: { ipAddress: ip } });
       }
@@ -113,6 +114,27 @@ export async function authenticate(
       });
       return { message: "Invalid email or password.", success: false };
     }
+    
+    // Check if the user needs to set up their password first
+    if (!existingUser.hashed_password && existingUser.passwordSetupToken) {
+       await logAction({
+        ipAddress: ip,
+        actionType: "LOGIN_FAIL",
+        description: `Login attempt for "${email}" failed. Reason: Password not set.`,
+      });
+      return { message: "Your account setup is not complete. Please check your email for a password setup link.", success: false };
+    }
+    
+    if (!existingUser.hashed_password) {
+        // This case should ideally not be hit if the setup flow is followed.
+         await logAction({
+            ipAddress: ip,
+            actionType: "LOGIN_FAIL",
+            description: `Login attempt for "${email}" failed. Reason: Account has no password.`,
+        });
+        return { message: "Invalid account configuration. Please contact support.", success: false };
+    }
+
 
     const validPassword = await bcrypt.compare(
       password,
@@ -298,5 +320,63 @@ export async function changePasswordAction(formData: FormData) {
       }`,
     });
     return { success: false, message: "An unexpected error occurred." };
+  }
+}
+
+const setupPasswordSchema = z.object({
+  token: z.string().min(1),
+  password: passwordPolicy,
+});
+
+export async function setupPasswordAction(formData: FormData) {
+  try {
+    await validateCsrf(formData);
+  } catch (error) {
+    return { success: false, message: 'Your session is invalid. Please refresh the page and try again.' };
+  }
+
+  const validatedData = await setupPasswordSchema.spa(Object.fromEntries(formData.entries()));
+
+  if (!validatedData.success) {
+    const messages = validatedData.error.errors.map(e => e.message).join('\n');
+    return { success: false, message: messages };
+  }
+
+  const { token, password } = validatedData.data;
+
+  try {
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+    
+    const user = await prisma.user.findUnique({
+      where: { passwordSetupToken: hashedToken },
+    });
+
+    if (!user || !user.passwordSetupExpires || new Date() > user.passwordSetupExpires) {
+      await logAction({ actionType: 'SETUP_PASSWORD_FAIL', description: 'Invalid or expired setup token used.' });
+      return { success: false, message: 'This setup link is invalid or has expired. Please contact an administrator.' };
+    }
+
+    const newHashedPassword = await bcrypt.hash(password, 10);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        hashed_password: newHashedPassword,
+        passwordSetupToken: null,
+        passwordSetupExpires: null,
+        passwordChangeRequired: false,
+      },
+    });
+
+    await logAction({ userId: user.id, actionType: 'SETUP_PASSWORD_SUCCESS', description: 'User successfully set up their password.' });
+
+    // Automatically log the user in
+    await createSession(user.id, false);
+    
+    return { success: true };
+
+  } catch (error) {
+    await logAction({ actionType: 'SETUP_PASSWORD_FAIL', description: `An unexpected error occurred during password setup. Error: ${error instanceof Error ? error.message : 'Unknown'}` });
+    return { success: false, message: 'An unexpected error occurred. Please try again.' };
   }
 }
