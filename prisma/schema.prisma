@@ -22,6 +22,8 @@ model User {
   updatedAt                DateTime  @updatedAt
   passwordSetupToken       String?   @unique
   passwordSetupExpires     DateTime?
+  passwordResetToken       String?   @unique
+  passwordResetExpires     DateTime?
   sessions                 Session[]
   busOwner                 BusOwner? @relation(fields: [busOwnerId], references: [id], onDelete: Cascade)
   AuditLog                 AuditLog[]

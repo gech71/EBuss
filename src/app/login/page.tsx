@@ -17,7 +17,7 @@ import { Logo } from "@/components/Logo";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Eye, EyeOff } from "lucide-react";
 import { useCsrf } from "@/hooks/useCsrf";
 import React from "react";
 import { useFormStatus } from "react-dom";
@@ -75,6 +75,7 @@ function LoginButton() {
 export default function LoginPage() {
   const { csrfToken, loading: csrfLoading } = useCsrf();
   const { toast } = useToast();
+  const [showPassword, setShowPassword] = useState(false);
 
   const initialState = { message: "", success: false };
   const [state, dispatch] = React.useActionState(authenticate, initialState);
@@ -113,13 +114,33 @@ export default function LoginPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                required
-                defaultValue="password"
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  defaultValue="password"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-0 right-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+              <div className="flex justify-end">
+                <Link
+                  href="/forgot-password"
+                  className="text-sm text-primary hover:underline"
+                  id="forgot-password-link"
+                >
+                  Forgot password?
+                </Link>
+              </div>
             </div>
             {state?.message && !state?.success && (
               <Alert variant="destructive">

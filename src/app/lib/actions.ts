@@ -14,6 +14,8 @@ import { getIP } from "./get-ip";
 import { passwordPolicy } from "./password-policy";
 import crypto from "crypto";
 
+import { sendPasswordResetEmail } from "@/lib/server/email";
+
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_ATTEMPT_WINDOW_SECONDS = 60;
 
@@ -381,5 +383,250 @@ export async function setupPasswordAction(formData: FormData) {
     return { success: false, message: 'An unexpected error occurred. Please try again.' };
   }
 }
+
+// --- Forgot / Reset Password Actions ---
+
+const MAX_RESET_ATTEMPTS = 3;
+const RESET_ATTEMPT_WINDOW_SECONDS = 300; // 5 minutes
+
+const requestResetSchema = z.object({
+  email: z.string().email("Please enter a valid email address."),
+});
+
+export async function requestPasswordResetAction(
+  prevState: any,
+  formData: FormData
+): Promise<{ message: string; success: boolean }> {
+  const ip = await getIP();
+
+  // Rate limiting on password reset requests
+  if (ip) {
+    const now = new Date();
+    const windowStart = new Date(
+      now.getTime() - RESET_ATTEMPT_WINDOW_SECONDS * 1000
+    );
+
+    const attempts = await prisma.loginAttempt.findMany({
+      where: {
+        ipAddress: `reset:${ip}`,
+        timestamp: { gte: windowStart },
+      },
+      orderBy: { timestamp: "asc" },
+    });
+
+    if (attempts.length >= MAX_RESET_ATTEMPTS) {
+      const firstAttemptTime = attempts[0].timestamp.getTime();
+      const timeLeft = Math.ceil(
+        (firstAttemptTime +
+          RESET_ATTEMPT_WINDOW_SECONDS * 1000 -
+          now.getTime()) /
+          1000
+      );
+      await logAction({
+        ipAddress: ip,
+        actionType: "RESET_RATE_LIMIT",
+        description: `Rate limit exceeded for password reset requests from IP: ${ip}`,
+      });
+      return {
+        message: `Too many reset requests. Please try again in ${Math.ceil(timeLeft / 60)} minutes.`,
+        success: false,
+      };
+    }
+  }
+
+  try {
+    await validateCsrf(formData.get("csrfToken") as string);
+  } catch (error) {
+    return {
+      success: false,
+      message:
+        "Your session has expired or is invalid. Please refresh the page and try again.",
+    };
+  }
+
+  const validatedData = await requestResetSchema.spa(
+    Object.fromEntries(formData.entries())
+  );
+
+  if (!validatedData.success) {
+    return {
+      success: false,
+      message: validatedData.error.errors.map((e) => e.message).join("\n"),
+    };
+  }
+
+  const { email } = validatedData.data;
+
+  // Record the attempt for rate limiting
+  if (ip) {
+    await prisma.loginAttempt.create({
+      data: { ipAddress: `reset:${ip}` },
+    });
+  }
+
+  // Always return the same message to prevent user enumeration
+  const genericSuccessMessage =
+    "If an account with that email exists, a password reset link has been sent. Please check your inbox.";
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+    });
+
+    if (!user) {
+      await logAction({
+        ipAddress: ip,
+        actionType: "RESET_REQUEST_NO_USER",
+        description: `Password reset requested for non-existent email: ${email}`,
+      });
+      return { success: true, message: genericSuccessMessage };
+    }
+
+    // Only allow reset for users who have already set up their password
+    if (!user.hashed_password) {
+      await logAction({
+        ipAddress: ip,
+        actionType: "RESET_REQUEST_NO_PASSWORD",
+        description: `Password reset requested for user "${email}" who hasn't set up their password yet.`,
+      });
+      return { success: true, message: genericSuccessMessage };
+    }
+
+    // Generate a secure random token
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(rawToken)
+      .digest("hex");
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    // Store the hashed token in the database
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordResetToken: hashedToken,
+        passwordResetExpires: expiresAt,
+      },
+    });
+
+    // Send the raw (unhashed) token in the email
+    await sendPasswordResetEmail(user.email, rawToken);
+
+    await logAction({
+      userId: user.id,
+      ipAddress: ip,
+      actionType: "RESET_REQUEST_SUCCESS",
+      description: `Password reset email sent to user "${email}".`,
+    });
+
+    return { success: true, message: genericSuccessMessage };
+  } catch (error) {
+    console.error("Password reset request error:", error);
+    await logAction({
+      ipAddress: ip,
+      actionType: "RESET_REQUEST_ERROR",
+      description: `Error processing password reset for "${email}". Error: ${
+        error instanceof Error ? error.message : "Unknown"
+      }`,
+    });
+    return {
+      success: false,
+      message: "An unexpected error occurred. Please try again later.",
+    };
+  }
+}
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  password: passwordPolicy,
+});
+
+export async function resetPasswordAction(formData: FormData) {
+  try {
+    await validateCsrf(formData);
+  } catch (error) {
+    return {
+      success: false,
+      message:
+        "Your session is invalid. Please refresh the page and try again.",
+    };
+  }
+
+  const validatedData = await resetPasswordSchema.spa(
+    Object.fromEntries(formData.entries())
+  );
+
+  if (!validatedData.success) {
+    const messages = validatedData.error.errors.map((e) => e.message).join("\n");
+    return { success: false, message: messages };
+  }
+
+  const { token, password } = validatedData.data;
+
+  try {
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const user = await prisma.user.findUnique({
+      where: { passwordResetToken: hashedToken },
+    });
+
+    if (
+      !user ||
+      !user.passwordResetExpires ||
+      new Date() > user.passwordResetExpires
+    ) {
+      await logAction({
+        actionType: "RESET_PASSWORD_FAIL",
+        description: "Invalid or expired reset token used.",
+      });
+      return {
+        success: false,
+        message:
+          "This reset link is invalid or has expired. Please request a new one.",
+      };
+    }
+
+    const newHashedPassword = await bcrypt.hash(password, 10);
+
+    // Update password and clear the reset token
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        hashed_password: newHashedPassword,
+        passwordResetToken: null,
+        passwordResetExpires: null,
+        passwordChangeRequired: false,
+      },
+    });
+
+    // Invalidate all existing sessions for this user (security measure)
+    await prisma.session.deleteMany({
+      where: { userId: user.id },
+    });
+
+    await logAction({
+      userId: user.id,
+      actionType: "RESET_PASSWORD_SUCCESS",
+      description: "User successfully reset their password via forgot-password flow.",
+    });
+
+    // Log the user in with a fresh session
+    await createSession(user.id, false);
+
+    return { success: true };
+  } catch (error) {
+    await logAction({
+      actionType: "RESET_PASSWORD_FAIL",
+      description: `Unexpected error during password reset. Error: ${
+        error instanceof Error ? error.message : "Unknown"
+      }`,
+    });
+    return {
+      success: false,
+      message: "An unexpected error occurred. Please try again.",
+    };
+  }
+}
+
 
     
