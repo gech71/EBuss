@@ -479,7 +479,7 @@ export async function requestPasswordResetAction(
         actionType: "RESET_REQUEST_NO_USER",
         description: `Password reset requested for non-existent email: ${email}`,
       });
-      return { success: true, message: genericSuccessMessage };
+      return { success: false, message: "No account found with this email address." };
     }
 
     // Only allow reset for users who have already set up their password
@@ -490,6 +490,20 @@ export async function requestPasswordResetAction(
         description: `Password reset requested for user "${email}" who hasn't set up their password yet.`,
       });
       return { success: true, message: genericSuccessMessage };
+    }
+
+    // Check if a valid (not expired) reset token already exists
+    if (user.passwordResetToken && user.passwordResetExpires && new Date() < user.passwordResetExpires) {
+      await logAction({
+        userId: user.id,
+        ipAddress: ip,
+        actionType: "RESET_REQUEST_DUPLICATE",
+        description: `Duplicate password reset requested for user "${email}" while a token is still active.`,
+      });
+      return {
+        success: false,
+        message: "A valid reset link has already been sent to your email. Please check your inbox or wait for it to expire.",
+      };
     }
 
     // Generate a secure random token
