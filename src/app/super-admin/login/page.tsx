@@ -107,7 +107,7 @@ export default function SuperAdminLoginPage() {
                 type="email"
                 placeholder="m@example.com"
                 required
-                defaultValue="super@example.com"
+                autoComplete="off"
               />
             </div>
             <div className="space-y-2">
@@ -117,7 +117,7 @@ export default function SuperAdminLoginPage() {
                 name="password"
                 type="password"
                 required
-                defaultValue="password"
+                autoComplete="off"
               />
             </div>
             {state?.message && !state.success && (

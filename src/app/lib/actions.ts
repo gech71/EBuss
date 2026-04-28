@@ -17,7 +17,9 @@ import crypto from "crypto";
 import { sendPasswordResetEmail } from "@/lib/server/email";
 
 const MAX_LOGIN_ATTEMPTS = 5;
-const LOGIN_ATTEMPT_WINDOW_SECONDS = 60;
+const LOGIN_ATTEMPT_WINDOW_SECONDS = 900; // 15 minutes
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MINUTES = 30;
 
 export async function validateCsrf(
   tokenFromRequest: string | FormData | undefined,
@@ -118,6 +120,24 @@ export async function authenticate(
       return { message: "Invalid email or password.", success: false };
     }
 
+    // Check for account lockout
+    if (existingUser.lockoutUntil && existingUser.lockoutUntil > new Date()) {
+      const minutesLeft = Math.ceil(
+        (existingUser.lockoutUntil.getTime() - new Date().getTime()) /
+          (1000 * 60),
+      );
+      await logAction({
+        userId: existingUser.id,
+        ipAddress: ip,
+        actionType: "LOGIN_LOCKOUT",
+        description: `Login attempt for locked account: "${email}".`,
+      });
+      return {
+        message: `Account is temporarily locked due to too many failed attempts. Please try again in ${minutesLeft} minutes.`,
+        success: false,
+      };
+    }
+
     // Check if the user has no password and needs to complete setup
     if (!existingUser.hashed_password) {
       if (existingUser.passwordSetupToken) {
@@ -154,16 +174,49 @@ export async function authenticate(
       if (ip) {
         await prisma.loginAttempt.create({ data: { ipAddress: ip } });
       }
+
+      const newFailedAttempts = existingUser.failedLoginAttempts + 1;
+      let lockoutUntil = existingUser.lockoutUntil;
+
+      if (newFailedAttempts >= MAX_FAILED_ATTEMPTS) {
+        lockoutUntil = new Date(
+          Date.now() + LOCKOUT_DURATION_MINUTES * 60 * 1000,
+        );
+      }
+
+      await prisma.user.update({
+        where: { id: existingUser.id },
+        data: {
+          failedLoginAttempts: newFailedAttempts,
+          lockoutUntil: lockoutUntil,
+        },
+      });
+
       await logAction({
         userId: existingUser.id,
         ipAddress: ip,
         actionType: "LOGIN_FAIL",
-        description: `Failed login attempt for email "${email}". Reason: Invalid password.`,
+        description: `Failed login attempt for email "${email}". Reason: Invalid password. Failed attempts: ${newFailedAttempts}`,
       });
+
+      if (newFailedAttempts >= MAX_FAILED_ATTEMPTS) {
+        return {
+          message: `Too many failed attempts. Your account has been locked for ${LOCKOUT_DURATION_MINUTES} minutes.`,
+          success: false,
+        };
+      }
+
       return { message: "Invalid email or password.", success: false };
     }
 
     // Create session, including the password change flag
+    await prisma.user.update({
+      where: { id: existingUser.id },
+      data: {
+        failedLoginAttempts: 0,
+        lockoutUntil: null,
+      },
+    });
     await createSession(existingUser.id, existingUser.passwordChangeRequired);
     await logAction({
       userId: existingUser.id,
@@ -421,7 +474,7 @@ export async function setupPasswordAction(formData: FormData) {
 // --- Forgot / Reset Password Actions ---
 
 const MAX_RESET_ATTEMPTS = 3;
-const RESET_ATTEMPT_WINDOW_SECONDS = 300; // 5 minutes
+const RESET_ATTEMPT_WINDOW_SECONDS = 900; // 15 minutes
 
 const requestResetSchema = z.object({
   email: z.string().email("Please enter a valid email address."),

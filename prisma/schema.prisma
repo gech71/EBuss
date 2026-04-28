@@ -27,6 +27,8 @@ model User {
   sessions                 Session[]
   busOwner                 BusOwner? @relation(fields: [busOwnerId], references: [id], onDelete: Cascade)
   AuditLog                 AuditLog[]
+  failedLoginAttempts      Int       @default(0)
+  lockoutUntil             DateTime?
 }
 
 model Session {

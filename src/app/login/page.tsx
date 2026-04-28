@@ -109,7 +109,7 @@ export default function LoginPage() {
                 type="email"
                 placeholder="m@example.com"
                 required
-                defaultValue="admin@example.com"
+                autoComplete="off"
               />
             </div>
             <div className="space-y-2">
@@ -120,7 +120,7 @@ export default function LoginPage() {
                   name="password"
                   type={showPassword ? "text" : "password"}
                   required
-                  defaultValue="password"
+                  autoComplete="off"
                 />
                 <Button
                   type="button"
