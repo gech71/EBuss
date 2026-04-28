@@ -24,22 +24,25 @@ import { UserPlus } from "lucide-react";
 import type { BusOwner } from "@prisma/client";
 import { createUserAction } from "@/app/super-admin/(dashboard)/settings/actions";
 import { useCsrf } from "@/hooks/useCsrf";
+import { normalizeEmail } from "@/lib/utils";
 
 interface CreateUserFormProps {
   owners: BusOwner[];
   existingEmails: string[];
 }
 
-export function CreateUserForm({ owners, existingEmails }: CreateUserFormProps) {
+export function CreateUserForm({
+  owners,
+  existingEmails,
+}: CreateUserFormProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
   const { csrfToken, loading: csrfLoading } = useCsrf();
 
-
   const handleSubmit = (formData: FormData) => {
     const email = formData.get("email") as string;
-    if (existingEmails.includes(email.toLowerCase())) {
+    if (existingEmails.includes(normalizeEmail(email))) {
       toast({
         title: "Email already exists",
         description: "A user with this email address is already registered.",
@@ -71,11 +74,12 @@ export function CreateUserForm({ owners, existingEmails }: CreateUserFormProps) 
       <CardHeader>
         <CardTitle>Create New Admin User</CardTitle>
         <CardDescription>
-          Create a new administrative user and assign them to a bus owner. An email will be sent to the user with a link to set up their password.
+          Create a new administrative user and assign them to a bus owner. An
+          email will be sent to the user with a link to set up their password.
         </CardDescription>
       </CardHeader>
       <form ref={formRef} action={handleSubmit}>
-        <input type="hidden" name="csrfToken" value={csrfToken || ''} />
+        <input type="hidden" name="csrfToken" value={csrfToken || ""} />
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -99,20 +103,20 @@ export function CreateUserForm({ owners, existingEmails }: CreateUserFormProps) 
             </div>
           </div>
           <div className="space-y-2">
-              <Label htmlFor="ownerId">Assign to Bus Owner</Label>
-              <Select name="ownerId" required>
-                <SelectTrigger id="ownerId">
-                  <SelectValue placeholder="Select a bus owner..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {owners.map((owner) => (
-                    <SelectItem key={owner.id} value={owner.id}>
-                      {owner.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Label htmlFor="ownerId">Assign to Bus Owner</Label>
+            <Select name="ownerId" required>
+              <SelectTrigger id="ownerId">
+                <SelectValue placeholder="Select a bus owner..." />
+              </SelectTrigger>
+              <SelectContent>
+                {owners.map((owner) => (
+                  <SelectItem key={owner.id} value={owner.id}>
+                    {owner.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardContent>
         <CardFooter>
           <Button type="submit" disabled={isPending || csrfLoading}>

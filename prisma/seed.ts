@@ -1,18 +1,27 @@
-
-import { PrismaClient, Role } from '@prisma/client';
-import bcrypt from 'bcrypt';
-import crypto from 'crypto';
+import { PrismaClient, Role } from "@prisma/client";
+import bcrypt from "bcrypt";
+import crypto from "crypto";
 
 const prisma = new PrismaClient();
 const SALT_ROUNDS = 10;
 
 // Simple ID generator
 function generateId(length: number): string {
-    return crypto.randomBytes(Math.ceil(length / 2)).toString('hex').slice(0, length);
+  return crypto
+    .randomBytes(Math.ceil(length / 2))
+    .toString("hex")
+    .slice(0, length);
+}
+
+function normalizeEmail(email: string): string {
+  const [localPart, domain] = email.trim().toLowerCase().split("@");
+  if (!domain) return email.toLowerCase();
+  const baseLocalPart = localPart.split("+")[0];
+  return `${baseLocalPart}@${domain}`;
 }
 
 async function main() {
-  console.log('Start seeding...');
+  console.log("Start seeding...");
 
   // Clear existing data to ensure a clean slate
   await prisma.apiRequestAttempt.deleteMany({});
@@ -32,34 +41,34 @@ async function main() {
   await prisma.user.deleteMany({});
   await prisma.session.deleteMany({});
   await prisma.busOwner.deleteMany({});
-  
-  console.log('Cleared previous data.');
 
-  const superAdminPassword = await bcrypt.hash('password', SALT_ROUNDS);
-  const adminPassword = await bcrypt.hash('password', SALT_ROUNDS);
+  console.log("Cleared previous data.");
+
+  const superAdminPassword = await bcrypt.hash("password", SALT_ROUNDS);
+  const adminPassword = await bcrypt.hash("password", SALT_ROUNDS);
 
   // --- Create Bus Owners ---
   const owner1 = await prisma.busOwner.create({
     data: {
       id: generateId(15),
-      name: 'Selam Bus Lines',
-      bankAccountNumber: '7000101633387',
+      name: "Selam Bus Lines",
+      bankAccountNumber: "7000101633387",
       commissionTiers: {
         create: [
-          { minSales: 1, maxSales: 5000, type: 'PERCENTAGE', value: 5 },
-          { minSales: 5001, maxSales: 10000, type: 'PERCENTAGE', value: 4 },
+          { minSales: 1, maxSales: 5000, type: "PERCENTAGE", value: 5 },
+          { minSales: 5001, maxSales: 10000, type: "PERCENTAGE", value: 4 },
         ],
       },
     },
   });
-  console.log('Created bus owner.');
+  console.log("Created bus owner.");
 
   // --- Create Users ---
   await prisma.user.create({
     data: {
       id: generateId(15),
-      email: 'super@example.com',
-      name: 'Super Admin',
+      email: normalizeEmail("super@example.com"),
+      name: "Super Admin",
       hashed_password: superAdminPassword,
       role: Role.SUPER_ADMIN,
       passwordChangeRequired: true,
@@ -69,95 +78,173 @@ async function main() {
   await prisma.user.create({
     data: {
       id: generateId(15),
-      email: 'admin@example.com',
-      name: 'Getaye Temesgen',
+      email: normalizeEmail("admin@example.com"),
+      name: "Getaye Temesgen",
       hashed_password: adminPassword,
       role: Role.ADMIN,
       busOwnerId: owner1.id,
       passwordChangeRequired: true,
     },
   });
-  console.log('Created users.');
+  console.log("Created users.");
 
   // --- Create Locations ---
   const locations = await prisma.location.createManyAndReturn({
-      data: [
-        { name: 'Addis Ababa', ownerId: owner1.id },
-        { name: 'Adama', ownerId: owner1.id },
-        { name: 'Hawassa', ownerId: owner1.id },
-        { name: 'Bahir Dar', ownerId: owner1.id },
-        { name: 'Gondar', ownerId: owner1.id },
-        { name: 'Mekelle', ownerId: owner1.id },
-        { name: 'Dire Dawa', ownerId: owner1.id },
-        { name: 'Jimma', ownerId: owner1.id },
-      ],
+    data: [
+      { name: "Addis Ababa", ownerId: owner1.id },
+      { name: "Adama", ownerId: owner1.id },
+      { name: "Hawassa", ownerId: owner1.id },
+      { name: "Bahir Dar", ownerId: owner1.id },
+      { name: "Gondar", ownerId: owner1.id },
+      { name: "Mekelle", ownerId: owner1.id },
+      { name: "Dire Dawa", ownerId: owner1.id },
+      { name: "Jimma", ownerId: owner1.id },
+    ],
   });
   console.log(`Created ${locations.length} locations.`);
 
   // --- Create Buses for Selam Bus ---
   const bus1 = await prisma.bus.create({
-      data: {
-          name: 'Selam 1',
-          capacity: 45,
-          owner: { connect: { id: owner1.id } },
-          layout: { create: { rows: 11, cols: 5, seats: { create: Array.from({ length: 55 }).map((_, i) => ({ seatNumber: `${String.fromCharCode(65 + Math.floor(i / 5))}${ (i % 5) + 1 }`, type: (i % 5 === 2) ? 'AISLE' : 'SEAT' })) } } }
-      }
+    data: {
+      name: "Selam 1",
+      capacity: 45,
+      owner: { connect: { id: owner1.id } },
+      layout: {
+        create: {
+          rows: 11,
+          cols: 5,
+          seats: {
+            create: Array.from({ length: 55 }).map((_, i) => ({
+              seatNumber: `${String.fromCharCode(65 + Math.floor(i / 5))}${(i % 5) + 1}`,
+              type: i % 5 === 2 ? "AISLE" : "SEAT",
+            })),
+          },
+        },
+      },
+    },
   });
 
   const bus2 = await prisma.bus.create({
-      data: {
-          name: 'Selam 2',
-          capacity: 45,
-          owner: { connect: { id: owner1.id } },
-          layout: { create: { rows: 11, cols: 5, seats: { create: Array.from({ length: 55 }).map((_, i) => ({ seatNumber: `${String.fromCharCode(65 + Math.floor(i / 5))}${ (i % 5) + 1 }`, type: (i % 5 === 2) ? 'AISLE' : 'SEAT' })) } } }
-      }
+    data: {
+      name: "Selam 2",
+      capacity: 45,
+      owner: { connect: { id: owner1.id } },
+      layout: {
+        create: {
+          rows: 11,
+          cols: 5,
+          seats: {
+            create: Array.from({ length: 55 }).map((_, i) => ({
+              seatNumber: `${String.fromCharCode(65 + Math.floor(i / 5))}${(i % 5) + 1}`,
+              type: i % 5 === 2 ? "AISLE" : "SEAT",
+            })),
+          },
+        },
+      },
+    },
   });
 
   const bus3 = await prisma.bus.create({
-      data: {
-          name: 'Selam VIP',
-          capacity: 30,
-          owner: { connect: { id: owner1.id } },
-          layout: { create: { rows: 10, cols: 4, seats: { create: Array.from({ length: 40 }).map((_, i) => ({ seatNumber: `${String.fromCharCode(65 + Math.floor(i / 4))}${ (i % 4) + 1 }`, type: (i % 4 === 1) ? 'AISLE' : 'SEAT' })) } } }
-      }
+    data: {
+      name: "Selam VIP",
+      capacity: 30,
+      owner: { connect: { id: owner1.id } },
+      layout: {
+        create: {
+          rows: 10,
+          cols: 4,
+          seats: {
+            create: Array.from({ length: 40 }).map((_, i) => ({
+              seatNumber: `${String.fromCharCode(65 + Math.floor(i / 4))}${(i % 4) + 1}`,
+              type: i % 4 === 1 ? "AISLE" : "SEAT",
+            })),
+          },
+        },
+      },
+    },
   });
-  console.log('Created buses.');
+  console.log("Created buses.");
 
   // --- Create Bus-Route Mappings ---
-  const addisAbaba = locations.find(l => l.name === 'Addis Ababa');
-  const hawassa = locations.find(l => l.name === 'Hawassa');
-  const bahirDar = locations.find(l => l.name === 'Bahir Dar');
-  const adama = locations.find(l => l.name === 'Adama');
+  const addisAbaba = locations.find((l) => l.name === "Addis Ababa");
+  const hawassa = locations.find((l) => l.name === "Hawassa");
+  const bahirDar = locations.find((l) => l.name === "Bahir Dar");
+  const adama = locations.find((l) => l.name === "Adama");
 
   if (addisAbaba && hawassa && bahirDar && adama) {
     await prisma.busRoute.createMany({
-        data: [
-            { busId: bus1.id, originId: addisAbaba.id, destinationId: hawassa.id },
-            { busId: bus2.id, originId: addisAbaba.id, destinationId: bahirDar.id },
-            { busId: bus3.id, originId: addisAbaba.id, destinationId: adama.id },
-        ]
+      data: [
+        { busId: bus1.id, originId: addisAbaba.id, destinationId: hawassa.id },
+        { busId: bus2.id, originId: addisAbaba.id, destinationId: bahirDar.id },
+        { busId: bus3.id, originId: addisAbaba.id, destinationId: adama.id },
+      ],
     });
-    console.log('Created bus-route mappings.');
+    console.log("Created bus-route mappings.");
   }
 
   // --- Create Routes ---
   if (addisAbaba && hawassa && bahirDar && adama) {
-      await prisma.route.createMany({
-          data: [
-              // Future routes based on mappings
-              { originId: addisAbaba.id, destinationId: hawassa.id, busId: bus1.id, departureTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), arrivalTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000), price: 500 },
-              { originId: addisAbaba.id, destinationId: bahirDar.id, busId: bus2.id, departureTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), arrivalTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 10 * 60 * 60 * 1000), price: 700 },
-              { originId: addisAbaba.id, destinationId: adama.id, busId: bus3.id, departureTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), arrivalTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000), price: 250 },
-              // Return routes for other buses (if available) - assuming we have more buses than shown
-              { originId: hawassa.id, destinationId: addisAbaba.id, busId: bus2.id, departureTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000), arrivalTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000), price: 500 },
-              // Past routes
-              { originId: addisAbaba.id, destinationId: hawassa.id, busId: bus1.id, departureTime: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), arrivalTime: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000), price: 450 },
-          ]
-      });
-      console.log('Created routes.');
+    await prisma.route.createMany({
+      data: [
+        // Future routes based on mappings
+        {
+          originId: addisAbaba.id,
+          destinationId: hawassa.id,
+          busId: bus1.id,
+          departureTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+          arrivalTime: new Date(
+            Date.now() + 2 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000,
+          ),
+          price: 500,
+        },
+        {
+          originId: addisAbaba.id,
+          destinationId: bahirDar.id,
+          busId: bus2.id,
+          departureTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+          arrivalTime: new Date(
+            Date.now() + 3 * 24 * 60 * 60 * 1000 + 10 * 60 * 60 * 1000,
+          ),
+          price: 700,
+        },
+        {
+          originId: addisAbaba.id,
+          destinationId: adama.id,
+          busId: bus3.id,
+          departureTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
+          arrivalTime: new Date(
+            Date.now() + 1 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000,
+          ),
+          price: 250,
+        },
+        // Return routes for other buses (if available) - assuming we have more buses than shown
+        {
+          originId: hawassa.id,
+          destinationId: addisAbaba.id,
+          busId: bus2.id,
+          departureTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000),
+          arrivalTime: new Date(
+            Date.now() + 4 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000,
+          ),
+          price: 500,
+        },
+        // Past routes
+        {
+          originId: addisAbaba.id,
+          destinationId: hawassa.id,
+          busId: bus1.id,
+          departureTime: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+          arrivalTime: new Date(
+            Date.now() - 5 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000,
+          ),
+          price: 450,
+        },
+      ],
+    });
+    console.log("Created routes.");
   }
-  
-  console.log('Seeding finished.');
+
+  console.log("Seeding finished.");
 }
 
 main()

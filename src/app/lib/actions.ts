@@ -1,4 +1,3 @@
-
 "use server";
 
 import { redirect } from "next/navigation";
@@ -11,6 +10,7 @@ import type { ActionResult } from "next/dist/server/app-render/types";
 import { z } from "zod";
 import { logAction } from "./logger";
 import { getIP } from "./get-ip";
+import { normalizeEmail } from "@/lib/utils";
 import { passwordPolicy } from "./password-policy";
 import crypto from "crypto";
 
@@ -20,7 +20,7 @@ const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_ATTEMPT_WINDOW_SECONDS = 60;
 
 export async function validateCsrf(
-  tokenFromRequest: string | FormData | undefined
+  tokenFromRequest: string | FormData | undefined,
 ) {
   if (tokenFromRequest === undefined) {
     await logAction({
@@ -52,7 +52,7 @@ export async function validateCsrf(
 
 export async function authenticate(
   prevState: any,
-  formData: FormData
+  formData: FormData,
 ): Promise<{ message: string; success: boolean } | undefined> {
   const ip = await getIP();
   const email = formData.get("email") as string;
@@ -60,7 +60,7 @@ export async function authenticate(
   if (ip) {
     const now = new Date();
     const windowStart = new Date(
-      now.getTime() - LOGIN_ATTEMPT_WINDOW_SECONDS * 1000
+      now.getTime() - LOGIN_ATTEMPT_WINDOW_SECONDS * 1000,
     );
 
     const attempts = await prisma.loginAttempt.findMany({
@@ -77,7 +77,7 @@ export async function authenticate(
         (firstAttemptTime +
           LOGIN_ATTEMPT_WINDOW_SECONDS * 1000 -
           now.getTime()) /
-          1000
+          1000,
       );
       await logAction({
         ipAddress: ip,
@@ -102,7 +102,7 @@ export async function authenticate(
 
     const existingUser = await prisma.user.findUnique({
       where: {
-        email: email.toLowerCase(),
+        email: normalizeEmail(email),
       },
     });
 
@@ -117,31 +117,37 @@ export async function authenticate(
       });
       return { message: "Invalid email or password.", success: false };
     }
-    
+
     // Check if the user has no password and needs to complete setup
     if (!existingUser.hashed_password) {
       if (existingUser.passwordSetupToken) {
-         await logAction({
+        await logAction({
           ipAddress: ip,
           actionType: "LOGIN_FAIL",
           description: `Login attempt for "${email}" failed. Reason: Password not set.`,
         });
-        return { message: "Your account setup is not complete. Please check your email for a password setup link.", success: false };
+        return {
+          message:
+            "Your account setup is not complete. Please check your email for a password setup link.",
+          success: false,
+        };
       } else {
         // This case should ideally not be hit if the setup flow is followed.
-         await logAction({
-            ipAddress: ip,
-            actionType: "LOGIN_FAIL",
-            description: `Login attempt for "${email}" failed. Reason: Account has no password and no setup token.`,
+        await logAction({
+          ipAddress: ip,
+          actionType: "LOGIN_FAIL",
+          description: `Login attempt for "${email}" failed. Reason: Account has no password and no setup token.`,
         });
-        return { message: "Invalid account configuration. Please contact support.", success: false };
+        return {
+          message: "Invalid account configuration. Please contact support.",
+          success: false,
+        };
       }
     }
 
-
     const validPassword = await bcrypt.compare(
       password,
-      existingUser.hashed_password
+      existingUser.hashed_password,
     );
 
     if (!validPassword) {
@@ -249,7 +255,7 @@ export async function changePasswordAction(formData: FormData) {
   }
 
   const validatedData = await changePasswordSchema.spa(
-    Object.fromEntries(formData.entries())
+    Object.fromEntries(formData.entries()),
   );
 
   if (!validatedData.success) {
@@ -280,7 +286,7 @@ export async function changePasswordAction(formData: FormData) {
 
     const validPassword = await bcrypt.compare(
       currentPassword,
-      dbUser.hashed_password
+      dbUser.hashed_password,
     );
 
     if (!validPassword) {
@@ -335,28 +341,47 @@ export async function setupPasswordAction(formData: FormData) {
   try {
     await validateCsrf(formData);
   } catch (error) {
-    return { success: false, message: 'Your session is invalid. Please refresh the page and try again.' };
+    return {
+      success: false,
+      message:
+        "Your session is invalid. Please refresh the page and try again.",
+    };
   }
 
-  const validatedData = await setupPasswordSchema.spa(Object.fromEntries(formData.entries()));
+  const validatedData = await setupPasswordSchema.spa(
+    Object.fromEntries(formData.entries()),
+  );
 
   if (!validatedData.success) {
-    const messages = validatedData.error.errors.map(e => e.message).join('\n');
+    const messages = validatedData.error.errors
+      .map((e) => e.message)
+      .join("\n");
     return { success: false, message: messages };
   }
 
   const { token, password } = validatedData.data;
 
   try {
-    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-    
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
     const user = await prisma.user.findUnique({
       where: { passwordSetupToken: hashedToken },
     });
 
-    if (!user || !user.passwordSetupExpires || new Date() > user.passwordSetupExpires) {
-      await logAction({ actionType: 'SETUP_PASSWORD_FAIL', description: 'Invalid or expired setup token used.' });
-      return { success: false, message: 'This setup link is invalid or has expired. Please contact an administrator.' };
+    if (
+      !user ||
+      !user.passwordSetupExpires ||
+      new Date() > user.passwordSetupExpires
+    ) {
+      await logAction({
+        actionType: "SETUP_PASSWORD_FAIL",
+        description: "Invalid or expired setup token used.",
+      });
+      return {
+        success: false,
+        message:
+          "This setup link is invalid or has expired. Please contact an administrator.",
+      };
     }
 
     const newHashedPassword = await bcrypt.hash(password, 10);
@@ -371,16 +396,25 @@ export async function setupPasswordAction(formData: FormData) {
       },
     });
 
-    await logAction({ userId: user.id, actionType: 'SETUP_PASSWORD_SUCCESS', description: 'User successfully set up their password.' });
+    await logAction({
+      userId: user.id,
+      actionType: "SETUP_PASSWORD_SUCCESS",
+      description: "User successfully set up their password.",
+    });
 
     // Automatically log the user in
     await createSession(user.id, false);
-    
-    return { success: true };
 
+    return { success: true };
   } catch (error) {
-    await logAction({ actionType: 'SETUP_PASSWORD_FAIL', description: `An unexpected error occurred during password setup. Error: ${error instanceof Error ? error.message : 'Unknown'}` });
-    return { success: false, message: 'An unexpected error occurred. Please try again.' };
+    await logAction({
+      actionType: "SETUP_PASSWORD_FAIL",
+      description: `An unexpected error occurred during password setup. Error: ${error instanceof Error ? error.message : "Unknown"}`,
+    });
+    return {
+      success: false,
+      message: "An unexpected error occurred. Please try again.",
+    };
   }
 }
 
@@ -395,7 +429,7 @@ const requestResetSchema = z.object({
 
 export async function requestPasswordResetAction(
   prevState: any,
-  formData: FormData
+  formData: FormData,
 ): Promise<{ message: string; success: boolean }> {
   const ip = await getIP();
 
@@ -403,7 +437,7 @@ export async function requestPasswordResetAction(
   if (ip) {
     const now = new Date();
     const windowStart = new Date(
-      now.getTime() - RESET_ATTEMPT_WINDOW_SECONDS * 1000
+      now.getTime() - RESET_ATTEMPT_WINDOW_SECONDS * 1000,
     );
 
     const attempts = await prisma.loginAttempt.findMany({
@@ -420,7 +454,7 @@ export async function requestPasswordResetAction(
         (firstAttemptTime +
           RESET_ATTEMPT_WINDOW_SECONDS * 1000 -
           now.getTime()) /
-          1000
+          1000,
       );
       await logAction({
         ipAddress: ip,
@@ -445,7 +479,7 @@ export async function requestPasswordResetAction(
   }
 
   const validatedData = await requestResetSchema.spa(
-    Object.fromEntries(formData.entries())
+    Object.fromEntries(formData.entries()),
   );
 
   if (!validatedData.success) {
@@ -470,7 +504,7 @@ export async function requestPasswordResetAction(
 
   try {
     const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+      where: { email: normalizeEmail(email) },
     });
 
     if (!user) {
@@ -479,7 +513,10 @@ export async function requestPasswordResetAction(
         actionType: "RESET_REQUEST_NO_USER",
         description: `Password reset requested for non-existent email: ${email}`,
       });
-      return { success: false, message: "No account found with this email address." };
+      return {
+        success: true,
+        message: genericSuccessMessage,
+      };
     }
 
     // Only allow reset for users who have already set up their password
@@ -493,7 +530,11 @@ export async function requestPasswordResetAction(
     }
 
     // Check if a valid (not expired) reset token already exists
-    if (user.passwordResetToken && user.passwordResetExpires && new Date() < user.passwordResetExpires) {
+    if (
+      user.passwordResetToken &&
+      user.passwordResetExpires &&
+      new Date() < user.passwordResetExpires
+    ) {
       await logAction({
         userId: user.id,
         ipAddress: ip,
@@ -501,8 +542,8 @@ export async function requestPasswordResetAction(
         description: `Duplicate password reset requested for user "${email}" while a token is still active.`,
       });
       return {
-        success: false,
-        message: "A valid reset link has already been sent to your email. Please check your inbox or wait for it to expire.",
+        success: true,
+        message: genericSuccessMessage,
       };
     }
 
@@ -567,11 +608,13 @@ export async function resetPasswordAction(formData: FormData) {
   }
 
   const validatedData = await resetPasswordSchema.spa(
-    Object.fromEntries(formData.entries())
+    Object.fromEntries(formData.entries()),
   );
 
   if (!validatedData.success) {
-    const messages = validatedData.error.errors.map((e) => e.message).join("\n");
+    const messages = validatedData.error.errors
+      .map((e) => e.message)
+      .join("\n");
     return { success: false, message: messages };
   }
 
@@ -621,7 +664,8 @@ export async function resetPasswordAction(formData: FormData) {
     await logAction({
       userId: user.id,
       actionType: "RESET_PASSWORD_SUCCESS",
-      description: "User successfully reset their password via forgot-password flow.",
+      description:
+        "User successfully reset their password via forgot-password flow.",
     });
 
     // Log the user in with a fresh session
@@ -641,6 +685,3 @@ export async function resetPasswordAction(formData: FormData) {
     };
   }
 }
-
-
-    
