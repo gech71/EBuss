@@ -1,22 +1,28 @@
-
 'use server';
 
 import nodemailer from 'nodemailer';
 
 const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587,
+    host: process.env.MAIL_HOST?.replace(/"/g, ''),
+    port: process.env.MAIL_PORT ? parseInt(process.env.MAIL_PORT) : 587,
+    secure: false, // true for 465, false for other ports
     auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS
+      user: process.env.MAIL_USER,
+      pass: process.env.MAIL_PASS
+    },
+    tls: {
+      // do not fail on invalid certs
+      rejectUnauthorized: process.env.MAIL_ALLOW_SELF_SIGNED !== 'true'
     }
 });
+
+const FROM_EMAIL = `"NibTeraBuss Support" <${process.env.MAIL_FROM_EMAIL || 'no-reply@nibbank.com.et'}>`;
 
 export async function sendPasswordSetupEmail(to: string, token: string) {
     const setupLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:9002'}/setup-password/${token}`;
     
     const mailOptions = {
-        from: `"NibTeraBuss Support" <support@nibterabuss.com>`,
+        from: FROM_EMAIL,
         to,
         subject: "Set Up Your NibTeraBuss Account Password",
         html: `
@@ -42,7 +48,7 @@ export async function sendPasswordResetEmail(to: string, token: string) {
     const resetLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:9002'}/reset-password/${token}`;
     
     const mailOptions = {
-        from: `"NibTeraBuss Support" <support@nibterabuss.com>`,
+        from: FROM_EMAIL,
         to,
         subject: "Reset Your NibTeraBuss Account Password",
         html: `
