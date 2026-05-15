@@ -5,16 +5,16 @@ import { PaymentStatus } from '@prisma/client';
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const ticketId = params.id;
-    if (!ticketId) {
-      return NextResponse.json({ message: 'Ticket ID is required.' }, { status: 400 });
+    const { id: bookingId } = await params;
+    if (!bookingId) {
+      return NextResponse.json({ message: 'Booking ID is required.' }, { status: 400 });
     }
 
     const booking = await prisma.booking.findUnique({
-      where: { id: ticketId },
+      where: { id: bookingId },
       select: { paymentStatus: true },
     });
 

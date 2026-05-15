@@ -144,7 +144,7 @@ export async function createBookingAction(formData: FormData) {
   } = validatedData.data;
 
   try {
-    const expiresAt = new Date(Date.now() + 30 * 1000); // 30 second reservation for all tickets
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minute reservation while awaiting payment
 
     const [outboundBooking] = await prisma.$transaction(async (tx) => {
       const outboundRoute = await tx.route.findUnique({

@@ -1,15 +1,15 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Loader2, Ticket, Info, AlertTriangle } from 'lucide-react';
+import { Loader2, Ticket, AlertTriangle } from 'lucide-react';
 import type { Booking, PaymentStatus } from "@prisma/client";
 
-const POLLING_INTERVAL = 5000; // 5 seconds
-const POLLING_DURATION = 30 * 1000; // 30 seconds
+const POLLING_INTERVAL = 2000; // 2 seconds
+const POLLING_DURATION = 10 * 60 * 1000; // 10 minutes
 
 interface PaymentStatusCheckerProps {
     booking: Booking;
@@ -20,54 +20,61 @@ export function PaymentStatusChecker({ booking }: PaymentStatusCheckerProps) {
     const [status, setStatus] = useState<PaymentStatus>(booking.paymentStatus);
     const [isPolling, setIsPolling] = useState(true);
     const [isTimedOut, setIsTimedOut] = useState(false);
+    const hasPaidRef = useRef(false);
 
     const handleTimeout = useCallback(() => {
         setIsPolling(false);
         setIsTimedOut(true);
-        // The server will handle seat release, we just need to update the UI.
         router.refresh();
     }, [router]);
 
     useEffect(() => {
-        if (status === 'PAID') {
+        if (status === 'PAID' || hasPaidRef.current) {
             setIsPolling(false);
             return;
         }
 
-        const bookingExpiryTime = new Date(booking.expiresAt || 0).getTime();
         const startTime = Date.now();
-        const effectivePollingDuration = bookingExpiryTime > startTime ? bookingExpiryTime - startTime : POLLING_DURATION;
+        let intervalId: ReturnType<typeof setInterval>;
 
+        const checkPaymentStatus = async () => {
+            if (hasPaidRef.current) return;
 
-        const intervalId = setInterval(async () => {
-            if (Date.now() - startTime > effectivePollingDuration) {
+            if (Date.now() - startTime > POLLING_DURATION) {
                 clearInterval(intervalId);
                 handleTimeout();
                 return;
             }
 
             try {
-                const response = await fetch(`/api/ticket/${booking.id}/status`);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.paymentStatus === 'PAID') {
-                        clearInterval(intervalId);
-                        setIsPolling(false);
-                        setStatus('PAID');
-                        // Force a page reload to get the full ticket data
-                        router.refresh();
-                    }
+                const response = await fetch(`/api/ticket/${booking.id}/status`, {
+                    cache: 'no-store',
+                });
+                if (!response.ok) {
+                    console.error('Payment status check failed:', response.status);
+                    return;
+                }
+
+                const data = await response.json();
+                if (data.paymentStatus === 'PAID') {
+                    hasPaidRef.current = true;
+                    clearInterval(intervalId);
+                    setIsPolling(false);
+                    setStatus('PAID');
+                    router.refresh();
                 }
             } catch (error) {
                 console.error("Failed to poll for payment status:", error);
             }
-        }, POLLING_INTERVAL);
+        };
+
+        void checkPaymentStatus();
+        intervalId = setInterval(checkPaymentStatus, POLLING_INTERVAL);
 
         return () => clearInterval(intervalId);
-    }, [booking.id, booking.expiresAt, status, router, handleTimeout]);
+    }, [booking.id, status, router, handleTimeout]);
 
     if (status === 'PAID') {
-        // This state should be quickly replaced by the router refresh showing the real ticket.
         return (
              <Alert className="max-w-md">
                 <Ticket className="h-4 w-4" />
@@ -79,7 +86,7 @@ export function PaymentStatusChecker({ booking }: PaymentStatusCheckerProps) {
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
             </Alert>
-        )
+        );
     }
 
     if (isPolling) {
@@ -88,7 +95,7 @@ export function PaymentStatusChecker({ booking }: PaymentStatusCheckerProps) {
                 <Ticket className="h-4 w-4" />
                 <AlertTitle>Awaiting Payment Confirmation</AlertTitle>
                 <AlertDescription>
-                    This booking is not yet paid for. We are actively checking for payment confirmation. Your seats are reserved for 30 seconds.
+                    This booking is not yet paid for. We are actively checking for payment confirmation. Complete payment in the NibTera app and this page will update automatically.
                 </AlertDescription>
                 <div className="flex items-center justify-center pt-4">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -96,24 +103,24 @@ export function PaymentStatusChecker({ booking }: PaymentStatusCheckerProps) {
             </Alert>
         );
     }
-    
+
     if (isTimedOut) {
         return (
              <Alert variant="destructive" className="max-w-md">
                 <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Booking Expired</AlertTitle>
+                <AlertTitle>Payment Not Confirmed</AlertTitle>
                 <AlertDescription>
-                   Your 30-second payment window has expired. The seats you selected have been released. If you believe you have paid, please contact support. Otherwise, you can try booking again.
+                   We have not received payment confirmation yet. If you completed payment, refresh this page or contact support with your booking reference.
                 </AlertDescription>
                  <div className="pt-4 flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => router.refresh()}>Refresh</Button>
                     <Button variant="outline" onClick={() => router.push('/')}>Go to Homepage</Button>
                     <Button onClick={() => router.push(`/book/${booking.routeId}`)}>Try Again</Button>
                 </div>
             </Alert>
-        )
+        );
     }
 
-    // Default state if not paid, not polling, and not timed out.
     return (
         <Alert variant="destructive" className="max-w-md">
             <Ticket className="h-4 w-4" />

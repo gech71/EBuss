@@ -8,12 +8,12 @@ import { validateRequest } from '@/lib/server/auth';
 // This endpoint is for fetching details of a SINGLE ticket.
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { user } = await validateRequest();
 
-    const ticketId = params.id;
+    const { id: ticketId } = await params;
     if (!ticketId) {
         return NextResponse.json({ message: 'Ticket ID is required.' }, { status: 400 });
     }

@@ -12,10 +12,10 @@ const MAX_SCAN_ATTEMPTS_PER_MINUTE = 20;
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const ip = await getIP(request);
-  const ticketId = params.id;
+  const { id: ticketId } = await params;
   
   if (ip) {
       const now = new Date();

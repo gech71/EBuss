@@ -37,6 +37,8 @@ CREATE TABLE "User" (
     "passwordSetupExpires" TIMESTAMP(3),
     "passwordResetToken" TEXT,
     "passwordResetExpires" TIMESTAMP(3),
+    "failedLoginAttempts" INTEGER NOT NULL DEFAULT 0,
+    "lockoutUntil" TIMESTAMP(3),
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );

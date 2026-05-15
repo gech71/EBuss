@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import jsQR from "jsqr";
 import type { Ticket, Route, Bus, Location, Booking } from "@prisma/client";
 import { cn } from "@/lib/utils";
+import { parseTicketQrPayload } from "@/lib/qr-payload";
 
 type ScanStatus = "idle" | "scanning" | "success" | "error";
 type ScannedData = Ticket & { route: Route & { origin: Location, destination: Location }, booking: Booking };
@@ -50,9 +51,7 @@ export function QRScanner() {
   const handleScanResult = useCallback(async (encodedData: string) => {
     stopScan();
     try {
-        const decodedData = atob(encodedData);
-        const { ticketId } = JSON.parse(decodedData);
-        if (!ticketId) throw new Error("Invalid QR code format.");
+        const { ticketId } = parseTicketQrPayload(encodedData);
 
         const response = await fetch(`/api/ticket/${ticketId}/scan`, {
             method: 'POST',
