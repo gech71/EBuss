@@ -18,10 +18,14 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { useCsrf } from "@/hooks/useCsrf";
 import { format, isSameDay } from "date-fns";
-import { formatInTimeZone, toDate, fromZonedTime } from 'date-fns-tz';
 import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { BackButton } from "../BackButton";
+import {
+  combineRouteDateTime,
+  formatRouteDateTime,
+  toRouteTimeZoneDate,
+} from "@/lib/route-time";
 
 type EnrichedDiscount = (Discount & { tiers: DiscountTier[]; percentage: number | null });
 
@@ -92,16 +96,13 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
 
 
   const availableReturnDates = useMemo(() => {
-    const timeZone = 'UTC';
     const uniqueDates = new Set<string>();
     potentialReturnRoutes.forEach(route => {
-        const zonedDate = fromZonedTime(route.departureTime, timeZone);
-        const startOfDayStr = format(zonedDate, 'yyyy-MM-dd');
-        uniqueDates.add(startOfDayStr);
+        uniqueDates.add(formatRouteDateTime(route.departureTime, "yyyy-MM-dd"));
     });
 
     return Array.from(uniqueDates).map(dateStr => {
-        return toDate(`${dateStr}T00:00:00Z`); // Create date object from UTC string
+        return toRouteTimeZoneDate(combineRouteDateTime(dateStr, "00:00"));
     });
   }, [potentialReturnRoutes]);
 
@@ -138,8 +139,8 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
       setNoReturnTripsFound(false);
 
       try {
-          const dateInUtc = formatInTimeZone(date, 'UTC', 'yyyy-MM-dd');
-          const response = await fetch(`/api/routes/search?originId=${selectedRoute.destinationId}&destinationId=${selectedRoute.originId}&date=${dateInUtc}`);
+          const routeDate = format(date, "yyyy-MM-dd");
+          const response = await fetch(`/api/routes/search?originId=${selectedRoute.destinationId}&destinationId=${selectedRoute.originId}&date=${routeDate}`);
           const data = await response.json();
 
           if (response.ok) {
@@ -351,8 +352,8 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                    )}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 text-sm mt-4 text-muted-foreground">
-                  <div className="flex items-center gap-2"><CalendarIcon className="h-4 w-4" /> <span>{new Date(selectedRoute.departureTime).toLocaleDateString()}</span></div>
-                  <div className="flex items-center gap-2"><Clock className="h-4 w-4" /> <span>{new Date(selectedRoute.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
+                  <div className="flex items-center gap-2"><CalendarIcon className="h-4 w-4" /> <span>{formatRouteDateTime(selectedRoute.departureTime, "MMM d, yyyy")}</span></div>
+                  <div className="flex items-center gap-2"><Clock className="h-4 w-4" /> <span>{formatRouteDateTime(selectedRoute.departureTime, "h:mm a")}</span></div>
                   <div className="flex items-center gap-2"><BusIcon className="h-4 w-4" /> <span>{selectedRoute.bus.name}</span></div>
               </div>
             </div>
@@ -428,9 +429,9 @@ export function BookingForm({ route: initialRoute, alternativeRoutes, potentialR
                                                         <div className="text-xs text-muted-foreground">{route.bus.name}</div>
                                                     </div>
                                                     <div className="font-medium sm:col-span-2">
-                                                        {formatInTimeZone(new Date(route.departureTime), 'UTC', 'MMM d, yyyy (p)')}
+                                                        {formatRouteDateTime(route.departureTime, "MMM d, yyyy (p)")}
                                                         <ArrowRight className="inline h-3 w-3 mx-1" />
-                                                        {formatInTimeZone(new Date(route.arrivalTime), 'UTC', 'MMM d, yyyy (p)')}
+                                                        {formatRouteDateTime(route.arrivalTime, "MMM d, yyyy (p)")}
                                                     </div>
                                                     <div className="font-bold text-base text-right col-span-full sm:col-start-3 sm:row-start-1">{Number(route.price).toFixed(2)} ETB</div>
                                                 </div>

@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { format, formatInTimeZone } from "date-fns-tz";
+import { format } from "date-fns";
 import { useState, useTransition } from "react";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import type { Route, Bus, Discount, Location } from "@prisma/client";
@@ -20,6 +20,10 @@ import { Separator } from "@/components/ui/separator";
 import { useCsrf } from "@/hooks/useCsrf";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { DiscountValueType, TicketType } from "@prisma/client";
+import {
+    formatRouteDateTime,
+    toRouteTimeZoneDate,
+} from "@/lib/route-time";
 
 interface EditRouteFormProps {
     route: Route;
@@ -34,10 +38,10 @@ export function EditRouteForm({ route, locations, buses, discounts }: EditRouteF
     const [isPending, startTransition] = useTransition();
     const { csrfToken, loading: csrfLoading } = useCsrf();
 
-    const [departureDate, setDepartureDate] = useState<Date | undefined>(new Date(route.departureTime));
-    const [departureTime, setDepartureTime] = useState(formatInTimeZone(route.departureTime, 'UTC', "HH:mm"));
-    const [arrivalDate, setArrivalDate] = useState<Date | undefined>(new Date(route.arrivalTime));
-    const [arrivalTime, setArrivalTime] = useState(formatInTimeZone(route.arrivalTime, 'UTC', "HH:mm"));
+    const [departureDate, setDepartureDate] = useState<Date | undefined>(toRouteTimeZoneDate(route.departureTime));
+    const [departureTime, setDepartureTime] = useState(formatRouteDateTime(route.departureTime, "HH:mm"));
+    const [arrivalDate, setArrivalDate] = useState<Date | undefined>(toRouteTimeZoneDate(route.arrivalTime));
+    const [arrivalTime, setArrivalTime] = useState(formatRouteDateTime(route.arrivalTime, "HH:mm"));
     const [ticketType, setTicketType] = useState<TicketType>(route.ticketType);
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {

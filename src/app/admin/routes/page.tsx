@@ -9,6 +9,7 @@ import prisma from "@/lib/prisma";
 import { RouteActions } from "@/components/admin/RouteActions";
 import { validateRequest } from "@/lib/server/auth";
 import { redirect } from "next/navigation";
+import { formatRouteDateTime } from "@/lib/route-time";
 
 export default async function AdminRoutesPage() {
   const { user } = await validateRequest();
@@ -67,7 +68,7 @@ export default async function AdminRoutesPage() {
               <TableRow key={route.id}>
                 <TableCell className="font-medium">{route.origin.name}</TableCell>
                 <TableCell>{route.destination.name}</TableCell>
-                <TableCell>{new Date(route.departureTime).toLocaleString()}</TableCell>
+                <TableCell>{formatRouteDateTime(route.departureTime, "MMM d, yyyy h:mm a")}</TableCell>
                 <TableCell className="text-right">{route.price.toFixed(2)} ETB</TableCell>
                 <TableCell>
                   <RouteActions routeId={route.id} />

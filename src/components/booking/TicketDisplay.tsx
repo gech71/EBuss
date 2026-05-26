@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { ArrowRight, Bus as BusIcon, Clock, MapPin, User, Ticket as TicketIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
+import { formatRouteDateTime } from "@/lib/route-time";
 
 type EnrichedTicket = Ticket & {
   route: Route & {
@@ -93,7 +94,7 @@ export function TicketDisplay({ booking, ticket }: TicketDisplayProps) {
                     </div>
                     <div className="space-y-1">
                         <p className="text-muted-foreground">Departure</p>
-                        <p className="font-semibold flex items-center gap-2"><Clock className="h-4 w-4"/>{new Date(route.departureTime).toLocaleString()}</p>
+                        <p className="font-semibold flex items-center gap-2"><Clock className="h-4 w-4"/>{formatRouteDateTime(route.departureTime, "MMM d, yyyy h:mm a")}</p>
                     </div>
                     <div className="space-y-1">
                         <p className="text-muted-foreground">Bus</p>

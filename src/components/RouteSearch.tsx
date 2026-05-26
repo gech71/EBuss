@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { formatRouteDateTime } from '@/lib/route-time';
 
 type EnrichedRoute = Route & { 
   bus: Bus & { owner: BusOwner }, 
@@ -58,7 +59,10 @@ export function RouteSearch({ routes, locations, owners }: RouteSearchProps) {
       const isOwnerMatch = selectedOwnerIds.length === 0 || selectedOwnerIds.includes(route.bus.ownerId);
       const isOriginMatch = !origin || route.origin.name === origin;
       const isDestinationMatch = !destination || route.destination.name === destination;
-      const isDateMatch = !date || format(new Date(route.departureTime), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
+      const isDateMatch =
+        !date ||
+        formatRouteDateTime(route.departureTime, "yyyy-MM-dd") ===
+          format(date, "yyyy-MM-dd");
       return isOwnerMatch && isOriginMatch && isDestinationMatch && isDateMatch;
     });
     setSearchResults(results);
@@ -96,7 +100,7 @@ export function RouteSearch({ routes, locations, owners }: RouteSearchProps) {
 
   const groupedSearchResults = useMemo(() => {
     return searchResults.reduce((acc: GroupedRoutes, route) => {
-      const key = `${route.origin.name}-${route.destination.name}-${new Date(route.departureTime).toISOString()}`;
+      const key = `${route.origin.name}-${route.destination.name}-${formatRouteDateTime(route.departureTime, "yyyy-MM-dd HH:mm")}`;
       if (!acc[key]) {
         acc[key] = [];
       }

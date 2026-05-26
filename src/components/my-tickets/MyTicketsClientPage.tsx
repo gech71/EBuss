@@ -11,7 +11,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import Image from 'next/image';
 import { Loader2, Search, Ticket, ArrowRight, Bus as BusIcon, Clock, Building, CalendarIcon, Maximize, Smartphone, Users } from 'lucide-react';
 import type { Booking, Route, Bus, Location, BusOwner, Ticket as PrismaTicket } from '@prisma/client';
-import { format, isSameDay } from 'date-fns';
+import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
@@ -19,6 +19,7 @@ import { Calendar } from '../ui/calendar';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
+import { combineRouteDateTime, formatRouteDateTime } from '@/lib/route-time';
 
 type EnrichedBooking = Booking & {
   route: Route & {
@@ -51,8 +52,8 @@ function TicketCard({ ticket, booking }: { ticket: PrismaTicket, booking: Enrich
                     </div>
                      <Separator className="my-2" />
                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-2"><Clock className="h-4 w-4" /> <span>Depart: {format(new Date(route.departureTime), 'p')}</span></div>
-                        <div className="flex items-center gap-2"><Clock className="h-4 w-4" /> <span>Arrive: {format(new Date(route.arrivalTime), 'p')}</span></div>
+                        <div className="flex items-center gap-2"><Clock className="h-4 w-4" /> <span>Depart: {formatRouteDateTime(route.departureTime, "p")}</span></div>
+                        <div className="flex items-center gap-2"><Clock className="h-4 w-4" /> <span>Arrive: {formatRouteDateTime(route.arrivalTime, "p")}</span></div>
                         <div className="flex items-center gap-2 col-span-2"><BusIcon className="h-4 w-4" /> <span>{route.bus.name}</span></div>
                     </div>
                 </div>
@@ -132,12 +133,13 @@ export function MyTicketsClientPage({ isMiniApp, phoneNumberFromSession }: MyTic
             return allBookings;
         }
         return allBookings.filter(booking => 
-            isSameDay(new Date(booking.route.departureTime), filterDate)
+            formatRouteDateTime(booking.route.departureTime, "yyyy-MM-dd") ===
+              format(filterDate, "yyyy-MM-dd")
         );
     }, [allBookings, filterDate]);
     
     const groupedBookings = filteredBookings.reduce((acc, booking) => {
-        const date = format(new Date(booking.route.departureTime), 'yyyy-MM-dd');
+        const date = formatRouteDateTime(booking.route.departureTime, 'yyyy-MM-dd');
         if (!acc[date]) {
             acc[date] = [];
         }
@@ -201,7 +203,7 @@ export function MyTicketsClientPage({ isMiniApp, phoneNumberFromSession }: MyTic
                             <AccordionItem key={date} value={`date-${date}`}>
                               <AccordionTrigger className="font-semibold text-lg hover:no-underline">
                                   <div>
-                                      Trips on {format(new Date(date), "PPP")}
+                                      Trips on {formatRouteDateTime(combineRouteDateTime(date, "00:00"), "PPP")}
                                       <p className="text-sm text-muted-foreground font-normal">
                                           {groupedBookings[date].length} booking(s)
                                       </p>

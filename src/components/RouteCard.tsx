@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ArrowRight, Clock, Ticket, Percent, Building, Repeat } from 'lucide-react';
 import { Badge } from './ui/badge';
+import { formatRouteDateTime } from '@/lib/route-time';
 
 interface RouteCardProps {
   route: Route & { 
@@ -46,7 +47,7 @@ export function RouteCard({ route }: RouteCardProps) {
       <CardContent className="flex-grow space-y-2 p-4 pt-2">
         <div className="flex items-center text-sm text-muted-foreground">
           <Clock className="w-4 h-4 mr-2" />
-          <span>{new Date(route.departureTime).toLocaleDateString([], { month: 'short', day: 'numeric' })} at {new Date(route.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+          <span>{formatRouteDateTime(route.departureTime, "MMM d")} at {formatRouteDateTime(route.departureTime, "h:mm a")}</span>
         </div>
         <div className="flex items-center text-sm text-muted-foreground">
             <Ticket className="w-4 h-4 mr-2" />

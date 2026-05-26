@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { ArrowRight, Clock, Building, Percent, Repeat } from 'lucide-react';
 import { Separator } from './ui/separator';
 import { Badge } from './ui/badge';
+import { formatRouteDateTime } from '@/lib/route-time';
 
 interface GroupedRouteCardProps {
   routes: (Route & { bus: Bus & { owner: BusOwner }, origin: Location, destination: Location, discount: Discount | null })[];
@@ -40,7 +41,7 @@ export function GroupedRouteCard({ routes }: GroupedRouteCardProps) {
           <CardDescription>From {origin?.name || 'Unknown'}</CardDescription>
           <div className="flex items-center text-sm text-muted-foreground pt-1">
             <Clock className="w-4 h-4 mr-2 text-primary/70" />
-            <span>{departureDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })} at {departureDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            <span>{formatRouteDateTime(firstRoute.departureTime, "EEE, MMM d")} at {formatRouteDateTime(firstRoute.departureTime, "h:mm a")}</span>
           </div>
             <div className="flex items-center text-sm text-muted-foreground pt-1">
                 {ticketType === 'ROUND_TRIP' ? (

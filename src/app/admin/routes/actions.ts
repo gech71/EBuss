@@ -9,6 +9,7 @@ import { validateRequest } from '@/lib/server/auth';
 import { validateCsrf } from '@/app/lib/actions';
 import { logAction } from '@/app/lib/logger';
 import { DiscountValueType, TicketType } from '@prisma/client';
+import { combineRouteDateTime } from '@/lib/route-time';
 
 const routeSchema = z.object({
   originId: z.string().min(1, 'Origin is required.'),
@@ -24,15 +25,6 @@ const routeSchema = z.object({
   // roundTripDiscountType: z.nativeEnum(DiscountValueType).optional().nullable(),
   // roundTripDiscountValue: z.coerce.number().positive().optional().nullable(),
 });
-
-const combineDateTime = (dateStr: string, timeStr: string): Date => {
-    // This creates a date object in the server's local timezone based on the input strings.
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    const date = new Date(dateStr);
-    date.setHours(hours, minutes, 0, 0);
-    return date;
-};
-
 
 export async function createRouteAction(formData: FormData) {
     try {
@@ -80,8 +72,8 @@ export async function createRouteAction(formData: FormData) {
         return { success: false, message: 'Origin and destination cannot be the same.' };
     }
 
-    const fullDepartureTime = combineDateTime(departureDate, departureTime);
-    const fullArrivalTime = combineDateTime(arrivalDate, arrivalTime);
+    const fullDepartureTime = combineRouteDateTime(departureDate, departureTime);
+    const fullArrivalTime = combineRouteDateTime(arrivalDate, arrivalTime);
 
     if (fullArrivalTime <= fullDepartureTime) {
         await logAction({ userId: user.id, actionType: 'CREATE_ROUTE_FAIL', description: 'Arrival time was before departure time.', details: { attemptedData: validatedData.data } });
@@ -187,8 +179,8 @@ export async function updateRouteAction(formData: FormData) {
         return { success: false, message: 'Origin and destination cannot be the same.' };
     }
 
-    const fullDepartureTime = combineDateTime(departureDate, departureTime);
-    const fullArrivalTime = combineDateTime(arrivalDate, arrivalTime);
+    const fullDepartureTime = combineRouteDateTime(departureDate, departureTime);
+    const fullArrivalTime = combineRouteDateTime(arrivalDate, arrivalTime);
 
      if (fullArrivalTime <= fullDepartureTime) {
         await logAction({ userId: user.id, actionType: 'UPDATE_ROUTE_FAIL', description: 'Arrival time was before departure time.', details: { attemptedData: validatedData.data } });
