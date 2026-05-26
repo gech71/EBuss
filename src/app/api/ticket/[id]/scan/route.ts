@@ -61,7 +61,15 @@ export async function POST(
             where: { id: ticketId },
             include: {
                 route: { include: { bus: true, origin: true, destination: true } },
-                booking: true,
+                booking: {
+                    include: {
+                        payments: {
+                            where: { status: 'PAID' },
+                            orderBy: { createdAt: 'desc' },
+                            take: 1,
+                        },
+                    },
+                },
             },
         });
 
@@ -92,15 +100,55 @@ export async function POST(
             data: { status: TicketStatus.USED },
              include: {
                 route: { include: { bus: true, origin: true, destination: true } },
-                booking: true,
+                booking: {
+                    include: {
+                        payments: {
+                            where: { status: 'PAID' },
+                            orderBy: { createdAt: 'desc' },
+                            take: 1,
+                        },
+                    },
+                },
             },
         });
         
-        await logAction({ userId: user.id, actionType: 'TICKET_SCAN_SUCCESS', description: `Ticket ${ticketId} validated and marked as USED.`, details: { ticket: updatedTicket } });
+        await logAction({
+            userId: user.id,
+            actionType: 'TICKET_SCAN_SUCCESS',
+            description: `Ticket ${ticketId} validated and marked as USED.`,
+            details: {
+                ticketId: updatedTicket.id,
+                bookingId: updatedTicket.bookingId,
+                passengerName: updatedTicket.booking.passengerName,
+                seatNumber: updatedTicket.seatNumber,
+                status: updatedTicket.status,
+                route: `${updatedTicket.route.origin.name} -> ${updatedTicket.route.destination.name}`,
+                busName: updatedTicket.route.bus.name,
+            },
+        });
         return updatedTicket;
     });
 
-    return NextResponse.json({ ticket });
+    const payment = ticket.booking.payments[0];
+    const scanDetails = {
+        id: ticket.id,
+        seatNumber: ticket.seatNumber,
+        status: ticket.status,
+        amountPaid: payment ? Number(payment.amount) : Number(ticket.booking.totalPrice),
+        ftNumber: payment?.referenceNumber ?? payment?.transactionId ?? null,
+        booking: {
+            id: ticket.booking.id,
+            passengerName: ticket.booking.passengerName,
+            passengerPhone: ticket.booking.passengerPhone,
+        },
+        route: {
+            origin: { name: ticket.route.origin.name },
+            destination: { name: ticket.route.destination.name },
+            bus: { name: ticket.route.bus.name },
+        },
+    };
+
+    return NextResponse.json({ ticket: scanDetails });
 
   } catch (error: any) {
     const { user } = await validateRequest(); // We need user for logging

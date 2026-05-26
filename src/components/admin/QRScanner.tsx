@@ -9,12 +9,27 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card } from '../ui/card';
 import { useToast } from '@/hooks/use-toast';
 import jsQR from "jsqr";
-import type { Ticket, Route, Bus, Location, Booking } from "@prisma/client";
 import { cn } from "@/lib/utils";
 import { parseTicketQrPayload } from "@/lib/qr-payload";
 
 type ScanStatus = "idle" | "scanning" | "success" | "error";
-type ScannedData = Ticket & { route: Route & { origin: Location, destination: Location }, booking: Booking };
+type ScannedData = {
+  id: string;
+  seatNumber: string;
+  status: string;
+  amountPaid: number;
+  ftNumber: string | null;
+  booking: {
+    id: string;
+    passengerName: string;
+    passengerPhone: string;
+  };
+  route: {
+    origin: { name: string };
+    destination: { name: string };
+    bus: { name: string };
+  };
+};
 
 export function QRScanner() {
   const { toast } = useToast();
@@ -188,7 +203,10 @@ export function QRScanner() {
           <div className="text-sm space-y-2">
             <p><strong>Passenger:</strong> {scannedData.booking.passengerName}</p>
             <p><strong>Route:</strong> {scannedData.route.origin.name} to {scannedData.route.destination.name}</p>
+            <p><strong>Bus:</strong> {scannedData.route.bus.name}</p>
             <p><strong>Seat:</strong> {scannedData.seatNumber}</p>
+            <p><strong>Amount Paid:</strong> {scannedData.amountPaid.toFixed(2)} ETB</p>
+            <p><strong>FT:</strong> <span className="font-mono">{scannedData.ftNumber || "N/A"}</span></p>
           </div>
         </>
       );
