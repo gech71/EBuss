@@ -7,15 +7,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
-import Link from 'next/link';
+import {
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious,
+} from '@/components/ui/pagination';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const ITEMS_PER_PAGE = 20;
 
 interface LogsPageProps {
-    searchParams: {
+    searchParams: Promise<{
+        page?: string;
+    }> | {
         page?: string;
     };
 }
@@ -37,7 +46,9 @@ export default async function AuditLogsPage({ searchParams }: LogsPageProps) {
         redirect('/super-admin/login');
     }
 
-    const page = Number(searchParams.page) || 1;
+    const resolvedSearchParams = await searchParams;
+    const requestedPage = Number(resolvedSearchParams.page);
+    const page = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
     const skip = (page - 1) * ITEMS_PER_PAGE;
 
     const [logs, totalLogs] = await prisma.$transaction([
@@ -125,9 +136,15 @@ export default async function AuditLogsPage({ searchParams }: LogsPageProps) {
                         <PaginationContent>
                             <PaginationItem>
                                 {page > 1 ? (
-                                     <Link href={`/super-admin/logs?page=${page - 1}`} passHref>
-                                        <PaginationPrevious />
-                                     </Link>
+                                    <PaginationLink
+                                        href={`/super-admin/logs?page=${page - 1}`}
+                                        size="default"
+                                        className="gap-1 pl-2.5"
+                                        aria-label="Go to previous page"
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                        <span>Previous</span>
+                                    </PaginationLink>
                                 ) : (
                                     <PaginationPrevious aria-disabled={true} className="pointer-events-none opacity-50" />
                                 )}
@@ -137,9 +154,15 @@ export default async function AuditLogsPage({ searchParams }: LogsPageProps) {
                             </PaginationItem>
                             <PaginationItem>
                                  {page < totalPages ? (
-                                     <Link href={`/super-admin/logs?page=${page + 1}`} passHref>
-                                        <PaginationNext />
-                                     </Link>
+                                    <PaginationLink
+                                        href={`/super-admin/logs?page=${page + 1}`}
+                                        size="default"
+                                        className="gap-1 pr-2.5"
+                                        aria-label="Go to next page"
+                                    >
+                                        <span>Next</span>
+                                        <ChevronRight className="h-4 w-4" />
+                                    </PaginationLink>
                                 ) : (
                                     <PaginationNext aria-disabled={true} className="pointer-events-none opacity-50" />
                                 )}
