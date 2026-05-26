@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import type { Bus, Location, Ticket as PrismaTicket } from "@prisma/client";
 import { ScrollArea } from "../ui/scroll-area";
+import { formatRouteDateTime, getRouteDateRange } from "@/lib/route-time";
 
 interface SanitizedRoute {
     id: string;
@@ -58,20 +59,18 @@ export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
     
     const todayStats = useMemo(() => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(today.getDate() + 1);
+        const today = formatRouteDateTime(new Date(), "yyyy-MM-dd");
+        const { start, end } = getRouteDateRange(today);
 
-        const todayRoutes = routes.filter(r => {
-            const departureDate = new Date(r.departureTime);
-            return departureDate >= today && departureDate < tomorrow;
+        const todayBookings = bookings.filter(booking => {
+            const bookingDate = new Date(booking.bookingTime);
+            return bookingDate >= start && bookingDate <= end;
         });
 
-        const todayRouteIds = todayRoutes.map(r => r.id);
-        const todayBookings = bookings.filter(b => todayRouteIds.includes(b.routeId));
+        const soldRouteIds = new Set(todayBookings.map(booking => booking.routeId));
+        const soldRoutes = routes.filter(route => soldRouteIds.has(route.id));
         
-        const potentialRevenue = todayRoutes.reduce((acc, route) => {
+        const potentialRevenue = soldRoutes.reduce((acc, route) => {
             const bus = buses.find(b => b.id === route.busId);
             const capacity = bus?.capacity || 0;
             return acc + (capacity * route.price);
@@ -91,11 +90,11 @@ export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
         const filteredBookings = bookings.filter(booking => {
             if (!dateRange?.from) return true; // No start date, include all
             const bookingDate = new Date(booking.bookingTime);
-            const from = new Date(dateRange.from);
-            from.setHours(0,0,0,0);
-            const to = dateRange.to ? new Date(dateRange.to) : new Date(dateRange.from);
-            to.setHours(23,59,59,999);
-            return bookingDate >= from && bookingDate <= to;
+            const fromDate = format(dateRange.from, "yyyy-MM-dd");
+            const toDate = format(dateRange.to ?? dateRange.from, "yyyy-MM-dd");
+            const { start } = getRouteDateRange(fromDate);
+            const { end } = getRouteDateRange(toDate);
+            return bookingDate >= start && bookingDate <= end;
         });
 
         filteredBookings.forEach(booking => {
@@ -144,7 +143,7 @@ export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
             <Card>
                 <CardHeader>
                     <CardTitle className="font-headline text-2xl text-primary">Today's Snapshot</CardTitle>
-                    <CardDescription>Performance metrics for routes departing today.</CardDescription>
+                    <CardDescription>Performance metrics for bookings made today.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -153,14 +152,14 @@ export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
                                 <span className="font-bold mr-2">ETB</span>Actual Revenue
                             </h4>
                             <p className="text-3xl font-bold text-primary">{todayStats.actualRevenue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
-                            <p className="text-xs text-muted-foreground">Revenue from tickets sold for today.</p>
+                            <p className="text-xs text-muted-foreground">Revenue from tickets booked today.</p>
                         </div>
                          <div className="p-4 border rounded-lg">
                             <h4 className="text-sm font-semibold text-muted-foreground flex items-center mb-2">
                                 <span className="font-bold mr-2">ETB</span>Potential Revenue
                             </h4>
                             <p className="text-3xl font-bold">{todayStats.potentialRevenue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
-                            <p className="text-xs text-muted-foreground">If all seats for today's routes were sold.</p>
+                            <p className="text-xs text-muted-foreground">If all seats on routes sold today were booked.</p>
                         </div>
                         <div className="p-4 border rounded-lg">
                              <h4 className="text-sm font-semibold text-muted-foreground flex items-center mb-2"><TrendingUp className="w-4 h-4 mr-2"/>Effectiveness</h4>
@@ -168,7 +167,7 @@ export function Analytics({ bookings, routes, buses }: AnalyticsProps) {
                                 <Progress value={todayStats.effectiveness} className="w-full h-3" />
                                 <span className="text-2xl font-bold">{todayStats.effectiveness.toFixed(1)}%</span>
                              </div>
-                             <p className="text-xs text-muted-foreground mt-2">Today's actual vs. potential revenue.</p>
+                             <p className="text-xs text-muted-foreground mt-2">Today's sales vs. potential revenue.</p>
                         </div>
                     </div>
                 </CardContent>
