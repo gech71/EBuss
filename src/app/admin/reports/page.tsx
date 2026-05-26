@@ -26,7 +26,10 @@ import { validateRequest } from "@/lib/server/auth";
 import { formatRouteDateTime } from "@/lib/route-time";
 import { redirect } from "next/navigation";
 
-import { getReportData, type ReportsSearchParams } from "../../../lib/server/reports";
+import {
+  getReportData,
+  type ReportsSearchParams,
+} from "../../../lib/server/reports";
 
 interface ReportsPageProps {
   searchParams: Promise<ReportsSearchParams> | ReportsSearchParams;
@@ -44,11 +47,16 @@ function buildExportHref(params: ReportsSearchParams) {
 
   if (params.from) searchParams.set("from", params.from);
   if (params.to) searchParams.set("to", params.to);
-  if (params.busId && params.busId !== "all") searchParams.set("busId", params.busId);
-  if (params.originId && params.originId !== "all") searchParams.set("originId", params.originId);
-  if (params.destinationId && params.destinationId !== "all") searchParams.set("destinationId", params.destinationId);
-  if (params.paymentStatus && params.paymentStatus !== "all") searchParams.set("paymentStatus", params.paymentStatus);
-  if (params.reference?.trim()) searchParams.set("reference", params.reference.trim());
+  if (params.busId && params.busId !== "all")
+    searchParams.set("busId", params.busId);
+  if (params.originId && params.originId !== "all")
+    searchParams.set("originId", params.originId);
+  if (params.destinationId && params.destinationId !== "all")
+    searchParams.set("destinationId", params.destinationId);
+  if (params.paymentStatus && params.paymentStatus !== "all")
+    searchParams.set("paymentStatus", params.paymentStatus);
+  if (params.reference?.trim())
+    searchParams.set("reference", params.reference.trim());
 
   return `/api/admin/reports/export?${searchParams.toString()}`;
 }

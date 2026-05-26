@@ -35,9 +35,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error
-            ? error.message
-            : "Unable to load report data",
+          error instanceof Error ? error.message : "Unable to load report data",
       },
       { status: 404 },
     );
@@ -68,9 +66,7 @@ export async function GET(request: NextRequest) {
       Route: `${booking.route.origin.name} -> ${booking.route.destination.name}`,
       Passenger: booking.passengerName,
       Tickets: booking.tickets.length,
-      Amount_ETB: payment
-        ? Number(payment.amount)
-        : Number(booking.totalPrice),
+      Amount_ETB: payment ? Number(payment.amount) : Number(booking.totalPrice),
       Status: booking.paymentStatus,
     };
   });

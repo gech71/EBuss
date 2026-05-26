@@ -47,7 +47,10 @@ export type OwnerSummary = {
   transactionReferences: Set<string>;
 };
 
-export async function getReportData(ownerId: string, params: ReportsSearchParams) {
+export async function getReportData(
+  ownerId: string,
+  params: ReportsSearchParams,
+) {
   const selectedBusId = getSelectValue(params.busId);
   const selectedOriginId = getSelectValue(params.originId);
   const selectedDestinationId = getSelectValue(params.destinationId);
