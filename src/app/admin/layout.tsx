@@ -18,6 +18,7 @@ import {
   Percent,
   Settings,
   GitFork,
+  ClipboardList,
 } from "lucide-react";
 import { UserNav } from "@/components/UserNav";
 import { validateRequest } from "@/lib/server/auth";
@@ -106,6 +107,14 @@ export default async function AdminLayout({
                     <Link href="/admin/buses">
                       <Bus />
                       <span>Buses</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Bookings">
+                    <Link href="/admin/bookings">
+                      <ClipboardList />
+                      <span>Bookings</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
