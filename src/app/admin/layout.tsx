@@ -19,6 +19,7 @@ import {
   Settings,
   GitFork,
   ClipboardList,
+  BarChart3,
 } from "lucide-react";
 import { UserNav } from "@/components/UserNav";
 import { validateRequest } from "@/lib/server/auth";
@@ -35,7 +36,7 @@ async function getIsMiniApp() {
     try {
       const decodedSession = Buffer.from(
         sessionCookie.value,
-        "base64"
+        "base64",
       ).toString("ascii");
       const sessionData = JSON.parse(decodedSession);
       return sessionData.isAuthenticated;
@@ -115,6 +116,14 @@ export default async function AdminLayout({
                     <Link href="/admin/bookings">
                       <ClipboardList />
                       <span>Bookings</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Reports">
+                    <Link href="/admin/reports">
+                      <BarChart3 />
+                      <span>Reports</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
