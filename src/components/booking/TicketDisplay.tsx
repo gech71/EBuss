@@ -3,7 +3,7 @@
 "use client";
 
 import { useRef } from "react";
-import type { Booking, Route, Bus, Location, Ticket } from "@prisma/client";
+import type { Booking, Route, Bus, Location, Payment, Ticket } from "@prisma/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { ArrowRight, Bus as BusIcon, Clock, MapPin, User, Ticket as TicketIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
@@ -20,6 +20,7 @@ type EnrichedTicket = Ticket & {
 
 type BookingWithTickets = Booking & {
     tickets: EnrichedTicket[];
+    payments: Pick<Payment, "referenceNumber">[];
 }
 
 
@@ -46,6 +47,7 @@ export function TicketDisplay({ booking, ticket }: TicketDisplayProps) {
   
   const { route } = ticket;
   const { bus } = route;
+  const referenceNumber = booking.payments[0]?.referenceNumber;
 
   const qrCodePayload = JSON.stringify({ ticketId: ticket.id });
   const base64Payload = btoa(qrCodePayload);
@@ -100,6 +102,12 @@ export function TicketDisplay({ booking, ticket }: TicketDisplayProps) {
                         <p className="text-muted-foreground">Bus</p>
                         <p className="font-semibold flex items-center gap-2"><BusIcon className="h-4 w-4"/>{bus.name}</p>
                     </div>
+                    {booking.paymentStatus === "PAID" && referenceNumber ? (
+                        <div className="space-y-1 col-span-2">
+                            <p className="text-muted-foreground">Reference Number</p>
+                            <p className="font-mono font-semibold break-all">{referenceNumber}</p>
+                        </div>
+                    ) : null}
                 </div>
             </CardContent>
             <CardFooter className="bg-muted/50 p-4">

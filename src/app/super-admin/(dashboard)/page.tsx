@@ -8,6 +8,15 @@ export default async function SuperAdminDashboard() {
   const bookingsData = await prisma.booking.findMany({
     include: {
       tickets: true,
+      payments: {
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 1,
+        select: {
+          referenceNumber: true,
+        },
+      },
     },
     orderBy: {
       bookingTime: "desc",

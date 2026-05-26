@@ -36,6 +36,8 @@ interface RecentBooking {
   bookingTime: Date;
   totalPrice: number;
   routeId: string;
+  paymentStatus: string;
+  payments?: { referenceNumber: string | null }[];
   tickets: PrismaTicket[];
 }
 
@@ -60,6 +62,10 @@ export function RecentBookings({ bookings, routes }: RecentBookingsProps) {
       return (
         booking.passengerName.toLowerCase().includes(lowercasedFilter) ||
         booking.passengerPhone.toLowerCase().includes(lowercasedFilter) ||
+        (booking.payments?.[0]?.referenceNumber
+          ?.toLowerCase()
+          .includes(lowercasedFilter) ??
+          false) ||
         booking.id.toLowerCase().includes(lowercasedFilter) ||
         bookingDate.includes(lowercasedFilter) ||
         (route && route.origin.name.toLowerCase().includes(lowercasedFilter)) ||
@@ -90,7 +96,7 @@ export function RecentBookings({ bookings, routes }: RecentBookingsProps) {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search by ticket #, name, phone, date..."
+              placeholder="Search by ticket #, name, phone, reference..."
               className="pl-8 sm:w-[320px]"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
@@ -136,6 +142,15 @@ export function RecentBookings({ bookings, routes }: RecentBookingsProps) {
                     <div className="mt-2 text-xs text-muted-foreground">
                       {new Date(booking.bookingTime).toLocaleDateString()}
                     </div>
+                    {booking.paymentStatus === "PAID" &&
+                    booking.payments?.[0]?.referenceNumber ? (
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        Reference:{" "}
+                        <span className="font-mono text-foreground">
+                          {booking.payments[0].referenceNumber}
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
                 );
               })}
@@ -152,6 +167,7 @@ export function RecentBookings({ bookings, routes }: RecentBookingsProps) {
                       <TableHead>Route</TableHead>
                       <TableHead>Seats</TableHead>
                       <TableHead>Booking Date</TableHead>
+                      <TableHead>Reference</TableHead>
                       <TableHead className="text-right">Price</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -175,6 +191,12 @@ export function RecentBookings({ bookings, routes }: RecentBookingsProps) {
                           <TableCell>{booking.tickets.length}</TableCell>
                           <TableCell>
                             {new Date(booking.bookingTime).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">
+                            {booking.paymentStatus === "PAID" &&
+                            booking.payments?.[0]?.referenceNumber
+                              ? booking.payments[0].referenceNumber
+                              : "-"}
                           </TableCell>
                           <TableCell className="text-right">
                             {booking.totalPrice.toFixed(2)} ETB

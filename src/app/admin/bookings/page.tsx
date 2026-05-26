@@ -29,6 +29,15 @@ export default async function AdminBookingsPage() {
           id: true,
         },
       },
+      payments: {
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 1,
+        select: {
+          referenceNumber: true,
+        },
+      },
     },
     orderBy: {
       bookingTime: "desc",
@@ -42,6 +51,7 @@ export default async function AdminBookingsPage() {
     bookingTime: booking.bookingTime,
     totalPrice: Number(booking.totalPrice),
     paymentStatus: booking.paymentStatus,
+    referenceNumber: booking.payments[0]?.referenceNumber ?? null,
     route: {
       origin: { name: booking.route.origin.name },
       destination: { name: booking.route.destination.name },

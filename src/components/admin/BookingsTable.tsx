@@ -40,6 +40,7 @@ export interface AdminBooking {
   bookingTime: Date;
   totalPrice: number;
   paymentStatus: string;
+  referenceNumber: string | null;
   route: {
     origin: { name: string };
     destination: { name: string };
@@ -121,7 +122,9 @@ export function BookingsTable({ bookings }: { bookings: AdminBooking[] }) {
       const matchesSearch =
         !normalizedSearch ||
         booking.passengerName.toLowerCase().includes(normalizedSearch) ||
-        booking.passengerPhone.toLowerCase().includes(normalizedSearch);
+        booking.passengerPhone.toLowerCase().includes(normalizedSearch) ||
+        (booking.referenceNumber?.toLowerCase().includes(normalizedSearch) ??
+          false);
       const matchesFrom = !from || bookingTime >= from;
       const matchesTo = !to || bookingTime <= to;
 
@@ -187,7 +190,7 @@ export function BookingsTable({ bookings }: { bookings: AdminBooking[] }) {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search by customer name or phone number"
+              placeholder="Search by customer name, phone, or reference"
               className="pl-8"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
@@ -275,6 +278,14 @@ export function BookingsTable({ bookings }: { bookings: AdminBooking[] }) {
                       {booking.totalPrice.toFixed(2)} ETB
                     </span>
                   </div>
+                  {booking.paymentStatus === "PAID" && booking.referenceNumber ? (
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      Reference:{" "}
+                      <span className="font-mono text-foreground">
+                        {booking.referenceNumber}
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -291,6 +302,7 @@ export function BookingsTable({ bookings }: { bookings: AdminBooking[] }) {
                       <TableHead>Seats</TableHead>
                       <TableHead>Booking Date</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Reference</TableHead>
                       <TableHead className="text-right">Price</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -313,6 +325,11 @@ export function BookingsTable({ bookings }: { bookings: AdminBooking[] }) {
                         </TableCell>
                         <TableCell>
                           <Badge variant="secondary">{booking.paymentStatus}</Badge>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {booking.paymentStatus === "PAID" && booking.referenceNumber
+                            ? booking.referenceNumber
+                            : "-"}
                         </TableCell>
                         <TableCell className="text-right">
                           {booking.totalPrice.toFixed(2)} ETB

@@ -38,6 +38,15 @@ export default async function AdminDashboard() {
     },
     include: {
       tickets: true,
+      payments: {
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 1,
+        select: {
+          referenceNumber: true,
+        },
+      },
     },
     orderBy: {
       bookingTime: "desc",
