@@ -9,7 +9,7 @@ import {
   SidebarMenuButton,
   SidebarFooter,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, Users, Gem, FileClock } from "lucide-react";
+import { LayoutDashboard, Users, Gem, FileClock, BarChart3 } from "lucide-react";
 import { UserNav } from "@/components/UserNav";
 import { validateRequest } from "@/lib/server/auth";
 import { redirect } from "next/navigation";
@@ -77,6 +77,14 @@ export default async function SuperAdminLayout({
                     <Link href="/super-admin/settings">
                       <Gem />
                       <span>Settings</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Reports">
+                    <Link href="/super-admin/reports">
+                      <BarChart3 />
+                      <span>Reports</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
