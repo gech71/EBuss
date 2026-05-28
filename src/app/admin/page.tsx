@@ -55,7 +55,7 @@ export default async function AdminDashboard() {
 
   const totalRevenue = bookingsData.reduce(
     (acc, booking) => acc + Number(booking.totalPrice),
-    0
+    0,
   );
 
   const bookings = bookingsData.map((booking) => ({
@@ -80,7 +80,7 @@ export default async function AdminDashboard() {
               {totalRevenue.toLocaleString()} ETB
             </div>
             <p className="text-xs text-muted-foreground">
-              Based on your company's bookings
+              Based on your company's ticket sales
             </p>
           </CardContent>
         </Card>

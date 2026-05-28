@@ -16,7 +16,7 @@ export default async function RootLayout({
         <title>NibTeraBuss</title>
         <meta
           name="description"
-          content="The easiest way to book your bus tickets."
+          content="The easiest way to buy your bus tickets."
         />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link

@@ -109,7 +109,7 @@ export function BookingsTable({ bookings }: { bookings: AdminBooking[] }) {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [activeQuickFilter, setActiveQuickFilter] = useState<string | null>(
-    null
+    null,
   );
 
   const filteredBookings = useMemo(() => {
@@ -134,11 +134,11 @@ export function BookingsTable({ bookings }: { bookings: AdminBooking[] }) {
 
   const totalRevenue = filteredBookings.reduce(
     (total, booking) => total + booking.totalPrice,
-    0
+    0,
   );
   const totalTickets = filteredBookings.reduce(
     (total, booking) => total + booking.tickets.length,
-    0
+    0,
   );
 
   function applyQuickFilter(filter: QuickFilter) {
@@ -160,14 +160,15 @@ export function BookingsTable({ bookings }: { bookings: AdminBooking[] }) {
       <CardHeader className="space-y-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <CardTitle>All Bookings</CardTitle>
+            <CardTitle>All Ticket Sales</CardTitle>
             <CardDescription>
-              View customer bookings with phone numbers, dates, routes, and payment totals.
+              View ticket purchases with phone numbers, dates, routes, and
+              payment totals.
             </CardDescription>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <div className="rounded-md border px-3 py-2">
-              <div className="text-xs text-muted-foreground">Bookings</div>
+              <div className="text-xs text-muted-foreground">Purchases</div>
               <div className="text-lg font-semibold">
                 {filteredBookings.length}
               </div>
@@ -267,7 +268,8 @@ export function BookingsTable({ bookings }: { bookings: AdminBooking[] }) {
                     </Badge>
                   </div>
                   <div className="mt-3 text-sm">
-                    {booking.route.origin.name} -&gt; {booking.route.destination.name}
+                    {booking.route.origin.name} -&gt;{" "}
+                    {booking.route.destination.name}
                   </div>
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm">
                     <span>{booking.tickets.length} seats</span>
@@ -278,7 +280,8 @@ export function BookingsTable({ bookings }: { bookings: AdminBooking[] }) {
                       {booking.totalPrice.toFixed(2)} ETB
                     </span>
                   </div>
-                  {booking.paymentStatus === "PAID" && booking.referenceNumber ? (
+                  {booking.paymentStatus === "PAID" &&
+                  booking.referenceNumber ? (
                     <div className="mt-2 text-xs text-muted-foreground">
                       Reference:{" "}
                       <span className="font-mono text-foreground">
@@ -295,12 +298,12 @@ export function BookingsTable({ bookings }: { bookings: AdminBooking[] }) {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Booking ID</TableHead>
+                      <TableHead>Purchase ID</TableHead>
                       <TableHead>Customer</TableHead>
                       <TableHead>Phone</TableHead>
                       <TableHead>Route</TableHead>
                       <TableHead>Seats</TableHead>
-                      <TableHead>Booking Date</TableHead>
+                      <TableHead>Purchase Date</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Reference</TableHead>
                       <TableHead className="text-right">Price</TableHead>
@@ -317,17 +320,21 @@ export function BookingsTable({ bookings }: { bookings: AdminBooking[] }) {
                         <TableCell>{booking.passengerName}</TableCell>
                         <TableCell>{booking.passengerPhone}</TableCell>
                         <TableCell>
-                          {booking.route.origin.name} -&gt; {booking.route.destination.name}
+                          {booking.route.origin.name} -&gt;{" "}
+                          {booking.route.destination.name}
                         </TableCell>
                         <TableCell>{booking.tickets.length}</TableCell>
                         <TableCell>
                           {format(new Date(booking.bookingTime), "MMM d, yyyy")}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="secondary">{booking.paymentStatus}</Badge>
+                          <Badge variant="secondary">
+                            {booking.paymentStatus}
+                          </Badge>
                         </TableCell>
                         <TableCell className="font-mono text-xs">
-                          {booking.paymentStatus === "PAID" && booking.referenceNumber
+                          {booking.paymentStatus === "PAID" &&
+                          booking.referenceNumber
                             ? booking.referenceNumber
                             : "-"}
                         </TableCell>
@@ -344,7 +351,7 @@ export function BookingsTable({ bookings }: { bookings: AdminBooking[] }) {
         ) : (
           <div className="p-8 text-center text-muted-foreground">
             <Ticket className="mx-auto h-12 w-12" />
-            <p className="mt-4">No bookings match the selected filters.</p>
+            <p className="mt-4">No purchases match the selected filters.</p>
           </div>
         )}
       </CardContent>

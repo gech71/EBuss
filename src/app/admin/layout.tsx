@@ -112,10 +112,10 @@ export default async function AdminLayout({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Bookings">
+                  <SidebarMenuButton asChild tooltip="Ticket Sales">
                     <Link href="/admin/bookings">
                       <ClipboardList />
-                      <span>Bookings</span>
+                      <span>Ticket Sales</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

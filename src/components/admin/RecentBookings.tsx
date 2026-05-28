@@ -78,7 +78,7 @@ export function RecentBookings({ bookings, routes }: RecentBookingsProps) {
   const sortedBookings = useMemo(() => {
     return [...filteredBookings].sort(
       (a, b) =>
-        new Date(b.bookingTime).getTime() - new Date(a.bookingTime).getTime()
+        new Date(b.bookingTime).getTime() - new Date(a.bookingTime).getTime(),
     );
   }, [filteredBookings]);
 
@@ -87,7 +87,7 @@ export function RecentBookings({ bookings, routes }: RecentBookingsProps) {
       <CardHeader>
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <CardTitle>Recent Bookings</CardTitle>
+            <CardTitle>Recent Ticket Purchases</CardTitle>
             <CardDescription>
               A list of the most recent tickets purchased.
             </CardDescription>
@@ -161,19 +161,21 @@ export function RecentBookings({ bookings, routes }: RecentBookingsProps) {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Booking ID</TableHead>
+                      <TableHead>Purchase ID</TableHead>
                       <TableHead>Passenger</TableHead>
                       <TableHead>Phone</TableHead>
                       <TableHead>Route</TableHead>
                       <TableHead>Seats</TableHead>
-                      <TableHead>Booking Date</TableHead>
+                      <TableHead>Purchase Date</TableHead>
                       <TableHead>Reference</TableHead>
                       <TableHead className="text-right">Price</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {sortedBookings.map((booking) => {
-                      const route = routes.find((r) => r.id === booking.routeId);
+                      const route = routes.find(
+                        (r) => r.id === booking.routeId,
+                      );
                       return (
                         <TableRow key={booking.id}>
                           <TableCell className="font-medium">
@@ -219,7 +221,7 @@ export function RecentBookings({ bookings, routes }: RecentBookingsProps) {
             ) : (
               <>
                 <Ticket className="mx-auto h-12 w-12" />
-                <p className="mt-4">No bookings have been made yet.</p>
+                <p className="mt-4">No purchases have been made yet.</p>
               </>
             )}
           </div>
